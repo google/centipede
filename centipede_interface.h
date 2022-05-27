@@ -1,0 +1,56 @@
+// Copyright 2022 Google LLC.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef THIRD_PARTY_CENTIPEDE_CENTIPEDE_INTERFACE_H_
+#define THIRD_PARTY_CENTIPEDE_CENTIPEDE_INTERFACE_H_
+
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include "./centipede_callbacks.h"
+#include "./defs.h"
+#include "./environment.h"
+#include "./util.h"
+
+namespace centipede {
+
+// Uses an external binary `binary` to mutate `inputs`.
+// The binary should be linked against :fuzz_target_runner and
+// implement the Structure-Aware Fuzzing interface, as described here:
+// https://github.com/google/fuzzing/blob/master/docs/structure-aware-fuzzing.md
+//
+// Produces `mutants.size()` mutants,
+// replacing the existing elements of `mutants`.
+//
+// Returns true on success.
+bool MutateViaExternalBinary(std::string_view binary,
+                             const std::vector<ByteArray> &inputs,
+                             std::vector<ByteArray> &mutants);
+
+// Usage:
+//   class MyCentipedeCallbacks: public CentipedeCallbacks { ... }
+//   int main(int argc, char **argv) {
+//     InitGoogle(argv[0], &argc, &argv, /*remove_flags=*/true);
+//     centipede::Environment env;  // reads FLAGS.
+//     centipede::DefaultCallbacksFactory<MyCentipedeCallbacks>
+//     callbacks_factory; return centipede::CentipedeMain(env,
+//     callbacks_factory);
+//   }
+int CentipedeMain(const Environment &env,
+                  CentipedeCallbacksFactory &callbacks_factory);
+
+}  // namespace centipede
+
+#endif  // THIRD_PARTY_CENTIPEDE_CENTIPEDE_INTERFACE_H_
