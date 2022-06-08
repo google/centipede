@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC.
+// Copyright 2022 The Centipede Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,11 +19,13 @@
 #include <cstddef>
 #include <cstdlib>
 #include <filesystem>
+#include <string>
 #include <string_view>
 #include <thread>  // NOLINT(build/c++11)
 #include <vector>
 
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_replace.h"
 #include "./centipede.h"
 #include "./command.h"
 #include "./defs.h"
@@ -79,7 +81,7 @@ void SetSignalHandlers() {
   struct sigaction sigact = {};
   sigact.sa_handler = [](int) {
     ABSL_RAW_LOG(INFO, "SIGINT caught; cleaning up\n");
-    Centipede::NotifyInterrupted();
+    RequestEarlyExit(EXIT_FAILURE);
   };
   sigaction(SIGINT, &sigact, nullptr);
 }
@@ -105,12 +107,52 @@ void InitializeCoverage(const Environment &env, Coverage::PCTable &pc_table,
   }
 }
 
+// Runs env.for_each_blob on every blob extracted from env.args.
+// Returns EXIT_SUCCESS on success, EXIT_FAILURE otherwise.
+int ForEachBlob(const Environment &env) {
+  auto tmpdir = TemporaryLocalDirPath();
+  CreateLocalDirRemovedAtExit(tmpdir);
+  std::string tmpfile = std::filesystem::path(tmpdir).append("t");
+
+  for (const auto &arg : env.args) {
+    LOG(INFO) << "Running '" << env.for_each_blob << "' on " << arg;
+    // TODO(kcc): [impl] replace this with FileBlob, once ready.
+    RemoteFile *f = RemoteFileOpen(arg, "r");
+    if (!f) {
+      LOG(INFO) << "failed to open " << arg;
+      return EXIT_FAILURE;
+    }
+    ByteArray bytes;
+    RemoteFileRead(f, bytes);
+    RemoteFileClose(f);
+
+    std::vector<ByteArray> unpacked;
+    UnpackBytesFromAppendFile(bytes, &unpacked);
+    for (const auto &blob : unpacked) {
+      WriteToLocalFile(tmpfile, blob);
+      std::string command_line = absl::StrReplaceAll(
+          env.for_each_blob, {{"%P", tmpfile}, {"%H", Hash(blob)}});
+      Command cmd(command_line);
+      // TODO(kcc): [as-needed] this creates one process per blob.
+      // If this flag gets active use, we may want to define special cases,
+      // e.g. if for_each_blob=="cp %P /some/where" we can do it in-process.
+      cmd.Execute();
+      if (cmd.WasInterrupted() || EarlyExitRequested()) return ExitCode();
+    }
+  }
+  return EXIT_SUCCESS;
+}
+
 }  // namespace
 
 int CentipedeMain(const Environment &env,
                   CentipedeCallbacksFactory &callbacks_factory) {
+  SetSignalHandlers();
+
   if (!env.save_corpus_to_local_dir.empty())
     return Centipede::SaveCorpusToLocalDir(env, env.save_corpus_to_local_dir);
+
+  if (!env.for_each_blob.empty()) return ForEachBlob(env);
 
   // Just export the corpus from a local dir and exit.
   if (!env.export_corpus_from_local_dir.empty())
@@ -128,7 +170,6 @@ int CentipedeMain(const Environment &env,
   LOG(INFO) << "coverage dir " << env.MakeCoverageDirPath();
   RemoteMkdir(env.MakeCoverageDirPath());
 
-  SetSignalHandlers();
   Coverage::PCTable pc_table;
   SymbolTable symbols;
   InitializeCoverage(env, pc_table, symbols);

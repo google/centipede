@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC.
+// Copyright 2022 The Centipede Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,6 +36,12 @@ std::string Hash(const ByteArray &ba) {
     sha1_hex_text[i * 2 + 1] = hex[sha1[i] % 16];
   }
   return std::string(sha1_hex_text, sha1_hex_text + kHashLen);
+}
+
+std::string Hash(std::string_view str) {
+  ByteArray ba;
+  ba.insert(ba.end(), str.begin(), str.end());
+  return Hash(ba);
 }
 
 }  // namespace centipede

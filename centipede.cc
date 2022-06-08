@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC.
+// Copyright 2022 The Centipede Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -103,10 +103,6 @@ struct FileBundle {
   }
   RemoteFile *corpus_file = nullptr, *features_file = nullptr;
 };
-
-ABSL_CONST_INIT std::atomic<bool> Centipede::interrupted_(false);
-
-void Centipede::NotifyInterrupted() { interrupted_ = true; }
 
 Centipede::Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
                      const Coverage::PCTable &pc_table,
@@ -587,15 +583,12 @@ void Centipede::ReportCrash(std::string_view binary,
   };
 
   // First, try the input on which we presumably crashed.
-  // This will be the first input in the batch that has empty features.
-  LOG(INFO)
-      << log_prefix
-      << "executing the first input that didn't generate coverage features";
   CHECK_EQ(input_vec.size(), batch_result.results().size());
-  for (size_t i = 0, n = batch_result.results().size(); i < n; i++) {
-    if (!batch_result.results()[i].features().empty()) continue;
-    if (TryOneInput(input_vec[i])) return;
-    break;
+  if (batch_result.num_outputs_read() < input_vec.size()) {
+    LOG(INFO) << log_prefix << "executing input "
+              << batch_result.num_outputs_read() << " out of "
+              << input_vec.size();
+    if (TryOneInput(input_vec[batch_result.num_outputs_read()])) return;
   }
   // Next, try all inputs one-by-one.
   LOG(INFO) << log_prefix

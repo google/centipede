@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC.
+# Copyright 2022 The Centipede Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ http_archive(
 # Bazel requires rules_cc repo to build C++ code.
 http_archive(
     name = "rules_cc",
+    sha256 = "9a446e9dd9c1bb180c86977a8dc1e9e659550ae732ae58bd2e8fd51e15b2c91d",
     strip_prefix = "rules_cc-262ebec3c2296296526740db4aefce68c80de7fa",
     urls = ["https://github.com/bazelbuild/rules_cc/archive/262ebec3c2296296526740db4aefce68c80de7fa.zip"],
 )

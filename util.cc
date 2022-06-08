@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC.
+// Copyright 2022 The Centipede Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 #include <unistd.h>
 
 #include <cctype>
+#include <charconv>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -35,6 +36,9 @@
 #include "absl/base/const_init.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
+#include "absl/strings/str_split.h"
+#include "absl/strings/str_format.h"
+#include "absl/strings/str_replace.h"
 #include "absl/synchronization/mutex.h"
 #include "./defs.h"
 #include "./feature.h"
@@ -72,7 +76,7 @@ void ReadFromLocalFile(std::string_view file_path, Container &data) {
   CHECK_EQ(size % sizeof(data[0]), 0);
   data.resize(size / sizeof(data[0]));
   f.read(reinterpret_cast<char *>(data.data()), size);
-  CHECK(f);
+  CHECK(f) << "Failed to read from local file: " << file_path;
   f.close();
 }
 
@@ -93,10 +97,10 @@ void ReadFromLocalFile(std::string_view file_path,
 template <typename Container>
 void WriteToLocalFile(std::string_view file_path, const Container &data) {
   std::ofstream f(std::string{file_path.data()});
-  CHECK(f);
+  CHECK(f) << "Failed to open local file: " << file_path;
   f.write(reinterpret_cast<const char *>(data.data()),
           data.size() * sizeof(data[0]));
-  CHECK(f);
+  CHECK(f) << "Failed to write to local file: " << file_path;
   f.close();
 }
 
@@ -286,6 +290,58 @@ void ExtractCorpusRecords(const ByteArray &corpus_bytes,
     auto &features = hash_to_features[Hash(input)];
     result.push_back({input, features});
   }
+}
+
+// Returns a vector of string pairs that are used to replace special characters
+// and hex values in ParseAFLDictionary.
+static std::vector<std::pair<std::string, std::string>>
+AFLDictionaryStringReplacements() {
+  std::vector<std::pair<std::string, std::string>> replacements;
+  replacements.push_back({"\\\\", "\\"});
+  replacements.push_back({"\\r", "\r"});
+  replacements.push_back({"\\n", "\n"});
+  replacements.push_back({"\\t", "\t"});
+  replacements.push_back({"\\\"", "\""});
+  // Hex string replacements, lower and upper case.
+  for (int i = 0; i < 256; i++) {
+    replacements.push_back({absl::StrFormat("\\x%02x", i), std::string(1, i)});
+    replacements.push_back({absl::StrFormat("\\x%02X", i), std::string(1, i)});
+  }
+  return replacements;
+}
+
+bool ParseAFLDictionary(std::string_view dictionary_text,
+                        std::vector<ByteArray> &dictionary_entries) {
+  auto replacements = AFLDictionaryStringReplacements();
+  dictionary_entries.clear();
+  // Check if the contents is ASCII.
+  for (char ch : dictionary_text) {
+    if (!std::isprint(ch) && !std::isspace(ch)) return false;
+  }
+  // Iterate over all lines.
+  for (auto line : absl::StrSplit(dictionary_text, '\n')) {
+    // [start, stop) are the offsets of the dictionary entry.
+    size_t start = 0;
+    // Skip leading spaces.
+    while (start < line.size() && isspace(line[start])) ++start;
+    // Skip empty line.
+    if (start == line.size()) continue;
+    // Skip comment line.
+    if (line[start] == '#') continue;
+    // Find the first "
+    while (start < line.size() && line[start] != '"') ++start;
+    if (start == line.size()) return false;  // no opening "
+    ++start;                                 // skip the first "
+    size_t stop = line.size() - 1;
+    // Find the last "
+    while (stop > start && line[stop] != '"') --stop;
+    if (stop == start) return false;  // no closing "
+    // Replace special characters and hex values.
+    std::string replaced = absl::StrReplaceAll(
+        std::string_view(line.begin() + start, stop - start), replacements);
+    dictionary_entries.emplace_back(replaced.begin(), replaced.end());
+  }
+  return true;
 }
 
 static std::atomic<int> requested_exit_code(EXIT_SUCCESS);

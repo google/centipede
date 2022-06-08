@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC.
+// Copyright 2022 The Centipede Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,11 +51,6 @@ class Centipede {
   // Returns 0.
   static int ExportCorpusFromLocalDir(const Environment &env,
                                       std::string_view dir);
-  // Tells all current Centipede::FuzzingLoop()'s to stop after completing the
-  // current iteration. After that, terminates the process. External clients can
-  // call this to gracefully wind down the process while leaving all the corpora
-  // being generated in a valid, albeit possibly partial, state.
-  static void NotifyInterrupted();
 
  private:
   // Simpler timer for internal use.
@@ -125,9 +120,6 @@ class Centipede {
   // Writes added inputs to the current shard.
   void MergeFromOtherCorpus(std::string_view merge_from_dir,
                             size_t shard_index_to_merge);
-
-  // A variable behind NotifyInterrupted().
-  static std::atomic<bool> interrupted_;
 
   FeatureSet fs_;
   Timer timer_;  // counts time for coverage collection rate computation

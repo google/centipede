@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC.
+// Copyright 2022 The Centipede Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -94,6 +94,9 @@ ABSL_FLAG(size_t, timeout, 60,
           "If an input runs longer than this number of seconds the runner "
           "process will abort. "
           "Support may vary depending on the runner. ");
+ABSL_FLAG(bool, fork_server, true,
+          "If true (default) tries to execute the target(s) via the fork "
+          "server, if supported by the target(s)");
 ABSL_FLAG(bool, full_sync, false,
           "Perform a full corpus sync on startup. If true, feature sets and "
           "corpora are read from all shards before fuzzing. This way fuzzing "
@@ -122,7 +125,8 @@ ABSL_FLAG(bool, use_dataflow_features, true,
           "data flows");
 ABSL_FLAG(bool, use_counter_features, false,
           "When available from instrumentation, use features derived from "
-          "counting the number of occurrences of a given PC.");
+          "counting the number of occurrences of a given PC. "
+          "When enabled, supersedes --use_pc_features.");
 ABSL_FLAG(bool, generate_corpus_stats, false,
           "If true, a file workdir/corpus-stats-BINARY.json containing"
           "corpus stats will be generated periodically");
@@ -159,10 +163,19 @@ ABSL_FLAG(std::string, input_filter, "",
           "The input_filter is invoked only for inputs that are considered "
           "for addition to the corpus.");
 
+ABSL_FLAG(std::string, for_each_blob, "",
+          "If non-empty, extracts individual blobs from the files "
+          "given as arguments, copies each blob to a temporary file, "
+          "and applies this command to that temporary file. "
+          "%P is replaced with the temporary file's path and "
+          "%H is replaced with the blob's hash. "
+          "Example: "
+          "  centipede --for_each_blob='ls -l  %P && echo %H' corpus.0");
+
 ABSL_FLAG(std::string, dictionary, "",
           "If non-empty, used as a path to a dictionary file. "
-          "The dictionary file is in the Centipede corpus file format. "
-          // TODO(kcc): [impl] support AFL/libFuzzer dictionary format too.
+          "The dictionary file is either in AFL/libFuzzer plain text format or "
+          "in the binary Centipede corpus file format. "
           "The flag is interpreted by CentipedeCallbacks so its meaning may "
           "be different in custom implementations of CentipedeCallbacks.");
 
@@ -173,7 +186,7 @@ ABSL_FLAG(std::string, function_filter, "",
 
 namespace centipede {
 
-Environment::Environment()
+Environment::Environment(int argc, char** argv)
     : binary(absl::GetFlag(FLAGS_binary)),
       coverage_binary(absl::GetFlag(FLAGS_coverage_binary).empty()
                           ? binary
@@ -195,6 +208,7 @@ Environment::Environment()
       address_space_limit_mb(absl::GetFlag(FLAGS_address_space_limit_mb)),
       rss_limit_mb(absl::GetFlag(FLAGS_rss_limit_mb)),
       timeout(absl::GetFlag(FLAGS_timeout)),
+      fork_server(absl::GetFlag(FLAGS_fork_server)),
       full_sync(absl::GetFlag(FLAGS_full_sync)),
       use_corpus_weights(absl::GetFlag(FLAGS_use_corpus_weights)),
       use_crossover(absl::GetFlag(FLAGS_use_crossover)),
@@ -214,6 +228,7 @@ Environment::Environment()
       input_filter(absl::GetFlag(FLAGS_input_filter)),
       dictionary(absl::GetFlag(FLAGS_dictionary)),
       function_filter(absl::GetFlag(FLAGS_function_filter)),
+      for_each_blob(absl::GetFlag(FLAGS_for_each_blob)),
       exit_on_crash(absl::GetFlag(FLAGS_exit_on_crash)),
       max_num_crash_reports(absl::GetFlag(FLAGS_num_crash_reports)),
       binary_path(binary),
@@ -229,6 +244,12 @@ Environment::Environment()
   CHECK_GE(batch_size, 1);
   CHECK_GE(num_threads, 1);
   CHECK_LE(my_shard_index + num_threads, total_shards);
+  if (argc > 0) {
+    exec_name = argv[0];
+    for (int argno = 1; argno < argc; ++argno) {
+      args.push_back(argv[argno]);
+    }
+  }
   for (auto c : binary) CHECK(!isspace(c));  // Don't allow spaces in 'binary'.
 }
 

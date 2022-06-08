@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC.
+// Copyright 2022 The Centipede Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -65,10 +65,10 @@ void ThreadLocalRunnerState::OnThreadStop() {
     state.tls_list = tls.next;
     tls.prev = nullptr;
   } else {
-    auto *prev = tls.prev;
-    auto *next = tls.next;
-    prev->next = next;
-    if (next) next->prev = prev;
+    auto *prev_tls = tls.prev;
+    auto *next_tls = tls.next;
+    prev_tls->next = next_tls;
+    if (next_tls) next_tls->prev = prev_tls;
   }
 }
 
@@ -77,6 +77,14 @@ static size_t GetPeakRSSMb() {
   if (getrusage(RUSAGE_SELF, &usage)) return 0;
   // On Linux, ru_maxrss is in KiB
   return usage.ru_maxrss >> 10;
+}
+
+// Returns the current time in microseconds.
+static uint64_t TimeInUsec() {
+  struct timeval tv = {};
+  constexpr size_t kUsecInSec = 1000000;
+  gettimeofday(&tv, nullptr);
+  return tv.tv_sec * kUsecInSec + tv.tv_usec;
 }
 
 static void CheckOOM() {
@@ -95,7 +103,8 @@ static void CheckTimeout() {
   time_t start_time = state.timer;
   time_t curr_time = time(nullptr);
   if (state.run_time_flags.timeout_in_seconds != 0) {
-    if (curr_time - start_time > state.run_time_flags.timeout_in_seconds) {
+    if (curr_time - start_time >
+        static_cast<time_t>(state.run_time_flags.timeout_in_seconds)) {
       fprintf(stderr, "========= timeout of %zd seconds exceeded; aborting\n",
               state.run_time_flags.timeout_in_seconds);
       abort();
@@ -104,7 +113,7 @@ static void CheckTimeout() {
 }
 
 // Timer thread. Periodically checks if it's time to abort due to a timeout/OOM.
-static void *TimerThread(void *unused) {
+[[noreturn]] static void *TimerThread(void *unused) {
   while (true) {
     sleep(1);
     if (state.timer == 0) continue;  // No calls to ResetTimer() yet.
@@ -112,7 +121,6 @@ static void *TimerThread(void *unused) {
     CheckTimeout();
     CheckOOM();
   }
-  return nullptr;
 }
 
 void GlobalRunnerState::StartTimerThread() {
@@ -197,60 +205,108 @@ static void WriteFeaturesToFile(FILE *file,
 __attribute__((noinline))  // so that we see it in profile.
 static void
 PrepareCoverage() {
-  auto cov_size = state.cov_8bit_end - state.cov_8bit_beg;
-  memset(state.cov_8bit_beg, 0, cov_size);
-  state.data_flow_feature_set.clear();
-  state.cmp_feature_set.clear();
-  state.path_feature_set.clear();
-  state.pc_feature_set.clear();
-  state.ForEachTls([](centipede::ThreadLocalRunnerState &tls) {
-    tls.path_ring_buffer.clear();
-  });
+  if (state.run_time_flags.use_counter_features) state.counter_array.Clear();
+  if (state.run_time_flags.use_dataflow_features)
+    state.data_flow_feature_set.clear();
+  if (state.run_time_flags.use_cmp_features) state.cmp_feature_set.clear();
+  if (state.run_time_flags.use_pc_features) state.pc_feature_set.clear();
+  if (state.run_time_flags.use_path_features) {
+    state.path_feature_set.clear();
+    state.ForEachTls([](centipede::ThreadLocalRunnerState &tls) {
+      tls.path_ring_buffer.clear();
+    });
+  }
 }
 
 // Post-processes all coverage data, puts it all into `features`.
-// Returns the number of features in `features`.
+// `target_return_value` is the value returned by LLVMFuzzerTestOneInput.
+//
+// If `target_return_value == -1`, sets `features` to empty.  This way,
+// the engine will reject any input that causes the target to return -1.
+// This is an incompatible extension of libFuzzer interface.
+// As of 2022-06-07, libFuzzer requires that the target always returns 0.
+// Any target that doesn't return zero will cause libFuzzer to fail.
+// By allowing a target to return non-zero, we allow targets that are
+// incompatible with libFuzzer.
+// For now, we keep this feature undocumented / unadvertized.
+// If we see that it works, we will try to extend the public libFuzzer interface
+// to allow non-zero return values.
+// TODO(kcc): [impl] extend libFuzzer interface and document -1 return value.
 __attribute__((noinline))  // so that we see it in profile.
 static void
-PostProcessCoverage() {
-  PrintErrorAndExitIf(state.cov_8bit_end < state.cov_8bit_beg, "broken state");
-  auto cov_size = state.cov_8bit_end - state.cov_8bit_beg;
+PostProcessCoverage(int target_return_value) {
   features.clear();
+
+  if (target_return_value == -1) return;
+
   // Convert counters to features.
-  centipede::ForEachNonZeroByte(
-      state.cov_8bit_beg, cov_size, [](size_t idx, uint8_t value) {
-        features.push_back(centipede::FeatureDomains::k8bitCounters.ConvertToMe(
-            centipede::Convert8bitCounterToNumber(idx, value)));
-      });
+  if (state.run_time_flags.use_counter_features) {
+    centipede::ForEachNonZeroByte(
+        state.counter_array.data(), state.counter_array.size(),
+        [](size_t idx, uint8_t value) {
+          features.push_back(
+              centipede::FeatureDomains::k8bitCounters.ConvertToMe(
+                  centipede::Convert8bitCounterToNumber(idx, value)));
+        });
+  }
 
   // Convert data flow bit set to features.
-  state.data_flow_feature_set.ForEachNonZeroBit([](size_t idx) {
-    features.push_back(centipede::FeatureDomains::kDataFlow.ConvertToMe(idx));
-  });
+  if (state.run_time_flags.use_dataflow_features) {
+    state.data_flow_feature_set.ForEachNonZeroBit([](size_t idx) {
+      features.push_back(centipede::FeatureDomains::kDataFlow.ConvertToMe(idx));
+    });
+  }
+
   // Convert cmp bit set to features.
-  state.cmp_feature_set.ForEachNonZeroBit([](size_t idx) {
-    features.push_back(centipede::FeatureDomains::kCMP.ConvertToMe(idx));
-  });
+  if (state.run_time_flags.use_cmp_features) {
+    state.cmp_feature_set.ForEachNonZeroBit([](size_t idx) {
+      features.push_back(centipede::FeatureDomains::kCMP.ConvertToMe(idx));
+    });
+  }
+
   // Convert path bit set to features.
-  state.path_feature_set.ForEachNonZeroBit([](size_t idx) {
-    features.push_back(
-        centipede::FeatureDomains::kBoundedPath.ConvertToMe(idx));
-  });
-  // Convert pc bit set to features.
-  // TODO(kcc): [impl] this and the above Convert8bitCounterToNumber both
-  // add the same features to k8BitCounters.
-  // Right now, if both instrumentation variants are enabed, we will add
-  // every such feature twice. This needs to be resolved eventually.
-  state.pc_feature_set.ForEachNonZeroBit([](size_t idx) {
-    features.push_back(centipede::FeatureDomains::k8bitCounters.ConvertToMe(
-        centipede::Convert8bitCounterToNumber(idx, 1)));
-  });
+  if (state.run_time_flags.use_path_features) {
+    state.path_feature_set.ForEachNonZeroBit([](size_t idx) {
+      features.push_back(
+          centipede::FeatureDomains::kBoundedPath.ConvertToMe(idx));
+    });
+  }
+
+  // Convert pc bit set to features, only if not use_counter_features.
+  if (state.run_time_flags.use_pc_features &&
+      !state.run_time_flags.use_counter_features) {
+    state.pc_feature_set.ForEachNonZeroBit([](size_t idx) {
+      features.push_back(centipede::FeatureDomains::k8bitCounters.ConvertToMe(
+          centipede::Convert8bitCounterToNumber(idx, 1)));
+    });
+  }
 
   // If there are no features to report, we insert one fake feature.
   // We do it for two reasons:
   // * So that Centipede doesn't need to specially handle zero features case.
   // * If this process crashes, Centipede knows which was the last good input.
   if (features.size() == 0) features.push_back(0);
+}
+
+static void RunOneInput(const uint8_t *data, size_t size) {
+  state.stats = {};
+  size_t last_time_usec = 0;
+  auto UsecSinceLast = [&last_time_usec]() {
+    uint64_t t = centipede::TimeInUsec();
+    uint64_t ret_val = t - last_time_usec;
+    last_time_usec = t;
+    return ret_val;
+  };
+  UsecSinceLast();
+  PrepareCoverage();
+  state.stats.prep_time_usec = UsecSinceLast();
+  state.ResetTimer();
+  int target_return_value = LLVMFuzzerTestOneInput(data, size);
+  state.stats.exec_time_usec = UsecSinceLast();
+  centipede::CheckOOM();
+  PostProcessCoverage(target_return_value);
+  state.stats.post_time_usec = UsecSinceLast();
+  state.stats.peak_rss_mb = centipede::GetPeakRSSMb();
 }
 
 // Runs one input provided in file `input_path`.
@@ -264,12 +320,7 @@ ReadOneInputExecuteItAndDumpCoverage(const char *input_path) {
   auto num_bytes_read = fread(input_data, 1, kMaxDataSize, input_file);
   fclose(input_file);
 
-  // Run and collect coverage.
-  PrepareCoverage();
-  state.ResetTimer();
-  LLVMFuzzerTestOneInput(input_data, num_bytes_read);
-  centipede::CheckOOM();
-  PostProcessCoverage();
+  RunOneInput(input_data, num_bytes_read);
 
   // Dump features to a file.
   char features_file_path[PATH_MAX];
@@ -296,19 +347,21 @@ void ReadInputsFromShmemAndRun(const char *shmem_name_in,
     // Copy from blob to data so that to not pass the shared memory further.
     memcpy(input_data, blob.data, blob.size);
 
-    // Run and collect coverage.
-    // TODO(kcc): [impl] move this into a separate function.
-    PrepareCoverage();
-    state.ResetTimer();
-    LLVMFuzzerTestOneInput(input_data, blob.size);
-    centipede::CheckOOM();
-    PostProcessCoverage();
+    // Starting execution of one more input.
+    if (!centipede::BatchResult::WriteInputBegin(feature_blobseq)) break;
+
+    RunOneInput(input_data, blob.size);
 
     // Copy features to shared memory.
     if (!centipede::BatchResult::WriteOneFeatureVec(
             features.data(), features.size(), feature_blobseq)) {
       break;
     }
+    // Write the stats.
+    if (!centipede::BatchResult::WriteStats(state.stats, feature_blobseq))
+      break;
+    // We are done with this input.
+    if (!centipede::BatchResult::WriteInputEnd(feature_blobseq)) break;
   }
 }
 

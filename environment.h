@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC.
+// Copyright 2022 The Centipede Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ namespace centipede {
 // Users or tests can override any of the non-const fields after the object
 // is constructed, but before it is passed to CentipedeMain.
 struct Environment {
-  Environment();
+  Environment(int argc = 0, char** argv = nullptr);
 
   std::string binary;
   std::string coverage_binary;
@@ -46,6 +46,7 @@ struct Environment {
   size_t address_space_limit_mb;
   size_t rss_limit_mb;
   size_t timeout;
+  bool fork_server;
   bool full_sync;
   bool use_corpus_weights;
   bool use_crossover;
@@ -63,11 +64,15 @@ struct Environment {
   std::string input_filter;
   std::string dictionary;
   std::string function_filter;
+  std::string for_each_blob;
   bool exit_on_crash;
   size_t max_num_crash_reports;
 
   // Set to zero to reduce logging in tests.
   size_t log_level = 1;
+
+  std::string exec_name;          // copied from argv[0]
+  std::vector<std::string> args;  // copied from argv[1:].
 
   // Created once in CTOR, don't override.
   const std::string binary_path;  // Full path to the binary.

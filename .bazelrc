@@ -1,1 +1,1 @@
-build --cxxopt=-std=c++17
+build --client_env=CC=clang --cxxopt=-std=c++17
