@@ -92,7 +92,7 @@ Notable features:
 
 ## Build
 
-TODO(kcc): [impl] explain how to use existing libFuzzer targets.
+TODO(b/229156316): [impl] explain how to use existing libFuzzer targets.
 
 ```
 % bazel build -c opt //third_party/centipede:centipede
@@ -175,7 +175,8 @@ WD/target_example-467422156588a87805669f8334cb88889ab8958d:
 features.0  features.1  features.2  features.3  features.4
 ```
 
-TODO(kcc): [impl] describe output, corpus, features, export/import/distill, etc
+TODO(b/229156316): [impl] describe output, corpus, features,
+export/import/distill, etc
 
 ## Corpus distillation
 
@@ -219,8 +220,9 @@ PARTIAL: FUNCTION_CCC ccc.cc:1:0
 
 ## Customization
 
-TODO(kcc): [impl] explain how to customize Mutator and/or Executor in Centipede.
+TODO(b/229156316): [impl] explain how to customize Mutator and/or Executor in
+Centipede.
 
 ## Related Reading
 
-* [Centipede Design](g3doc/DESIGN.md)
+* [Centipede Design](doc/DESIGN.md)

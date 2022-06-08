@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC.
+// Copyright 2022 The Centipede Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,6 +34,8 @@ struct CorpusRecord {
 
 // Returns a printable hash of a byte array. Currently sha1 is used.
 std::string Hash(const ByteArray &ba);
+// Returns a printable hash of a string. Currently sha1 is used.
+std::string Hash(std::string_view str);
 // Hashes are always this many bytes.
 inline constexpr size_t kHashLen = 40;
 // Returns the hash of the contents of the file `file_path`.
@@ -126,6 +128,14 @@ ByteArray PackFeaturesAndHash(const ByteArray &data,
 void ExtractCorpusRecords(const ByteArray &corpus_bytes,
                           const ByteArray &features_bytes,
                           std::vector<CorpusRecord> &result);
+
+// Parses `dictionary_text` representing an AFL/libFuzzer dictionary.
+// https://github.com/google/AFL/blob/master/dictionaries/README.dictionaries
+// https://llvm.org/docs/LibFuzzer.html#dictionaries
+// Fills in `dictionary_entries` with byte sequences from the dictionary.
+// Returns true iff parsing completes succesfully.
+bool ParseAFLDictionary(std::string_view dictionary_text,
+                        std::vector<ByteArray> &dictionary_entries);
 
 }  // namespace centipede
 

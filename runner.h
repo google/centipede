@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC.
+// Copyright 2022 The Centipede Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@
 #include <mutex>  // NOLINT.
 
 #include "./byte_array_mutator.h"
+#include "./execution_result.h"
 #include "./feature.h"
 
 namespace centipede {
@@ -38,6 +39,7 @@ struct RunTimeFlags {
   uint64_t use_path_features : 1;
   uint64_t use_dataflow_features : 1;
   uint64_t use_cmp_features : 1;
+  uint64_t use_counter_features : 1;
   uint64_t timeout_in_seconds;
   uint64_t rss_limit_mb;
 };
@@ -84,6 +86,7 @@ struct GlobalRunnerState {
       .use_path_features = HasFlag(":use_path_features:"),
       .use_dataflow_features = HasFlag(":use_dataflow_features:"),
       .use_cmp_features = HasFlag(":use_cmp_features:"),
+      .use_counter_features = HasFlag(":use_counter_features:"),
       .timeout_in_seconds = HasFlag(":timeout_in_seconds=", 0),
       .rss_limit_mb = HasFlag(":rss_limit_mb=", 0)};
 
@@ -126,7 +129,6 @@ struct GlobalRunnerState {
   // State for SanitizerCoverage.
   // See https://clang.llvm.org/docs/SanitizerCoverage.html.
   const uintptr_t *pcs_beg, *pcs_end;
-  uint8_t *cov_8bit_beg, *cov_8bit_end;
   static const size_t kBitSetSize = 1 << 18;  // Arbitrary large size.
   ConcurrentBitSet<kBitSetSize> data_flow_feature_set;
 
@@ -159,6 +161,13 @@ struct GlobalRunnerState {
   ConcurrentBitSet<kBitSetSize> path_feature_set;
   // Observed individual PCs.
   ConcurrentBitSet<kBitSetSize> pc_feature_set;
+
+  // Control flow edge counters.
+  inline static const size_t kCounterArraySize = 1 << 15;  // Some large size.
+  CounterArray<kCounterArraySize> counter_array;
+
+  // Execution stats for the currently executed input.
+  ExecutionResult::Stats stats;
 
   // Timeout-related machinery.
 

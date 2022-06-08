@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC.
+// Copyright 2022 The Centipede Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CENTIPEDE_EXECUTION_RESULT_H_
 
 #include <cstdlib>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -25,7 +26,6 @@
 namespace centipede {
 
 // It represents the results of the execution of one input by the runner.
-// TODO(kcc): [impl] move the serialization code from callbacks and runner here.
 class ExecutionResult {
  public:
   // Movable, not Copyable.
@@ -34,14 +34,38 @@ class ExecutionResult {
 
   ExecutionResult() {}
   explicit ExecutionResult(const FeatureVec& features) : features_(features) {}
+
+  // Execution statistics.
+  struct Stats {
+    uint64_t prep_time_usec = 0;  // Time taken to prepare for execution.
+    uint64_t exec_time_usec = 0;  // Time taken to execute the input.
+    uint64_t post_time_usec = 0;  // Time taken to post-process the coverage.
+    uint64_t peak_rss_mb = 0;     // Peak RSS in Mb after executing the input.
+
+    // For tests.
+    bool operator==(const Stats& other) const {  // = default in C++20.
+      return prep_time_usec == other.prep_time_usec &&
+             exec_time_usec == other.exec_time_usec &&
+             peak_rss_mb == other.peak_rss_mb &&
+             post_time_usec == other.post_time_usec;
+    }
+  };
+
+  // Accessors.
   const FeatureVec& features() const { return features_; }
   FeatureVec& mutable_features() { return features_; }
+  const Stats& stats() const { return stats_; }
+  Stats& stats() { return stats_; }
 
   // Clears the data, but doesn't deallocate the heap storage.
-  void clear() { features_.clear(); }
+  void clear() {
+    features_.clear();
+    stats_ = {};
+  }
 
  private:
   FeatureVec features_;  // Features produced by the target on one input.
+  Stats stats_;          // Stats from executing one input.
 };
 
 // BatchResult is the communication API between Centipede and its runner.
@@ -76,6 +100,13 @@ class BatchResult {
   // When executing N inputs, the runner will call this at most N times.
   static bool WriteOneFeatureVec(const feature_t* vec, size_t size,
                                  SharedMemoryBlobSequence& blobseq);
+  // Writes a special Begin marker before executing an input.
+  static bool WriteInputBegin(SharedMemoryBlobSequence& blobseq);
+  // Writes a special End marker after executing an input.
+  static bool WriteInputEnd(SharedMemoryBlobSequence& blobseq);
+  // Writes unit execution stats.
+  static bool WriteStats(const ExecutionResult::Stats& stats,
+                         SharedMemoryBlobSequence& blobseq);
 
   // Reads everything written by the runner to `blobseq` into `this`.
   // Returns true iff successful.
@@ -89,7 +120,7 @@ class BatchResult {
   const std::string &log() const { return log_; }
   int& exit_code() { return exit_code_; }
   int exit_code() const { return exit_code_; }
-  int num_outputs_read() const { return num_outputs_read_; }
+  size_t num_outputs_read() const { return num_outputs_read_; }
 
  private:
   std::vector<ExecutionResult> results_;

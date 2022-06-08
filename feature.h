@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC.
+// Copyright 2022 The Centipede Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -305,6 +305,35 @@ class ConcurrentBitSet {
   static const size_t kBitsInWord = 8 * sizeof(word_t);
   static const size_t kSizeInWords = kSizeInBits / kBitsInWord;
   word_t words_[kSizeInWords];
+};
+
+// A simple fixed-size byte array.
+// Each element is a 8-bit counter that can be incremented concurrently.
+// The counters are allowed to overflow (i.e. are not saturating).
+// Thread-compatible.
+template <size_t kSize>
+class CounterArray {
+ public:
+  // Constructs an empty counter array.
+  CounterArray() { Clear(); }
+
+  // Clears all counters.
+  void Clear() { memset(data_, 0, sizeof(data_)); }
+
+  // Increments the counter that corresponds to idx.
+  // Idx is taken modulo kSize.
+  void Increment(size_t idx) {
+    // An atomic increment is quite expensive, even if relaxed.
+    // We may want to do a racy non-atomic increment instead.
+    __atomic_add_fetch(&data_[idx % kSize], 1, __ATOMIC_RELAXED);
+  }
+
+  // Accessors.
+  const uint8_t *data() const { return &data_[0]; }
+  size_t size() const { return kSize; }
+
+ private:
+  uint8_t data_[kSize];
 };
 
 // A simple fixed-capacity array with push_back.

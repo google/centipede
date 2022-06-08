@@ -1,2 +1,4 @@
 # Ignore the Google-only sources.
 /google
+/puzzles
+/testing

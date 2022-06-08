@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC.
+// Copyright 2022 The Centipede Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,15 +35,20 @@
 namespace centipede {
 
 std::string CentipedeCallbacks::ConstructRunnerFlags(
-    std::string_view extra_flags) {
+    std::string_view extra_flags, bool disable_coverage) {
   return absl::StrCat(
       "CENTIPEDE_RUNNER_FLAGS=", ":timeout_in_seconds=", env_.timeout, ":",
       ":address_space_limit_mb=", env_.address_space_limit_mb, ":",
       ":rss_limit_mb=", env_.rss_limit_mb, ":",
-      env_.use_pc_features ? ":use_pc_features:" : "",
-      env_.use_path_features ? ":use_path_features:" : "",
-      env_.use_cmp_features ? ":use_cmp_features:" : "",
-      env_.use_dataflow_features ? ":use_dataflow_features:" : "", extra_flags);
+      env_.use_pc_features && !disable_coverage ? ":use_pc_features:" : "",
+      env_.use_counter_features && !disable_coverage ? ":use_counter_features:"
+                                                     : "",
+      env_.use_path_features && !disable_coverage ? ":use_path_features:" : "",
+      env_.use_cmp_features && !disable_coverage ? ":use_cmp_features:" : "",
+      env_.use_dataflow_features && !disable_coverage
+          ? ":use_dataflow_features:"
+          : "",
+      extra_flags);
 }
 
 Command &CentipedeCallbacks::GetOrCreateCommandForBinary(
@@ -51,50 +56,61 @@ Command &CentipedeCallbacks::GetOrCreateCommandForBinary(
   for (auto &cmd : commands_) {
     if (cmd.path() == binary) return cmd;
   }
-  return commands_.emplace_back(Command(
+  // We don't want to collect coverage for extra binaries. It won't be used.
+  bool disable_coverage =
+      std::find(env_.extra_binaries.begin(), env_.extra_binaries.end(),
+                binary) != env_.extra_binaries.end();
+  Command &cmd = commands_.emplace_back(Command(
       /*path=*/binary, /*args=*/{shmem_name1_, shmem_name2_},
-      /*env=*/{ConstructRunnerFlags(":shmem:")}, /*out=*/execute_log_path_,
-      /*err=*/ execute_log_path_));
+      /*env=*/{ConstructRunnerFlags(":shmem:", disable_coverage)},
+      /*out=*/execute_log_path_,
+      /*err=*/execute_log_path_));
+  if (env_.fork_server)
+    cmd.StartForkServer(TemporaryLocalDirPath(), Hash(binary));
+
+  return cmd;
 }
 
 int CentipedeCallbacks::ExecuteCentipedeSancovBinaryWithShmem(
     std::string_view binary, const std::vector<ByteArray> &inputs,
     BatchResult &batch_result) {
   batch_result.ClearAndResize(inputs.size());
-  for (auto c : binary) CHECK(!isspace(c));  // Don't allow spaces in 'binary'
 
-  // Set the shared memory sizes to 1Gb. There seem to be no penalty
-  // for creating large shared memory regions if they are not actually
-  // fully utilized.
-  const size_t kBlobSeqSize = 1 << 30;  // 1Gb.
-  SharedMemoryBlobSequence inputs_blobseq(shmem_name1_.c_str(), kBlobSeqSize);
-  SharedMemoryBlobSequence feature_blobseq(shmem_name2_.c_str(), kBlobSeqSize);
+  // Reset the blobseqs.
+  inputs_blobseq_.Reset();
+  feature_blobseq_.Reset();
 
+  // Feed the inputs to inputs_blobseq_.
   size_t num_inputs_written = 0;
   for (auto &input : inputs) {
-    if (!inputs_blobseq.Write({1 /*unused tag*/, input.size(), input.data()})) {
+    if (!inputs_blobseq_.Write(
+            {1 /*unused tag*/, input.size(), input.data()})) {
       LOG(INFO)
-          << "too many input bytes in the batch, inputs_blobseq overflown";
+          << "too many input bytes in the batch, inputs_blobseq_ overflown";
       break;
     }
     num_inputs_written++;
   }
+
+  // Run.
   Command &cmd = GetOrCreateCommandForBinary(binary);
   int retval = cmd.Execute();
   if (cmd.WasInterrupted()) RequestEarlyExit(EXIT_FAILURE);
+
+  // Get results.
   batch_result.exit_code() = retval;
-  CHECK(batch_result.Read(feature_blobseq));
+  CHECK(batch_result.Read(feature_blobseq_));
 
   // We may have fewer feature blobs than inputs if
   // * some inputs were not written (i.e. num_inputs_written < inputs.size).
   //   * Logged above.
   // * some outputs were not written because the subprocess died.
   //   * Will be logged by the caller.
-  // * some outputs were not written because the feature_blobseq overflown.
+  // * some outputs were not written because the feature_blobseq_ overflown.
   //   * Logged by the following code.
   if (retval == 0 && batch_result.num_outputs_read() != num_inputs_written) {
     LOG(INFO) << "too few outputs while the subprocess succeeded. "
-                 "feature_blobseq may have overflown";
+                 "feature_blobseq_ may have overflown";
   }
   if (retval != EXIT_SUCCESS)
     ReadFromLocalFile(execute_log_path_, batch_result.log());
@@ -103,10 +119,25 @@ int CentipedeCallbacks::ExecuteCentipedeSancovBinaryWithShmem(
 
 size_t CentipedeCallbacks::LoadDictionary(std::string_view dictionary_path) {
   if (dictionary_path.empty()) return 0;
-  ByteArray packed_corpus;
-  ReadFromLocalFile(dictionary_path, packed_corpus);
+  // First, try to parse the dictionary as an AFL/libFuzzer dictionary.
+  // These dictionaries are in plain text format and thus a Centipede-native
+  // dictionary will never be mistaken for an AFL/libFuzzer dictionary.
+  std::string text;
+  ReadFromLocalFile(dictionary_path, text);
+  std::vector<ByteArray> entries;
+  if (ParseAFLDictionary(text, entries) && !entries.empty()) {
+    byte_array_mutator_.AddToDictionary(entries);
+    LOG(INFO) << "loaded " << entries.size()
+              << " dictionary entries from AFL/libFuzzer dictionary "
+              << dictionary_path;
+    return entries.size();
+  }
+  // Didn't parse as plain text. Assume Centipede-native corpus format.
+  ByteArray packed_corpus(text.begin(), text.end());
   std::vector<ByteArray> unpacked_corpus;
   UnpackBytesFromAppendFile(packed_corpus, &unpacked_corpus);
+  CHECK(!unpacked_corpus.empty())
+      << "empty or corrupt dictionary file: " << dictionary_path;
   byte_array_mutator_.AddToDictionary(unpacked_corpus);
   LOG(INFO) << "loaded " << unpacked_corpus.size()
             << " dictionary entries from " << dictionary_path;

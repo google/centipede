@@ -1,4 +1,4 @@
-# Copyright 2022 Google LLC.
+# Copyright 2022 The Centipede Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,11 +38,6 @@ cc_binary(
     ],
 )
 
-sh_binary(
-    name = "test_input_filter",
-    srcs = ["test_input_filter.sh"],
-)
-
 ################################################################################
 #                             C++ libraries
 ################################################################################
@@ -79,6 +74,8 @@ cc_library(
         "@boringssl//:crypto",  # <openssl/sha.h>
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/synchronization",
     ],
 )
@@ -170,6 +167,10 @@ cc_library(
     name = "command",
     srcs = ["command.cc"],
     hdrs = ["command.h"],
+    deps = [
+        ":logging",
+        "@com_google_absl//absl/strings",
+    ],
 )
 
 cc_library(
@@ -279,6 +280,7 @@ cc_library(
 cc_library(
     name = "fuzz_target_runner",
     srcs = [
+        "runner_fork_server.cc",
         "runner_interceptors.cc",
         "runner_main.cc",
         "runner_sancov.cc",
@@ -293,4 +295,5 @@ cc_library(
         ":feature",
         ":shared_memory_blob_sequence",
     ],
+    alwayslink = 1,  # Otherwise the linker drops the fork server.
 )

@@ -1,4 +1,4 @@
-// Copyright 2022 Google LLC.
+// Copyright 2022 The Centipede Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@
 #include "./defs.h"
 #include "./environment.h"
 #include "./execution_result.h"
+#include "./shared_memory_blob_sequence.h"
 #include "./util.h"
 
 namespace centipede {
@@ -64,7 +65,9 @@ class CentipedeCallbacks {
 
   // Constructs a string CENTIPEDE_RUNNER_FLAGS=":flag1:flag2:...",
   // where the flags are determined by `env` and also include `extra_flags`.
-  std::string ConstructRunnerFlags(std::string_view extra_flags = "");
+  // If `disable_coverage`, coverage options are not added.
+  std::string ConstructRunnerFlags(std::string_view extra_flags = "",
+                                   bool disable_coverage = false);
 
   // Loads the dictionary from `dictionary_path`,
   // returns the number of dictionary entries loaded.
@@ -83,8 +86,17 @@ class CentipedeCallbacks {
   // They are computed in CTOR, to avoid extra computation in the hot loop.
   const std::string execute_log_path_ =
       std::filesystem::path(TemporaryLocalDirPath()).append("log");
-  const std::string shmem_name1_ = ProcessAndThreadUniqueID("/centipede-in-");
-  const std::string shmem_name2_ = ProcessAndThreadUniqueID("/centipede-out-");
+  const std::string shmem_name1_ = ProcessAndThreadUniqueID("/centipede-shm1-");
+  const std::string shmem_name2_ = ProcessAndThreadUniqueID("/centipede-shm2-");
+
+  // Set the shared memory sizes to 1Gb. There seem to be no penalty
+  // for creating large shared memory regions if they are not actually
+  // fully utilized.
+  const size_t kBlobSeqSize = 1 << 30;  // 1Gb.
+  SharedMemoryBlobSequence inputs_blobseq_ = {shmem_name1_.c_str(),
+                                              kBlobSeqSize};
+  SharedMemoryBlobSequence feature_blobseq_ = {shmem_name2_.c_str(),
+                                               kBlobSeqSize};
 
   std::vector<Command> commands_;
 };
