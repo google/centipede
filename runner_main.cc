@@ -280,12 +280,6 @@ PostProcessCoverage(int target_return_value) {
           centipede::Convert8bitCounterToNumber(idx, 1)));
     });
   }
-
-  // If there are no features to report, we insert one fake feature.
-  // We do it for two reasons:
-  // * So that Centipede doesn't need to specially handle zero features case.
-  // * If this process crashes, Centipede knows which was the last good input.
-  if (features.size() == 0) features.push_back(0);
 }
 
 static void RunOneInput(const uint8_t *data, size_t size) {

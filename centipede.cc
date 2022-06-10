@@ -59,6 +59,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
+#include "./blob_file.h"
 #include "./command.h"
 #include "./coverage.h"
 #include "./defs.h"
@@ -77,19 +78,39 @@ void ReadCorpusFromRemoteFile(RemoteFile *f, std::vector<ByteArray> &corpus) {
   UnpackBytesFromAppendFile(packed_data, &corpus);
 }
 
-void ReadCorpusRecords(RemoteFile *corpus_file, RemoteFile *features_file,
-                       std::vector<CorpusRecord> &res) {
-  ByteArray corpus_bytes, features_bytes;
-  if (corpus_file) RemoteFileRead(corpus_file, corpus_bytes);
-  if (features_file) RemoteFileRead(features_file, features_bytes);
-  ExtractCorpusRecords(corpus_bytes, features_bytes, res);
-}
 
 void WriteOneCorpusRecord(RemoteFile *corpus_file, RemoteFile *features_file,
                           const ByteArray &data, const FeatureVec &features) {
   RemoteFileAppend(corpus_file, PackBytesForAppendFile(data));
   RemoteFileAppend(features_file,
                    PackBytesForAppendFile(PackFeaturesAndHash(data, features)));
+}
+
+// Reads corpus records (corpus and features, from different blob files),
+// returns vector of CorpusRecord objects.
+static std::vector<CorpusRecord> ReadCorpusRecords(const Environment &env,
+                                                   size_t shard_index) {
+  std::vector<CorpusRecord> result;
+  std::unique_ptr<BlobFileReader> corpus_reader =
+      DefaultBlobFileReaderFactory();
+  std::unique_ptr<BlobFileReader> features_reader =
+      DefaultBlobFileReaderFactory();
+  // When opening files for reading, we ignore errors, because these files may
+  // not exist.
+  corpus_reader->Open(env.MakeCorpusPath(shard_index)).IgnoreError();
+  features_reader->Open(env.MakeFeaturesPath(shard_index)).IgnoreError();
+
+  absl::Span<uint8_t> blob;
+  std::vector<ByteArray> corpus_blobs, feature_blobs;
+  while (corpus_reader->Read(blob).ok()) {
+    corpus_blobs.emplace_back().assign(blob.begin(), blob.end());
+  }
+  while (features_reader->Read(blob).ok()) {
+    feature_blobs.emplace_back().assign(blob.begin(), blob.end());
+  }
+
+  ExtractCorpusRecords(corpus_blobs, feature_blobs, result);
+  return result;
 }
 
 struct FileBundle {
@@ -307,11 +328,7 @@ bool Centipede::RunBatch(const std::vector<ByteArray> &input_vec,
 // TODO(kcc): [impl] don't reread the same corpus twice.
 void Centipede::LoadShard(const Environment &load_env, size_t shard_index,
                           bool rerun) {
-  std::vector<CorpusRecord> records;
-  {
-    FileBundle in_files(load_env, shard_index, "r");
-    ReadCorpusRecords(in_files.corpus_file, in_files.features_file, records);
-  }
+  std::vector<CorpusRecord> records = ReadCorpusRecords(load_env, shard_index);
   size_t exported_with_features = 0;
   size_t exported_without_features = 0;
   size_t added_to_corpus = 0;

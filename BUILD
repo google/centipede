@@ -81,6 +81,20 @@ cc_library(
 )
 
 cc_library(
+    name = "blob_file",
+    srcs = ["blob_file.cc"],
+    hdrs = ["blob_file.h"],
+    deps = [
+        ":defs",
+        ":logging",
+        ":remote_file",
+        ":util",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
     name = "shared_memory_blob_sequence",
     srcs = ["shared_memory_blob_sequence.cc"],
     hdrs = ["shared_memory_blob_sequence.h"],
@@ -204,6 +218,7 @@ cc_library(
         "centipede.h",
     ],
     deps = [
+        ":blob_file",
         ":centipede_callbacks",
         ":command",
         ":corpus",
@@ -231,6 +246,7 @@ cc_library(
         "centipede_interface.h",
     ],
     deps = [
+        ":blob_file",
         ":centipede_callbacks",
         ":centipede_lib",
         ":command",
@@ -241,7 +257,9 @@ cc_library(
         ":remote_file",
         ":shared_memory_blob_sequence",
         ":util",
+        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
     ],
 )
 
@@ -275,6 +293,20 @@ cc_library(
     ],
 )
 
+# runner_fork_server can be linked to a binary or used directly as a .so via LD_PRELOAD.
+cc_library(
+    name = "runner_fork_server",
+    srcs = ["runner_fork_server.cc"],
+    alwayslink = 1,  # Otherwise the linker drops the fork server.
+)
+
+cc_binary(
+    name = "centipede_fork_server_helper.so",
+    linkshared = 1,
+    linkstatic = 1,
+    deps = [":runner_fork_server"],
+)
+
 # A fuzz target needs to link with this library (containing main()) in order to
 # run with Centipede.
 cc_library(
@@ -293,7 +325,7 @@ cc_library(
         ":defs",
         ":execution_result",
         ":feature",
+        ":runner_fork_server",
         ":shared_memory_blob_sequence",
     ],
-    alwayslink = 1,  # Otherwise the linker drops the fork server.
 )

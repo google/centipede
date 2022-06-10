@@ -17,6 +17,7 @@
 #include <signal.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <filesystem>
 #include <string>
@@ -24,8 +25,11 @@
 #include <thread>  // NOLINT(build/c++11)
 #include <vector>
 
+#include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_replace.h"
+#include "absl/types/span.h"
+#include "./blob_file.h"
 #include "./centipede.h"
 #include "./command.h"
 #include "./defs.h"
@@ -116,22 +120,20 @@ int ForEachBlob(const Environment &env) {
 
   for (const auto &arg : env.args) {
     LOG(INFO) << "Running '" << env.for_each_blob << "' on " << arg;
-    // TODO(kcc): [impl] replace this with FileBlob, once ready.
-    RemoteFile *f = RemoteFileOpen(arg, "r");
-    if (!f) {
-      LOG(INFO) << "failed to open " << arg;
+    auto blob_reader = DefaultBlobFileReaderFactory();
+    absl::Status open_status = blob_reader->Open(arg);
+    if (!open_status.ok()) {
+      LOG(INFO) << "failed to open " << arg << ": " << open_status;
       return EXIT_FAILURE;
     }
-    ByteArray bytes;
-    RemoteFileRead(f, bytes);
-    RemoteFileClose(f);
-
-    std::vector<ByteArray> unpacked;
-    UnpackBytesFromAppendFile(bytes, &unpacked);
-    for (const auto &blob : unpacked) {
-      WriteToLocalFile(tmpfile, blob);
+    absl::Span<uint8_t> blob;
+    while (blob_reader->Read(blob) == absl::OkStatus()) {
+      ByteArray bytes;
+      bytes.insert(bytes.begin(), blob.data(), blob.end());
+      // TODO(kcc): [impl] add a variant of WriteToLocalFile that accepts Span.
+      WriteToLocalFile(tmpfile, bytes);
       std::string command_line = absl::StrReplaceAll(
-          env.for_each_blob, {{"%P", tmpfile}, {"%H", Hash(blob)}});
+          env.for_each_blob, {{"%P", tmpfile}, {"%H", Hash(bytes)}});
       Command cmd(command_line);
       // TODO(kcc): [as-needed] this creates one process per blob.
       // If this flag gets active use, we may want to define special cases,

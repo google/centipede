@@ -120,13 +120,12 @@ std::string ExtractHashFromArray(ByteArray &ba);
 ByteArray PackFeaturesAndHash(const ByteArray &data,
                               const FeatureVec &features);
 
-// `corpus_bytes` is a packed sequence of inputs, each created by
-// PackBytesForAppendFile().
-// `features_bytes` is packed sequence of features/hash pairs,
+// `corpus_blobs` is a vector of inputs.
+// `features_blobs` is a sequence of features/hash pairs,
 // each created by PackFeaturesAndHash.
 // This function unpacks these into a vector of CorpusRecords.
-void ExtractCorpusRecords(const ByteArray &corpus_bytes,
-                          const ByteArray &features_bytes,
+void ExtractCorpusRecords(const std::vector<ByteArray> &corpus_blobs,
+                          const std::vector<ByteArray> &features_blobs,
                           std::vector<CorpusRecord> &result);
 
 // Parses `dictionary_text` representing an AFL/libFuzzer dictionary.

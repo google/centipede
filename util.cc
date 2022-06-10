@@ -272,21 +272,22 @@ ByteArray PackFeaturesAndHash(const ByteArray &data,
   return feature_bytes_with_hash;
 }
 
-void ExtractCorpusRecords(const ByteArray &corpus_bytes,
-                          const ByteArray &features_bytes,
+void ExtractCorpusRecords(const std::vector<ByteArray> &corpus_blobs,
+                          const std::vector<ByteArray> &features_blobs,
                           std::vector<CorpusRecord> &result) {
-  std::vector<ByteArray> corpus;
-  std::vector<ByteArray> features_with_hashes;
-  UnpackBytesFromAppendFile(corpus_bytes, &corpus);
-  UnpackBytesFromAppendFile(features_bytes, &features_with_hashes);
   absl::flat_hash_map<std::string, FeatureVec> hash_to_features;
-  for (auto &fh : features_with_hashes) {
-    auto hash = ExtractHashFromArray(fh);
-    FeatureVec features(fh.size() / sizeof(feature_t));
-    memcpy(features.data(), fh.data(), features.size() * sizeof(feature_t));
+  for (const auto &hash_and_features : features_blobs) {
+    CHECK_GE(hash_and_features.size(), kHashLen);
+    std::string hash;
+    hash.insert(hash.end(), hash_and_features.end() - kHashLen,
+                hash_and_features.end());
+    size_t num_feature_bytes = hash_and_features.size() - kHashLen;
+    FeatureVec features(num_feature_bytes / sizeof(feature_t));
+    memcpy(features.data(), hash_and_features.data(),
+           features.size() * sizeof(feature_t));
     hash_to_features[hash] = features;
   }
-  for (auto &input : corpus) {
+  for (const auto &input : corpus_blobs) {
     auto &features = hash_to_features[Hash(input)];
     result.push_back({input, features});
   }
