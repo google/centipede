@@ -224,7 +224,9 @@ void Centipede::LogFeaturesAsSymbols(const FeatureVec &fv) {
 bool Centipede::InputPassesFilter(const ByteArray &input) {
   if (env_.input_filter.empty()) return true;
   WriteToLocalFile(input_filter_path_, input);
-  return input_filter_cmd_.Execute() == EXIT_SUCCESS;
+  bool result = input_filter_cmd_.Execute() == EXIT_SUCCESS;
+  std::filesystem::remove(input_filter_path_);
+  return result;
 }
 
 bool Centipede::ExecuteAndReportCrash(std::string_view binary,

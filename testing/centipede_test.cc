@@ -270,6 +270,7 @@ class MutateCallbacks : public CentipedeCallbacks {
   bool Execute(std::string_view binary, const std::vector<ByteArray> &inputs,
                BatchResult &batch_result) override {
     CHECK(false);
+    return false;
   }
 
   // Will not be called.
