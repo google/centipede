@@ -96,7 +96,16 @@ ABSL_FLAG(size_t, timeout, 60,
           "Support may vary depending on the runner. ");
 ABSL_FLAG(bool, fork_server, true,
           "If true (default) tries to execute the target(s) via the fork "
-          "server, if supported by the target(s)");
+          "server, if supported by the target(s). "
+          "If the target binary does not natively support Centipede's "
+          "fork server, prepend the binary path with '%F' and the "
+          "fork server helper will be LD_PRELOAD-ed. "
+          "Prepend the binary path with '%f' to disable the fork server. "
+          "--fork_server applies to binaries passed via these flags: "
+          "--binary, --extra_binaries, --input_filter");
+ABSL_FLAG(std::string, fork_server_helper_path, "",
+          "Path to the fork server helper DSO. "
+          "If empty, the helper is assumed to be in the same dir as Centipede");
 ABSL_FLAG(bool, full_sync, false,
           "Perform a full corpus sync on startup. If true, feature sets and "
           "corpora are read from all shards before fuzzing. This way fuzzing "
@@ -219,6 +228,7 @@ Environment::Environment(int argc, char** argv)
       use_counter_features(absl::GetFlag(FLAGS_use_counter_features)),
       generate_corpus_stats(absl::GetFlag(FLAGS_generate_corpus_stats)),
       distill_shards(absl::GetFlag(FLAGS_distill_shards)),
+      fork_server_helper_path(absl::GetFlag(FLAGS_fork_server_helper_path)),
       save_corpus_to_local_dir(absl::GetFlag(FLAGS_save_corpus_to_local_dir)),
       export_corpus_from_local_dir(
           absl::GetFlag(FLAGS_export_corpus_from_local_dir)),
@@ -251,6 +261,22 @@ Environment::Environment(int argc, char** argv)
     }
   }
   for (auto c : binary) CHECK(!isspace(c));  // Don't allow spaces in 'binary'.
+}
+
+std::string Environment::GetForkServerHelperPath() const {
+  if (!fork_server) return "";  // no need for the fork server helper.
+
+  // If present, use the user-provided path as-is.
+  if (!fork_server_helper_path.empty()) return fork_server_helper_path;
+
+  // Compute fork_server_helper_path based on Centipede's path.
+  std::string path = std::filesystem::path(exec_name).parent_path().append(
+      "centipede_fork_server_helper.so");
+  if (!std::filesystem::exists(fork_server_helper_path)) {
+    LOG(INFO) << VV(fork_server_helper_path)
+              << " does not exist; %F for target binaries will not work";
+  }
+  return path;
 }
 
 std::string Environment::MakeCoverageDirPath() const {

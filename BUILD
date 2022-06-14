@@ -77,6 +77,7 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/types:span",
     ],
 )
 
@@ -183,6 +184,7 @@ cc_library(
     hdrs = ["command.h"],
     deps = [
         ":logging",
+        ":util",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -233,7 +235,7 @@ cc_library(
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/types:span",
     ],
 )
 
@@ -307,25 +309,40 @@ cc_binary(
     deps = [":runner_fork_server"],
 )
 
-# A fuzz target needs to link with this library (containing main()) in order to
-# run with Centipede.
 cc_library(
-    name = "fuzz_target_runner",
+    name = "runner_interface",
+    hdrs = ["runner_interface.h"],
+)
+
+cc_library(
+    name = "fuzz_target_runner_no_main",
     srcs = [
+        "runner.cc",
         "runner_fork_server.cc",
         "runner_interceptors.cc",
-        "runner_main.cc",
         "runner_sancov.cc",
     ],
     hdrs = ["runner.h"],
     linkopts = ["-ldl"],  # for dlsym
-    visibility = ["//visibility:public"],
     deps = [
         ":byte_array_mutator",
         ":defs",
         ":execution_result",
         ":feature",
         ":runner_fork_server",
+        ":runner_interface",
         ":shared_memory_blob_sequence",
+    ],
+)
+
+# A fuzz target needs to link with this library (containing main()) in order to
+# run with Centipede.
+cc_library(
+    name = "fuzz_target_runner",
+    srcs = ["runner_main.cc"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":fuzz_target_runner_no_main",
+        ":runner_interface",
     ],
 )

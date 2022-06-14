@@ -15,17 +15,19 @@
 #include <openssl/sha.h>  // IWYU pragma: keep
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 
+#include "absl/types/span.h"
 #include "./defs.h"
 #include "./util.h"
 
 namespace centipede {
 
-std::string Hash(const ByteArray &ba) {
+std::string Hash(absl::Span<const uint8_t> span) {
   // Compute SHA1.
   unsigned char sha1[SHA_DIGEST_LENGTH];
-  SHA1(ba.data(), ba.size(), sha1);
+  SHA1(span.data(), span.size(), sha1);
   // Convert SHA1 to text.
   static_assert(kHashLen == 2 * SHA_DIGEST_LENGTH);
   char sha1_hex_text[kHashLen];
@@ -39,9 +41,9 @@ std::string Hash(const ByteArray &ba) {
 }
 
 std::string Hash(std::string_view str) {
-  ByteArray ba;
-  ba.insert(ba.end(), str.begin(), str.end());
-  return Hash(ba);
+  static_assert(sizeof(decltype(str)::value_type) == sizeof(uint8_t));
+  return Hash(absl::Span<const uint8_t>(
+      reinterpret_cast<const uint8_t *>(str.data()), str.size()));
 }
 
 }  // namespace centipede

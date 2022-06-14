@@ -21,6 +21,7 @@
 #include <string_view>
 #include <vector>
 
+#include "absl/types/span.h"
 #include "./defs.h"
 #include "./feature.h"
 
@@ -33,8 +34,8 @@ struct CorpusRecord {
 };
 
 // Returns a printable hash of a byte array. Currently sha1 is used.
-std::string Hash(const ByteArray &ba);
-// Returns a printable hash of a string. Currently sha1 is used.
+std::string Hash(absl::Span<const uint8_t> span);
+// Same as above, but for std::string_view.
 std::string Hash(std::string_view str);
 // Hashes are always this many bytes.
 inline constexpr size_t kHashLen = 40;
@@ -54,14 +55,15 @@ void ReadFromLocalFile(std::string_view file_path, FeatureVec &data);
 void ReadFromLocalFile(std::string_view file_path, std::vector<uint32_t> &data);
 // Writes the contents of `data` to a local file `file_path`.
 // Crashes on any error.
-void WriteToLocalFile(std::string_view file_path, const ByteArray &data);
+void WriteToLocalFile(std::string_view file_path,
+                      absl::Span<const uint8_t> data);
 // Same as above.
 void WriteToLocalFile(std::string_view file_path, std::string_view data);
 // Same as above but for FeatureVec.
 void WriteToLocalFile(std::string_view file_path, const FeatureVec &data);
 // Writes `data` to `dir_path`/Hash(`data`). Does nothing if `dir_path.empty()`.
 void WriteToLocalHashedFileInDir(std::string_view dir_path,
-                                 const ByteArray &data);
+                                 absl::Span<const uint8_t> data);
 // Returns the current process's memory usage in bytes or -1 on error.
 int64_t MemoryUsage();
 // Returns a path string suitable to create a temporary local directory.

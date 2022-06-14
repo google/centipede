@@ -69,6 +69,19 @@ class CentipedeCallbacks {
   std::string ConstructRunnerFlags(std::string_view extra_flags = "",
                                    bool disable_coverage = false);
 
+  // Uses an external binary `binary` to mutate `inputs`.
+  // The binary should be linked against :fuzz_target_runner and
+  // implement the Structure-Aware Fuzzing interface, as described here:
+  // github.com/google/fuzzing/blob/master/docs/structure-aware-fuzzing.md
+  //
+  // Produces `mutants.size()` mutants,
+  // replacing the existing elements of `mutants`.
+  //
+  // Returns true on success.
+  bool MutateViaExternalBinary(std::string_view binary,
+                               const std::vector<ByteArray> &inputs,
+                               std::vector<ByteArray> &mutants);
+
   // Loads the dictionary from `dictionary_path`,
   // returns the number of dictionary entries loaded.
   size_t LoadDictionary(std::string_view dictionary_path);
@@ -95,7 +108,7 @@ class CentipedeCallbacks {
   const size_t kBlobSeqSize = 1 << 30;  // 1Gb.
   SharedMemoryBlobSequence inputs_blobseq_ = {shmem_name1_.c_str(),
                                               kBlobSeqSize};
-  SharedMemoryBlobSequence feature_blobseq_ = {shmem_name2_.c_str(),
+  SharedMemoryBlobSequence outputs_blobseq_ = {shmem_name2_.c_str(),
                                                kBlobSeqSize};
 
   std::vector<Command> commands_;

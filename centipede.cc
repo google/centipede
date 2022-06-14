@@ -57,8 +57,8 @@
 
 #include "absl/base/attributes.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/strings/cord.h"
 #include "absl/strings/str_cat.h"
+#include "absl/types/span.h"
 #include "./blob_file.h"
 #include "./command.h"
 #include "./coverage.h"
@@ -71,20 +71,6 @@
 #include "./util.h"
 
 namespace centipede {
-
-void ReadCorpusFromRemoteFile(RemoteFile *f, std::vector<ByteArray> &corpus) {
-  ByteArray packed_data;
-  RemoteFileRead(f, packed_data);
-  UnpackBytesFromAppendFile(packed_data, &corpus);
-}
-
-
-void WriteOneCorpusRecord(RemoteFile *corpus_file, RemoteFile *features_file,
-                          const ByteArray &data, const FeatureVec &features) {
-  RemoteFileAppend(corpus_file, PackBytesForAppendFile(data));
-  RemoteFileAppend(features_file,
-                   PackBytesForAppendFile(PackFeaturesAndHash(data, features)));
-}
 
 // Reads corpus records (corpus and features, from different blob files),
 // returns vector of CorpusRecord objects.
@@ -113,18 +99,6 @@ static std::vector<CorpusRecord> ReadCorpusRecords(const Environment &env,
   return result;
 }
 
-struct FileBundle {
-  FileBundle(const Environment &env, size_t shard_index, const char *mode) {
-    corpus_file = RemoteFileOpen(env.MakeCorpusPath(shard_index), mode);
-    features_file = RemoteFileOpen(env.MakeFeaturesPath(shard_index), mode);
-  }
-  ~FileBundle() {
-    if (corpus_file) RemoteFileClose(corpus_file);
-    if (features_file) RemoteFileClose(features_file);
-  }
-  RemoteFile *corpus_file = nullptr, *features_file = nullptr;
-};
-
 Centipede::Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
                      const Coverage::PCTable &pc_table,
                      const SymbolTable &symbols)
@@ -136,21 +110,29 @@ Centipede::Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
       pc_table_(pc_table),
       symbols_(symbols),
       function_filter_(env_.function_filter, symbols_),
-      coverage_logger_(pc_table_, symbols_) {}
+      coverage_logger_(pc_table_, symbols_),
+      input_filter_path_(std::filesystem::path(TemporaryLocalDirPath())
+                             .append("filter-input")),
+      input_filter_cmd_(env_.input_filter, {input_filter_path_}, {/*env*/},
+                  "/dev/null", "/dev/null") {
+  if (!env_.input_filter.empty()) {
+    input_filter_cmd_.StartForkServer(TemporaryLocalDirPath(), "input_filter",
+                                      env_.GetForkServerHelperPath());
+  }
+}
 
 int Centipede::SaveCorpusToLocalDir(const Environment &env,
                                     std::string_view save_corpus_to_local_dir) {
   for (size_t shard = 0; shard < env.total_shards; shard++) {
-    if (auto f = RemoteFileOpen(env.MakeCorpusPath(shard), "r")) {
-      std::vector<ByteArray> vec;
-      ReadCorpusFromRemoteFile(f, vec);
-      LOG(INFO) << "read " << vec.size() << " from "
-                << env.MakeCorpusPath(shard);
-      RemoteFileClose(f);
-      for (auto &input : vec) {
-        WriteToLocalHashedFileInDir(save_corpus_to_local_dir, input);
-      }
+    auto reader = DefaultBlobFileReaderFactory();
+    reader->Open(env.MakeCorpusPath(shard)).IgnoreError();  // may not exist.
+    absl::Span<uint8_t> blob;
+    size_t num_read = 0;
+    while (reader->Read(blob).ok()) {
+      ++num_read;
+      WriteToLocalHashedFileInDir(save_corpus_to_local_dir, blob);
     }
+    LOG(INFO) << "read " << num_read << " from " << env.MakeCorpusPath(shard);
   }
   return 0;
 }
@@ -176,15 +158,18 @@ int Centipede::ExportCorpusFromLocalDir(const Environment &env,
     size_t num_shard_bytes = 0;
     // Read the shard (if it exists), collect input hashes from it.
     absl::flat_hash_set<std::string> existing_hashes;
-    if (RemoteFile *f = RemoteFileOpen(env.MakeCorpusPath(shard), "r")) {
-      ByteArray shard_data;
-      RemoteFileRead(f, shard_data);
-      RemoteFileClose(f);
-      std::vector<std::string> hashes_vec;
-      UnpackBytesFromAppendFile(shard_data, /*unpacked=*/nullptr, &hashes_vec);
-      existing_hashes.insert(hashes_vec.begin(), hashes_vec.end());
+    {
+      auto reader = DefaultBlobFileReaderFactory();
+      // May fail to open if file doesn't exist.
+      reader->Open(env.MakeCorpusPath(shard)).IgnoreError();
+      absl::Span<uint8_t> blob;
+      while (reader->Read(blob).ok()) {
+        existing_hashes.insert(Hash(blob));
+      }
     }
     // Add inputs to the current shard, if the shard doesn't have them already.
+    auto appender = DefaultBlobFileAppenderFactory();
+    CHECK_OK(appender->Open(env.MakeCorpusPath(shard)));
     ByteArray shard_data;
     for (const auto &path : sharded_paths[shard]) {
       ByteArray input;
@@ -193,17 +178,9 @@ int Centipede::ExportCorpusFromLocalDir(const Environment &env,
         ++inputs_ignored;
         continue;
       }
-      num_shard_bytes += input.size();
-      auto packed_input = PackBytesForAppendFile(input);
-      shard_data.insert(shard_data.end(), packed_input.begin(),
-                        packed_input.end());
+      CHECK_OK(appender->Append(input));
       ++inputs_added;
     }
-    // Append to the shard file.
-    RemoteFile *f = RemoteFileOpen(env.MakeCorpusPath(shard), "a");
-    CHECK(f);
-    RemoteFileAppend(f, shard_data);
-    RemoteFileClose(f);
     LOG(INFO) << VV(shard) << VV(inputs_added) << VV(inputs_ignored)
               << VV(num_shard_bytes) << VV(shard_data.size());
   }
@@ -246,14 +223,8 @@ void Centipede::LogFeaturesAsSymbols(const FeatureVec &fv) {
 
 bool Centipede::InputPassesFilter(const ByteArray &input) {
   if (env_.input_filter.empty()) return true;
-  std::string input_path =
-      std::filesystem::path(TemporaryLocalDirPath()).append("filter-input");
-  WriteToLocalFile(input_path, input);
-  Command cmd(env_.input_filter, {input_path}, {/*env*/}, "/dev/null",
-              "/dev/null");
-  if (cmd.WasInterrupted()) RequestEarlyExit(EXIT_FAILURE);
-  int res = cmd.Execute();
-  return res == 0;
+  WriteToLocalFile(input_filter_path_, input);
+  return input_filter_cmd_.Execute() == EXIT_SUCCESS;
 }
 
 bool Centipede::ExecuteAndReportCrash(std::string_view binary,
@@ -265,9 +236,10 @@ bool Centipede::ExecuteAndReportCrash(std::string_view binary,
 }
 
 bool Centipede::RunBatch(const std::vector<ByteArray> &input_vec,
-                         BatchResult &batch_result, RemoteFile *corpus_file,
-                         RemoteFile *features_file,
-                         RemoteFile *unconditional_features_file) {
+                         BatchResult &batch_result,
+                         BlobFileAppender *corpus_file,
+                         BlobFileAppender *features_file,
+                         BlobFileAppender *unconditional_features_file) {
   bool success = ExecuteAndReportCrash(env_.binary, input_vec, batch_result);
   CHECK_EQ(input_vec.size(), batch_result.results().size());
 
@@ -291,9 +263,8 @@ bool Centipede::RunBatch(const std::vector<ByteArray> &input_vec,
     bool input_gained_new_coverage =
         fs_.CountUnseenAndPruneFrequentFeatures(fv);
     if (unconditional_features_file) {
-      auto packed_fv =
-          PackBytesForAppendFile(PackFeaturesAndHash(input_vec[i], fv));
-      RemoteFileAppend(unconditional_features_file, packed_fv);
+      CHECK_OK(unconditional_features_file->Append(
+          PackFeaturesAndHash(input_vec[i], fv)));
     }
     if (input_gained_new_coverage) {
       // TODO(kcc): [impl] add stats for filtered-out inputs.
@@ -310,15 +281,13 @@ bool Centipede::RunBatch(const std::vector<ByteArray> &input_vec,
         corpus_.Prune(fs_);
       }
       if (corpus_file) {
-        RemoteFileAppend(corpus_file, PackBytesForAppendFile(input_vec[i]));
+        CHECK_OK(corpus_file->Append(input_vec[i]));
       }
       if (!env_.corpus_dir.empty()) {
         WriteToLocalHashedFileInDir(env_.corpus_dir[0], input_vec[i]);
       }
       if (features_file) {
-        auto packed_fv =
-            PackBytesForAppendFile(PackFeaturesAndHash(input_vec[i], fv));
-        RemoteFileAppend(features_file, packed_fv);
+        CHECK_OK(features_file->Append(PackFeaturesAndHash(input_vec[i], fv)));
       }
     }
   }
@@ -361,7 +330,9 @@ void Centipede::LoadShard(const Environment &load_env, size_t shard_index,
   if (added_to_corpus) Log("load-shard", 1);
 
   if (to_rerun.empty()) return;
-  FileBundle out_files(env_, shard_index, "a");
+  auto features_file = DefaultBlobFileAppenderFactory();
+  CHECK_OK(features_file->Open(env_.MakeFeaturesPath(shard_index)));
+
   LOG(INFO) << to_rerun.size() << " inputs to rerun";
   // Re-run all inputs for which we don't know their features.
   // Run in batches of at most env_.batch_size inputs each.
@@ -370,8 +341,7 @@ void Centipede::LoadShard(const Environment &load_env, size_t shard_index,
     std::vector<ByteArray> batch(to_rerun.end() - batch_size, to_rerun.end());
     BatchResult batch_result;
     to_rerun.resize(to_rerun.size() - batch_size);
-    if (RunBatch(batch, batch_result, nullptr, nullptr,
-                 out_files.features_file)) {
+    if (RunBatch(batch, batch_result, nullptr, nullptr, features_file.get())) {
       Log("rerun-old", 1);
     }
   }
@@ -420,19 +390,13 @@ void Centipede::MergeFromOtherCorpus(std::string_view merge_from_dir,
   size_t new_corpus_size = corpus_.NumActive();
   CHECK_GE(new_corpus_size, initial_corpus_size);  // Corpus can't shrink here.
   if (new_corpus_size > initial_corpus_size) {
-    ByteArray combined_inputs;
+    auto appender = DefaultBlobFileAppenderFactory();
+    CHECK_OK(appender->Open(env_.MakeCorpusPath(env_.my_shard_index)));
     for (size_t idx = initial_corpus_size; idx < new_corpus_size; ++idx) {
-      auto packed = PackBytesForAppendFile(corpus_.Get(idx));
-      combined_inputs.insert(combined_inputs.end(), packed.begin(),
-                             packed.end());
+      CHECK_OK(appender->Append(corpus_.Get(idx)));
     }
     LOG(INFO) << "merge: " << (new_corpus_size - initial_corpus_size)
               << " new inputs added";
-    RemoteFile *f =
-        RemoteFileOpen(env_.MakeCorpusPath(env_.my_shard_index), "a");
-    CHECK(f);
-    RemoteFileAppend(f, combined_inputs);
-    RemoteFileClose(f);
   }
 }
 
@@ -471,9 +435,10 @@ void Centipede::FuzzingLoop() {
     MergeFromOtherCorpus(env_.merge_from, env_.my_shard_index);
   }
 
-  FileBundle out_files(env_, env_.my_shard_index, "a");
-  CHECK(out_files.corpus_file);
-  CHECK(out_files.features_file);
+  auto corpus_file = DefaultBlobFileAppenderFactory();
+  auto features_file = DefaultBlobFileAppenderFactory();
+  CHECK_OK(corpus_file->Open(env_.MakeCorpusPath(env_.my_shard_index)));
+  CHECK_OK(features_file->Open(env_.MakeFeaturesPath(env_.my_shard_index)));
 
   if (corpus_.NumTotal() == 0)
     corpus_.Add(user_callbacks_.DummyValidInput(), {}, fs_);
@@ -486,22 +451,16 @@ void Centipede::FuzzingLoop() {
 
   if (env_.DistillingInThisShard()) {
     auto distill_to_path = env_.MakeDistilledPath();
-    ByteArray distilled_corpus_packed;
+    auto appender = DefaultBlobFileAppenderFactory();
+    CHECK_OK(appender->Open(distill_to_path));
     for (size_t i = 0; i < corpus_.NumActive(); i++) {
-      auto packed = PackBytesForAppendFile(corpus_.Get(i));
-      distilled_corpus_packed.insert(distilled_corpus_packed.end(),
-                                     packed.begin(), packed.end());
+      CHECK_OK(appender->Append(corpus_.Get(i)));
       if (!env_.corpus_dir.empty()) {
         WriteToLocalHashedFileInDir(env_.corpus_dir[0], corpus_.Get(i));
       }
     }
     LOG(INFO) << "distill_to_path: " << distill_to_path
-              << " distilled_size: " << corpus_.NumActive()
-              << " packed_bytes: " << distilled_corpus_packed.size();
-    RemoteFile *f = RemoteFileOpen(distill_to_path, "w");
-    CHECK(f);
-    RemoteFileAppend(f, distilled_corpus_packed);
-    RemoteFileClose(f);
+              << " distilled_size: " << corpus_.NumActive();
   }
 
   GenerateCoverageReport();
@@ -524,8 +483,8 @@ void Centipede::FuzzingLoop() {
     }
     user_callbacks_.Mutate(input_vec);
     bool gained_new_coverage =
-        RunBatch(input_vec, batch_result, out_files.corpus_file,
-                 out_files.features_file, nullptr);
+        RunBatch(input_vec, batch_result, corpus_file.get(),
+                 features_file.get(), nullptr);
     new_runs += input_vec.size();
 
     bool batch_is_power_of_two = ((batch_index - 1) & batch_index) == 0;

@@ -20,14 +20,22 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <cstdlib>
 #include <filesystem>
 #include <sstream>
 #include <string>
 
+#include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "./logging.h"
+#include "./util.h"
 
 namespace centipede {
+
+// See the definition of --fork_server flag.
+inline constexpr std::string_view kForkServerHelperRequestPrefix("%F");
+inline constexpr std::string_view kNoForkServerHelperRequestPrefix("%f");
+
 std::string Command::ToString() const {
   std::stringstream ss;
   // env.
@@ -35,7 +43,14 @@ std::string Command::ToString() const {
     ss << env << " ";
   }
   // path.
-  ss << path_ << " ";
+  std::string path = path_;
+  // Strip the % prefixes, if any.
+  if (absl::StartsWith(path, kForkServerHelperRequestPrefix)) {
+    path = path.substr(kForkServerHelperRequestPrefix.size());
+  } else if (absl::StartsWith(path, kNoForkServerHelperRequestPrefix)) {
+    path = path.substr(kNoForkServerHelperRequestPrefix.size());
+  }
+  ss << path << " ";
   // args.
   for (auto &arg : args_) {
     ss << arg << " ";
@@ -58,7 +73,12 @@ std::string Command::ToString() const {
 }
 
 bool Command::StartForkServer(std::string_view temp_dir_path,
-                              std::string_view prefix) {
+                              std::string_view prefix,
+                              std::string_view fork_server_helper_path) {
+  if (absl::StartsWith(path_, kNoForkServerHelperRequestPrefix)) {
+    LOG(INFO) << "fork server disabled for " << path();
+    return false;
+  }
   LOG(INFO) << "starting the fork server for " << path();
 
   std::string fifo_path[2] = {std::filesystem::path(temp_dir_path)
@@ -70,7 +90,12 @@ bool Command::StartForkServer(std::string_view temp_dir_path,
     CHECK_EQ(0, mkfifo(fifo_path[i].c_str(), 0600)) << "errno:" << errno;
   }
   std::stringstream ss;
-  auto command = absl::StrCat("CENTIPEDE_FORK_SERVER_FIFO0=", fifo_path[0], " ",
+  std::string preload_fork_server_helper =
+      absl::StartsWith(path_, kForkServerHelperRequestPrefix)
+          ? absl::StrCat("LD_PRELOAD=", fork_server_helper_path, " ")
+          : "";
+  auto command = absl::StrCat(preload_fork_server_helper,
+                              "CENTIPEDE_FORK_SERVER_FIFO0=", fifo_path[0], " ",
                               " CENTIPEDE_FORK_SERVER_FIFO1=", fifo_path[1],
                               " ", ToString(), " &");
   int ret = system(command.c_str());
@@ -104,7 +129,8 @@ int Command::Execute() {
   } else {
     // No fork server, use system().
     int ret = system(full_command_string_.c_str());
-    was_interrupted_ = WIFSIGNALED(ret) && (WTERMSIG(ret) == SIGINT);
+    if (WIFSIGNALED(ret) && (WTERMSIG(ret) == SIGINT))
+      RequestEarlyExit(EXIT_FAILURE);
     if (WIFEXITED(ret)) return WEXITSTATUS(ret);
     return ret;
   }

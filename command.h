@@ -36,7 +36,6 @@ class Command final {
         out_(std::move(other.out_)),
         err_(std::move(other.err_)),
         full_command_string_(std::move(other.full_command_string_)),
-        was_interrupted_(other.was_interrupted_),
         pipe_{other.pipe_[0], other.pipe_[1]} {
     // If we don't do this, the moved-from object will close these pipes.
     other.pipe_[0] = -1;
@@ -63,15 +62,15 @@ class Command final {
   std::string ToString() const;
   // Executes the command, returns the exit status.
   // Can be called more than once.
+  // If iterrrupted, may call RequestEarlyExit().
   int Execute();
-  // Returns true iff the last Execute() was killed by SIGINT.
-  bool WasInterrupted() const { return was_interrupted_; }
 
   // Attempts to start a fork server, returns true on success.
   // Pipe files for the fork server are created in `temp_dir_path`
   // with prefix `prefix`.
   // See runner_fork_server.cc for detauls.
-  bool StartForkServer(std::string_view temp_dir_path, std::string_view prefix);
+  bool StartForkServer(std::string_view temp_dir_path, std::string_view prefix,
+                       std::string_view fork_server_helper);
 
   // Accessors.
   const std::string& path() const { return path_; }
@@ -83,8 +82,6 @@ class Command final {
   const std::string out_;
   const std::string err_;
   std::string full_command_string_ = ToString();
-  // Execute() sets was_interrupted_ to true iff the execution was interrupted.
-  bool was_interrupted_ = false;
   // Pipe file descriptors for the fork server.
   int pipe_[2] = {-1, -1};
 };

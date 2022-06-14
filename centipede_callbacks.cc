@@ -17,8 +17,6 @@
 #include <cctype>
 #include <cstddef>
 #include <cstdlib>
-#include <filesystem>
-#include <iostream>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -27,9 +25,7 @@
 #include "./command.h"
 #include "./defs.h"
 #include "./execution_result.h"
-#include "./feature.h"
 #include "./logging.h"
-#include "./shared_memory_blob_sequence.h"
 #include "./util.h"
 
 namespace centipede {
@@ -62,11 +58,16 @@ Command &CentipedeCallbacks::GetOrCreateCommandForBinary(
                 binary) != env_.extra_binaries.end();
   Command &cmd = commands_.emplace_back(Command(
       /*path=*/binary, /*args=*/{shmem_name1_, shmem_name2_},
-      /*env=*/{ConstructRunnerFlags(":shmem:", disable_coverage)},
+      /*env=*/
+      {ConstructRunnerFlags(absl::StrCat(":shmem:arg1=", shmem_name1_,
+                                         ":arg2=", shmem_name2_, ":"),
+                            disable_coverage)},
       /*out=*/execute_log_path_,
       /*err=*/execute_log_path_));
-  if (env_.fork_server)
-    cmd.StartForkServer(TemporaryLocalDirPath(), Hash(binary));
+  if (env_.fork_server) {
+    cmd.StartForkServer(TemporaryLocalDirPath(), Hash(binary),
+                        env_.GetForkServerHelperPath());
+  }
 
   return cmd;
 }
@@ -78,7 +79,7 @@ int CentipedeCallbacks::ExecuteCentipedeSancovBinaryWithShmem(
 
   // Reset the blobseqs.
   inputs_blobseq_.Reset();
-  feature_blobseq_.Reset();
+  outputs_blobseq_.Reset();
 
   // Feed the inputs to inputs_blobseq_.
   size_t num_inputs_written = 0;
@@ -95,26 +96,59 @@ int CentipedeCallbacks::ExecuteCentipedeSancovBinaryWithShmem(
   // Run.
   Command &cmd = GetOrCreateCommandForBinary(binary);
   int retval = cmd.Execute();
-  if (cmd.WasInterrupted()) RequestEarlyExit(EXIT_FAILURE);
 
   // Get results.
   batch_result.exit_code() = retval;
-  CHECK(batch_result.Read(feature_blobseq_));
+  CHECK(batch_result.Read(outputs_blobseq_));
 
   // We may have fewer feature blobs than inputs if
   // * some inputs were not written (i.e. num_inputs_written < inputs.size).
   //   * Logged above.
   // * some outputs were not written because the subprocess died.
   //   * Will be logged by the caller.
-  // * some outputs were not written because the feature_blobseq_ overflown.
+  // * some outputs were not written because the outputs_blobseq_ overflown.
   //   * Logged by the following code.
   if (retval == 0 && batch_result.num_outputs_read() != num_inputs_written) {
     LOG(INFO) << "too few outputs while the subprocess succeeded. "
-                 "feature_blobseq_ may have overflown";
+                 "outputs_blobseq_ may have overflown";
   }
   if (retval != EXIT_SUCCESS)
     ReadFromLocalFile(execute_log_path_, batch_result.log());
   return retval;
+}
+
+// See also: MutateInputsFromShmem().
+bool CentipedeCallbacks::MutateViaExternalBinary(
+    std::string_view binary, const std::vector<ByteArray> &inputs,
+    std::vector<ByteArray> &mutants) {
+  inputs_blobseq_.Reset();
+  outputs_blobseq_.Reset();
+  // Write mutants.size() as the first input.
+  size_t num_mutants = mutants.size();
+  CHECK(inputs_blobseq_.Write({1 /*unused tag*/, sizeof(num_mutants),
+                               reinterpret_cast<uint8_t *>(&num_mutants)}));
+  // Write all inputs.
+  for (auto &input : inputs) {
+    if (!inputs_blobseq_.Write(
+            {1 /*unused tag*/, input.size(), input.data()})) {
+      break;
+    }
+  }
+  // Execute.
+  Command cmd(binary, {},
+              {absl::StrCat("CENTIPEDE_RUNNER_FLAGS=:mutate:arg1=",
+                            shmem_name1_, ":arg2=", shmem_name2_, ":")},
+              "/dev/null", "/dev/null");
+  int retval = cmd.Execute();
+
+  // Read all mutants.
+  for (auto &mutant : mutants) {
+    auto blob = outputs_blobseq_.Read();
+    if (blob.size == 0) break;
+    mutant.clear();
+    mutant.insert(mutant.begin(), blob.data, blob.data + blob.size);
+  }
+  return retval == 0;
 }
 
 size_t CentipedeCallbacks::LoadDictionary(std::string_view dictionary_path) {

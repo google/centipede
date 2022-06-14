@@ -33,8 +33,11 @@ namespace centipede {
 // But the current implementation is fully functional.
 class SimpleBlobFileReader : public BlobFileReader {
  public:
-  ~SimpleBlobFileReader() {
-    if (file_ && !closed_) CHECK_EQ(Close(), absl::OkStatus());
+  ~SimpleBlobFileReader() override {
+    if (file_ && !closed_) {
+      // Virtual resolution is off in dtors, so use a specific Close().
+      CHECK_OK(SimpleBlobFileReader::Close());
+    }
   }
 
   absl::Status Open(std::string_view path) override {
@@ -52,7 +55,7 @@ class SimpleBlobFileReader : public BlobFileReader {
     return absl::OkStatus();
   }
 
-  virtual absl::Status Read(absl::Span<uint8_t> &blob) override {
+  absl::Status Read(absl::Span<uint8_t> &blob) override {
     if (closed_) return absl::FailedPreconditionError("already closed");
     if (!file_) return absl::FailedPreconditionError("was not open");
     if (next_to_read_blob_index_ == unpacked_blobs_.size())
@@ -63,11 +66,11 @@ class SimpleBlobFileReader : public BlobFileReader {
   }
 
   // Closes the file (it must be open).
-  virtual absl::Status Close() override {
+  absl::Status Close() override {
     if (closed_) return absl::FailedPreconditionError("already closed");
     if (!file_) return absl::FailedPreconditionError("was not open");
     closed_ = true;
-    // Nothing to do here, we've already closed the file.
+    // Nothing to do here, we've already closed the file (in Open()).
     return absl::OkStatus();
   }
 
@@ -82,7 +85,10 @@ class SimpleBlobFileReader : public BlobFileReader {
 class SimpleBlobFileAppender : public BlobFileAppender {
  public:
   ~SimpleBlobFileAppender() override {
-    if (file_ && !closed_) CHECK_EQ(Close(), absl::OkStatus());
+    if (file_ && !closed_) {
+      // Virtual resolution is off in dtors, so use a specific Close().
+      CHECK_OK(SimpleBlobFileAppender::Close());
+    }
   }
 
   absl::Status Open(std::string_view path) override {
@@ -96,17 +102,16 @@ class SimpleBlobFileAppender : public BlobFileAppender {
   absl::Status Append(absl::Span<const uint8_t> blob) override {
     if (closed_) return absl::FailedPreconditionError("already closed");
     if (!file_) return absl::FailedPreconditionError("was not open");
-    ByteArray bytes(blob.size());
-    // This copy from a span to vector is clumsy.
-    // TODO(kcc): [as-needed] change RemoteFileAppend to accept a span.
-    std::copy(blob.begin(), blob.end(), bytes.begin());
+    // TODO(kcc): [as-needed] This copy from a span to vector is clumsy. Change
+    //  RemoteFileAppend to accept a span.
+    ByteArray bytes(blob.begin(), blob.end());
     ByteArray packed = PackBytesForAppendFile(bytes);
     RemoteFileAppend(file_, packed);
 
     return absl::OkStatus();
   }
 
-  virtual absl::Status Close() override {
+  absl::Status Close() override {
     if (closed_) return absl::FailedPreconditionError("already closed");
     if (!file_) return absl::FailedPreconditionError("was not open");
     closed_ = true;

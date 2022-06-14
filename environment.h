@@ -57,6 +57,7 @@ struct Environment {
   bool use_counter_features;
   bool generate_corpus_stats;
   size_t distill_shards;
+  std::string fork_server_helper_path;
   std::string save_corpus_to_local_dir;
   std::string export_corpus_from_local_dir;
   std::vector<std::string> corpus_dir;
@@ -105,6 +106,8 @@ struct Environment {
   bool GeneratingCorpusStatsInThisShard() const {
     return generate_corpus_stats && my_shard_index == 0;
   }
+
+  std::string GetForkServerHelperPath() const;
 };
 
 }  // namespace centipede

@@ -26,7 +26,6 @@
 #include <vector>
 
 #include "absl/status/status.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/str_replace.h"
 #include "absl/types/span.h"
 #include "./blob_file.h"
@@ -36,47 +35,10 @@
 #include "./environment.h"
 #include "./logging.h"
 #include "./remote_file.h"
-#include "./shared_memory_blob_sequence.h"
 #include "./symbol_table.h"
 #include "./util.h"
 
 namespace centipede {
-
-// See also: MutateInputsFromShmem().
-bool MutateViaExternalBinary(std::string_view binary,
-                             const std::vector<ByteArray> &inputs,
-                             std::vector<ByteArray> &mutants) {
-  // Create in/out shmem blob sequences.
-  std::string shmem_name1 = ProcessAndThreadUniqueID("/centipede-in-");
-  std::string shmem_name2 = ProcessAndThreadUniqueID("/centipede-out-");
-  const size_t kBlobSeqSize = 1 << 30;  // 1Gb, something large enough.
-  SharedMemoryBlobSequence inputs_blobseq(shmem_name1.c_str(), kBlobSeqSize);
-  SharedMemoryBlobSequence mutant_blobseq(shmem_name2.c_str(), kBlobSeqSize);
-  // Write mutants.size() as the first input.
-  size_t num_mutants = mutants.size();
-  CHECK(inputs_blobseq.Write({1 /*unused tag*/, sizeof(num_mutants),
-                              reinterpret_cast<uint8_t *>(&num_mutants)}));
-  // Write all inputs.
-  for (auto &input : inputs) {
-    if (!inputs_blobseq.Write({1 /*unused tag*/, input.size(), input.data()})) {
-      break;
-    }
-  }
-  // Execute.
-  Command cmd(binary, {shmem_name1, shmem_name2},
-              {"CENTIPEDE_RUNNER_FLAGS=:mutate:"}, "/dev/null", "/dev/null");
-  int retval = cmd.Execute();
-  if (cmd.WasInterrupted()) RequestEarlyExit(EXIT_FAILURE);
-
-  // Read all mutants.
-  for (auto &mutant : mutants) {
-    auto blob = mutant_blobseq.Read();
-    if (blob.size == 0) break;
-    mutant.clear();
-    mutant.insert(mutant.begin(), blob.data, blob.data + blob.size);
-  }
-  return retval == 0;
-}
 
 namespace {
 
@@ -139,7 +101,7 @@ int ForEachBlob(const Environment &env) {
       // If this flag gets active use, we may want to define special cases,
       // e.g. if for_each_blob=="cp %P /some/where" we can do it in-process.
       cmd.Execute();
-      if (cmd.WasInterrupted() || EarlyExitRequested()) return ExitCode();
+      if (EarlyExitRequested()) return ExitCode();
     }
   }
   return EXIT_SUCCESS;

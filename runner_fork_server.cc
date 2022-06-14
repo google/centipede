@@ -106,7 +106,13 @@ const char *GetOneEnv(const char *key) {
 }
 
 // Starts the fork server if the pipes are given.
-void ForkServerCallMeVeryEarly() {
+// This function is called from .preinit_array when linked statically,
+// or from the DSO constructor when injected via LD_PRELOAD.
+__attribute__((constructor)) void ForkServerCallMeVeryEarly() {
+  // Guard from calling twice.
+  static bool called_already = false;
+  if (called_already) return;
+  called_already = true;
   // Startup.
   GetAllEnv();
   const char *pipe0_name = GetOneEnv("CENTIPEDE_FORK_SERVER_FIFO0=");

@@ -79,6 +79,8 @@ struct GlobalRunnerState {
   // flag parsing code extremely simple. The interface is private between
   // Centipede and the runner and may change.
   const char *centipede_runner_flags = getenv("CENTIPEDE_RUNNER_FLAGS");
+  const char *arg1 = GetStringFlag(":arg1=");
+  const char *arg2 = GetStringFlag(":arg2=");
 
   // Flags.
   RunTimeFlags run_time_flags = {
@@ -105,6 +107,21 @@ struct GlobalRunnerState {
     const char *beg = strstr(centipede_runner_flags, flag);
     if (!beg) return default_value;
     return atoll(beg + strlen(flag));  // NOLINT: can't use strto64, etc.
+  }
+
+  // If a :flag=value: pair is present returns value, otherwise returns nullptr.
+  // The result is obtained by calling strndup, so make sure to save
+  // it in `this` to avoid a leak.
+  // Typical usage: pass ":some_flag=".
+  const char *GetStringFlag(const char *flag) {
+    if (!centipede_runner_flags) return nullptr;
+    // Exctract "value" from ":flag=value:" inside centipede_runner_flags.
+    const char *beg = strstr(centipede_runner_flags, flag);
+    if (!beg) return nullptr;
+    const char *value_beg = beg + strlen(flag);
+    const char *end = strstr(value_beg, ":");
+    if (!end) return nullptr;
+    return strndup(value_beg, end - value_beg);
   }
 
   // Doubly linked list of TLSs of all live threads.

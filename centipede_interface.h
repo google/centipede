@@ -20,24 +20,9 @@
 #include <vector>
 
 #include "./centipede_callbacks.h"
-#include "./defs.h"
 #include "./environment.h"
-#include "./util.h"
 
 namespace centipede {
-
-// Uses an external binary `binary` to mutate `inputs`.
-// The binary should be linked against :fuzz_target_runner and
-// implement the Structure-Aware Fuzzing interface, as described here:
-// https://github.com/google/fuzzing/blob/master/docs/structure-aware-fuzzing.md
-//
-// Produces `mutants.size()` mutants,
-// replacing the existing elements of `mutants`.
-//
-// Returns true on success.
-bool MutateViaExternalBinary(std::string_view binary,
-                             const std::vector<ByteArray> &inputs,
-                             std::vector<ByteArray> &mutants);
 
 // Usage:
 //   class MyCentipedeCallbacks: public CentipedeCallbacks { ... }

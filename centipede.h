@@ -21,6 +21,7 @@
 #include <string_view>
 #include <vector>
 
+#include "./blob_file.h"
 #include "./centipede_callbacks.h"
 #include "./corpus.h"
 #include "./coverage.h"
@@ -29,7 +30,6 @@
 #include "./execution_result.h"
 #include "./remote_file.h"
 #include "./symbol_table.h"
-#include "./util.h"
 
 namespace centipede {
 
@@ -76,9 +76,9 @@ class Centipede {
   // Post-condition: `batch_result.results.size()` == `input_vec.size()`.
   // If RunBatch runs in a hot loop, define `batch_result` outside the loop.
   bool RunBatch(const std::vector<ByteArray> &input_vec,
-                BatchResult &batch_result, RemoteFile *corpus_file,
-                RemoteFile *features_file,
-                RemoteFile *unconditional_features_file);
+                BatchResult &batch_result, BlobFileAppender *corpus_file,
+                BlobFileAppender *features_file,
+                BlobFileAppender *unconditional_features_file);
   // Loads a shard `shard_index` from `load_env.workdir`.
   // Note: `load_env_` may be different from `env_`.
   // If `rerun` is true, then also re-runs any inputs
@@ -144,6 +144,10 @@ class Centipede {
 
   // Counts the number of crashes reported so far.
   int num_crash_reports_ = 0;
+
+  // Path and command for the input_filter.
+  std::string input_filter_path_;
+  Command input_filter_cmd_;
 };
 
 }  // namespace centipede

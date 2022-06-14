@@ -34,51 +34,57 @@ namespace centipede {
 // failed appends (may vary depending on the implementation).
 //
 // BlobFileReader reads blobs from a file.
-// All methods return OkStatus() on success and an approriate error status
-// on failure.
 //
 // Different implementations of BlobFileReader/BlobFileAppender don't have to
 // be file-format compatible.
 class BlobFileReader {
  public:
+  BlobFileReader() = default;
+  // Implementations must take care to call their Close() in the dtor, unless
+  // the client has already explicitly called it.
+  virtual ~BlobFileReader() = default;
+
   // Not copyable or movable.
   BlobFileReader(const BlobFileReader &) = delete;
   BlobFileReader &operator=(const BlobFileReader &) = delete;
+  BlobFileReader(BlobFileReader &&) = delete;
+  BlobFileReader &operator=(BlobFileReader &&) = delete;
 
   // Opens the file `path`.
-  // Open() can be called only once.
+  // Implementations must ensure that this is called only once.
   virtual absl::Status Open(std::string_view path) = 0;
 
   // Reads one `blob` from an open file.
-  // The blob is valid until the next Read() or Close().
+  // Implementations must ensure that the memory wrapped by `blob` remains valid
+  // until the next Read() or Close() call.
   // Returns absl::OutOfRangeError when there are no more blobs to read.
   virtual absl::Status Read(absl::Span<uint8_t> &blob) = 0;
 
-  // Closes the file, which was previosly open and never closed.
+  // Closes the file, which was previously opened and never closed.
   virtual absl::Status Close() = 0;
-
-  // If the file was opened but not closed,
-  // calls CHECK_EQ(Close(), absl::OkStatus()).
-  virtual ~BlobFileReader() {}
-
- protected:
-  BlobFileReader() {}
 };
 
 // Appends blobs to a BlobFile.
 // See also comments for BlobFileReader.
 class BlobFileAppender {
  public:
+  BlobFileAppender() = default;
+  // Implementations must take care to call their Close() in the dtor, unless
+  // the client has already explicitly called it.
+  virtual ~BlobFileAppender() = default;
+
   // Not copyable or movable.
   BlobFileAppender(const BlobFileAppender &) = delete;
   BlobFileAppender &operator=(const BlobFileAppender &) = delete;
+  BlobFileAppender(BlobFileAppender &&) = delete;
+  BlobFileAppender &operator=(BlobFileAppender &&) = delete;
 
   // Opens the file `path`.
-  // Open() can be called only once.
+  // Implementations must ensure that this is called only once.
   virtual absl::Status Open(std::string_view path) = 0;
 
-  // Appends one `blob` to an open file.
-  // Returns OkStatus on success.
+  // Appends `blob` to this file.
+  // Implementations must ensure that the file has been opened.
   virtual absl::Status Append(absl::Span<const uint8_t> blob) = 0;
 
   // Same as above, but for ByteArray.
@@ -86,15 +92,8 @@ class BlobFileAppender {
     return Append(absl::Span<const uint8_t>{bytes});
   }
 
-  // Closes the file, which was previosly open and never closed.
+  // Closes the file, which was previously opened and never closed.
   virtual absl::Status Close() = 0;
-
-  // If the file was opened but not closed,
-  // calls CHECK_EQ(Close(), absl::OkStatus()).
-  virtual ~BlobFileAppender() {}
-
- protected:
-  BlobFileAppender() {}
 };
 
 // Creates a new object of a default implementation of BlobFileReader.

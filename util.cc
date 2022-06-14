@@ -40,6 +40,7 @@
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_replace.h"
 #include "absl/synchronization/mutex.h"
+#include "absl/types/span.h"
 #include "./defs.h"
 #include "./feature.h"
 #include "./logging.h"
@@ -94,28 +95,30 @@ void ReadFromLocalFile(std::string_view file_path,
   return ReadFromLocalFile<std::vector<uint32_t> &>(file_path, data);
 }
 
-template <typename Container>
-void WriteToLocalFile(std::string_view file_path, const Container &data) {
+void WriteToLocalFile(std::string_view file_path,
+                      absl::Span<const uint8_t> data) {
   std::ofstream f(std::string{file_path.data()});
   CHECK(f) << "Failed to open local file: " << file_path;
-  f.write(reinterpret_cast<const char *>(data.data()),
-          data.size() * sizeof(data[0]));
+  f.write(reinterpret_cast<const char *>(data.data()), data.size());
   CHECK(f) << "Failed to write to local file: " << file_path;
   f.close();
 }
 
-void WriteToLocalFile(std::string_view file_path, const ByteArray &data) {
-  WriteToLocalFile<ByteArray>(file_path, data);
-}
 void WriteToLocalFile(std::string_view file_path, std::string_view data) {
-  WriteToLocalFile<std::string_view>(file_path, data);
+  static_assert(sizeof(decltype(data)::value_type) == sizeof(uint8_t));
+  WriteToLocalFile(file_path, absl::Span<const uint8_t>(
+      reinterpret_cast<const uint8_t *>(data.data()), data.size()));
 }
+
 void WriteToLocalFile(std::string_view file_path, const FeatureVec &data) {
-  WriteToLocalFile<FeatureVec>(file_path, data);
+  WriteToLocalFile(
+      file_path,
+      absl::Span<const uint8_t>(reinterpret_cast<const uint8_t *>(data.data()),
+                                sizeof(data[0]) * data.size()));
 }
 
 void WriteToLocalHashedFileInDir(std::string_view dir_path,
-                                 const ByteArray &data) {
+                                 absl::Span<const uint8_t> data) {
   if (dir_path.empty()) return;
   std::string file_path = std::filesystem::path(dir_path).append(Hash(data));
   WriteToLocalFile(file_path, data);

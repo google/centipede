@@ -116,9 +116,10 @@ Coverage::PCTable Coverage::GetPcTableFromBinary(std::string_view binary_path,
 
 Coverage::PCTable Coverage::GetPcTableFromBinaryWithPcTable(
     std::string_view binary_path, std::string_view tmp_path) {
-  Command cmd(binary_path, {std::string(tmp_path)},
-              {"CENTIPEDE_RUNNER_FLAGS=:dump_pc_table:"}, "/dev/null",
-              "/dev/null");
+  Command cmd(binary_path, {},
+              {absl::StrCat("CENTIPEDE_RUNNER_FLAGS=:dump_pc_table:arg1=",
+                            tmp_path, ":")},
+              "/dev/null", "/dev/null");
   int system_exit_code = cmd.Execute();
   if (system_exit_code) {
     LOG(INFO) << "system() for " << binary_path
