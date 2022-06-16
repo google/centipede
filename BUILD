@@ -203,7 +203,6 @@ cc_library(
         ":defs",
         ":environment",
         ":execution_result",
-        ":feature",
         ":logging",
         ":shared_memory_blob_sequence",
         ":util",

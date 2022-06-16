@@ -77,6 +77,8 @@ class TinyLogger {
 #define CHECK_LE(a, b) CHECK_COND(a, b, <=)
 #undef CHECK
 #define CHECK(condition) CHECK_NE(!!(condition), false)
+#undef CHECK_OK
+#define CHECK_OK(expression) CHECK((expression).ok())
 
 // Easy variable value logging: LOG(INFO) << VV(foo) << VV(bar);
 #define VV(x) #x "=" << (x) << " "
