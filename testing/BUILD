@@ -79,6 +79,19 @@ centipede_test_target_sancov(
     sancov = "trace-pc",
 )
 
+# Empty fuzz target for testing weak_sancov_stubs.
+centipede_test_target(
+    name = "empty_fuzz_target",
+    data = [
+        "//third_party/centipede",
+    ],
+)
+
+centipede_test_target_sancov(
+    name = "empty_fuzz_target_sancov",
+    fuzz_target = "empty_fuzz_target",
+)
+
 # TODO(ussuri): [impl] move this and all other
 #  cc_fuzz_target/centipede_test_target_sancov into a separate subdir, and
 #  simplify the BUILD syntax, so that adding more test targets is easier.
@@ -221,6 +234,7 @@ cc_test(
     srcs = ["centipede_test.cc"],
     data = [
         ":abort_fuzz_target_sancov",
+        ":empty_fuzz_target_sancov",
         ":test_fuzz_target_sancov",
         ":test_input_filter",
     ],
@@ -247,6 +261,7 @@ sh_test(
     srcs = ["centipede_main_test.sh"],
     data = [
         ":abort_fuzz_target_sancov",
+        ":empty_fuzz_target_sancov",
         ":target_example",
         ":test_fuzz_target_sancov",
         "//third_party/centipede",
