@@ -81,28 +81,28 @@ bool Command::StartForkServer(std::string_view temp_dir_path,
   }
   LOG(INFO) << "starting the fork server for " << path();
 
-  std::string fifo_path[2] = {std::filesystem::path(temp_dir_path)
-                                  .append(absl::StrCat(prefix, "_FIFO0")),
-                              std::filesystem::path(temp_dir_path)
-                                  .append(absl::StrCat(prefix, "_FIFO1"))};
+  fifo_path_[0] = std::filesystem::path(temp_dir_path)
+                      .append(absl::StrCat(prefix, "_FIFO0"));
+  fifo_path_[1] = std::filesystem::path(temp_dir_path)
+                      .append(absl::StrCat(prefix, "_FIFO1"));
 
   for (int i = 0; i < 2; ++i) {
-    CHECK_EQ(0, mkfifo(fifo_path[i].c_str(), 0600)) << "errno:" << errno;
+    CHECK_EQ(0, mkfifo(fifo_path_[i].c_str(), 0600)) << "errno:" << errno;
   }
   std::stringstream ss;
   std::string preload_fork_server_helper =
       absl::StartsWith(path_, kForkServerHelperRequestPrefix)
           ? absl::StrCat("LD_PRELOAD=", fork_server_helper_path, " ")
           : "";
-  auto command = absl::StrCat(preload_fork_server_helper,
-                              "CENTIPEDE_FORK_SERVER_FIFO0=", fifo_path[0], " ",
-                              " CENTIPEDE_FORK_SERVER_FIFO1=", fifo_path[1],
-                              " ", ToString(), " &");
+  auto command = absl::StrCat(
+      preload_fork_server_helper, "CENTIPEDE_FORK_SERVER_FIFO0=", fifo_path_[0],
+      " ", " CENTIPEDE_FORK_SERVER_FIFO1=", fifo_path_[1], " ", ToString(),
+      " &");
   int ret = system(command.c_str());
   CHECK_EQ(ret, 0) << "command failed: " << command;
 
-  pipe_[0] = open(fifo_path[0].c_str(), O_WRONLY);
-  pipe_[1] = open(fifo_path[1].c_str(), O_RDONLY);
+  pipe_[0] = open(fifo_path_[0].c_str(), O_WRONLY);
+  pipe_[1] = open(fifo_path_[1].c_str(), O_RDONLY);
   if (pipe_[0] < 0 || pipe_[1] < 0) {
     LOG(INFO) << "failed to start the fork server; will proceed without it";
     return false;
@@ -112,28 +112,29 @@ bool Command::StartForkServer(std::string_view temp_dir_path,
 
 Command::~Command() {
   for (int i = 0; i < 2; ++i) {
-    if (pipe_[i] >= 0) close(pipe_[i]);
+    if (pipe_[i] >= 0) CHECK_EQ(close(pipe_[i]), 0);
+    if (!fifo_path_[i].empty())
+      CHECK(std::filesystem::remove(fifo_path_[i])) << fifo_path_[i];
   }
 }
 
 int Command::Execute() {
+  int exit_code = 0;
   if (pipe_[0] >= 0 && pipe_[1] >= 0) {
     // Wake up the fork server.
     char x = ' ';
     CHECK_EQ(1, write(pipe_[0], &x, 1));
     // The fork server forks, the child is running.
     // Block until we hear back from the fork server.
-    int status = 0;
-    CHECK_EQ(sizeof(status), read(pipe_[1], &status, sizeof(status)));
-    return status;
+    CHECK_EQ(sizeof(exit_code), read(pipe_[1], &exit_code, sizeof(exit_code)));
   } else {
     // No fork server, use system().
-    int ret = system(full_command_string_.c_str());
-    if (WIFSIGNALED(ret) && (WTERMSIG(ret) == SIGINT))
-      RequestEarlyExit(EXIT_FAILURE);
-    if (WIFEXITED(ret)) return WEXITSTATUS(ret);
-    return ret;
+    exit_code = system(full_command_string_.c_str());
   }
+  if (WIFSIGNALED(exit_code) && (WTERMSIG(exit_code) == SIGINT))
+    RequestEarlyExit(EXIT_FAILURE);
+  if (WIFEXITED(exit_code)) return WEXITSTATUS(exit_code);
+  return exit_code;
 }
 
 }  // namespace centipede

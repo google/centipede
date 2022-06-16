@@ -206,10 +206,18 @@ cc_test(
     ],
 )
 
+cc_binary(
+    name = "command_test_helper",
+    srcs = ["command_test_helper.cc"],
+    deps = ["//third_party/centipede:runner_fork_server"],
+)
+
 cc_test(
     name = "command_test",
     srcs = ["command_test.cc"],
+    data = [":command_test_helper"],
     deps = [
+        "//devtools/build/runtime:get_runfiles_dir",
         "//testing/base/public:gunit_main",
         "//third_party/centipede:command",
         "//third_party/centipede:util",

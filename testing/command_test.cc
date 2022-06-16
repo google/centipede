@@ -14,8 +14,10 @@
 
 #include "./command.h"
 
+#include <cstdlib>
 #include <string>
 
+#include "devtools/build/runtime/get_runfiles_dir.h"
 #include "testing/base/public/gunit.h"
 #include "./util.h"
 
@@ -54,6 +56,40 @@ TEST(Command, Execute) {
         }
       },
       "early exit requested");
+}
+
+TEST(Command, ForkServer) {
+  Command bad_command("/dev/null");
+  // TODO(kcc): [impl] currently a bad command will hang. Make it return false.
+
+  auto helper = devtools_build::GetDataDependencyFilepath(
+      "google3/third_party/centipede/testing/command_test_helper");
+
+  {
+    Command ret0(helper);
+    EXPECT_TRUE(ret0.StartForkServer(GetTestTempDir(), "ForkServer", ""));
+    EXPECT_EQ(ret0.Execute(), EXIT_SUCCESS);
+  }
+
+  {
+    Command fail(helper, {"fail"});
+    EXPECT_TRUE(fail.StartForkServer(GetTestTempDir(), "ForkServer", ""));
+    EXPECT_EQ(fail.Execute(), EXIT_FAILURE);
+  }
+
+  {
+    Command ret7(helper, {"ret42"});
+    EXPECT_TRUE(ret7.StartForkServer(GetTestTempDir(), "ForkServer", ""));
+    EXPECT_EQ(ret7.Execute(), 42);
+  }
+
+  {
+    Command abrt(helper, {"abort"});
+    EXPECT_TRUE(abrt.StartForkServer(GetTestTempDir(), "ForkServer", ""));
+    EXPECT_EQ(abrt.Execute(), SIGABRT);
+  }
+
+  // TODO(kcc): [impl] test what hapens if the child is interrupted.
 }
 
 }  // namespace

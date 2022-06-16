@@ -36,6 +36,8 @@ class Command final {
         out_(std::move(other.out_)),
         err_(std::move(other.err_)),
         full_command_string_(std::move(other.full_command_string_)),
+        fifo_path_{std::move(other.fifo_path_[0]),
+                   std::move(other.fifo_path_[1])},
         pipe_{other.pipe_[0], other.pipe_[1]} {
     // If we don't do this, the moved-from object will close these pipes.
     other.pipe_[0] = -1;
@@ -82,7 +84,8 @@ class Command final {
   const std::string out_;
   const std::string err_;
   std::string full_command_string_ = ToString();
-  // Pipe file descriptors for the fork server.
+  // Pipe paths and file descriptors for the fork server.
+  std::string fifo_path_[2];
   int pipe_[2] = {-1, -1};
 };
 

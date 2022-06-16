@@ -284,8 +284,6 @@ static std::vector<FeatureVec> RunInputsAndCollectCoverage(
   // Run.
   CBs.Execute(env.binary, byte_array_inputs, batch_result);
 
-  // Cleanup.
-  std::filesystem::remove_all(TemporaryLocalDirPath());
   // Repackage execution results into a vector of FeatureVec.
   std::vector<FeatureVec> res;
   for (const auto &er : batch_result.results()) {
