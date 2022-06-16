@@ -542,15 +542,17 @@ void Centipede::ReportCrash(std::string_view binary,
   // If it crashes, dumps the reproducer to disk and returns true.
   // Otherwise returns false.
   auto TryOneInput = [&](const ByteArray &input) -> bool {
-    BatchResult unused_batch_result;
-    if (user_callbacks_.Execute(binary, {input}, unused_batch_result))
-      return false;
+    BatchResult batch_result;
+    if (user_callbacks_.Execute(binary, {input}, batch_result)) return false;
     auto hash = Hash(input);
     auto crash_dir = env_.MakeCrashReproducerDirPath();
     RemoteMkdir(crash_dir);
     std::string file_path = std::filesystem::path(crash_dir).append(hash);
     LOG(INFO) << log_prefix << "crash detected, saving input to " << file_path;
     LOG(INFO) << "input bytes: " << AsString(input);
+    LOG(INFO) << "exit code: " << batch_result.exit_code() << " ("
+              << BatchResult::ExitCodeDescription(batch_result.exit_code())
+              << ")";
     auto file = RemoteFileOpen(file_path, "w");  // overwrites existing file.
     if (!file) {
       LOG(FATAL) << log_prefix << "failed to open " << file_path;

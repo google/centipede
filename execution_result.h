@@ -76,6 +76,10 @@ class ExecutionResult {
 // Centipede uses Read() to get all the data from blobseq.
 class BatchResult {
  public:
+  // Exit codes for OOM/Timeout. Chosen randomly in a (seemingly) unused range.
+  static constexpr int kExitCodeOOM = 100;
+  static constexpr int kExitCodeTimeout = 101;
+
   // If BatchResult is used in a hot loop, define it outside the loop and
   // use ClearAndResize() on every iteration.
   // This will reduce the number of mallocs.
@@ -121,6 +125,8 @@ class BatchResult {
   int& exit_code() { return exit_code_; }
   int exit_code() const { return exit_code_; }
   size_t num_outputs_read() const { return num_outputs_read_; }
+
+  static std::string ExitCodeDescription(int exit_code);
 
  private:
   std::vector<ExecutionResult> results_;

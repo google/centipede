@@ -94,9 +94,9 @@ static void CheckOOM() {
     size_t current_rss_mb = GetPeakRSSMb();
     if (current_rss_mb > state.run_time_flags.rss_limit_mb) {
       fprintf(stderr,
-              "========= OOM, RSS limit of %zdMb exceeded (%zdMb); aborting\n",
+              "========= OOM, RSS limit of %zdMb exceeded (%zdMb); exiting\n",
               state.run_time_flags.rss_limit_mb, current_rss_mb);
-      abort();
+      _exit(BatchResult::kExitCodeOOM);
     }
   }
 }
@@ -107,9 +107,9 @@ static void CheckTimeout() {
   if (state.run_time_flags.timeout_in_seconds != 0) {
     if (curr_time - start_time >
         static_cast<time_t>(state.run_time_flags.timeout_in_seconds)) {
-      fprintf(stderr, "========= timeout of %zd seconds exceeded; aborting\n",
+      fprintf(stderr, "========= timeout of %zd seconds exceeded; exiting\n",
               state.run_time_flags.timeout_in_seconds);
-      abort();
+      _exit(BatchResult::kExitCodeTimeout);
     }
   }
 }

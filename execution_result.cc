@@ -14,6 +14,8 @@
 
 #include "./execution_result.h"
 
+#include <signal.h>
+
 #include <cstring>
 
 #include "./logging.h"
@@ -99,6 +101,23 @@ bool BatchResult::Read(SharedMemoryBlobSequence &blobseq) {
   }
   num_outputs_read_ = num_ends;
   return true;
+}
+
+std::string BatchResult::ExitCodeDescription(int exit_code) {
+  switch (exit_code) {
+    case 0:
+      return "success";
+    case 1:
+      return "failure";
+    case kExitCodeOOM:
+      return "oom";
+    case kExitCodeTimeout:
+      return "timeout";
+    case SIGABRT:
+      return "sigabrt";
+    default:
+      return "unknown";
+  }
 }
 
 }  // namespace centipede

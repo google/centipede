@@ -95,6 +95,6 @@ CENTIPEDE_RUNNER_FLAGS=":timeout_in_seconds=567:" "${target}" \
   2>&1 | grep "^timeout_in_seconds:.567"
 
 CENTIPEDE_RUNNER_FLAGS=":timeout_in_seconds=2:" "${target}" "${slo}" \
-  2>&1 | grep "======= timeout.*; aborting"
+  2>&1 | grep "======= timeout.*; exiting"
 
 echo "PASS"
