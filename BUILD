@@ -294,6 +294,15 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "weak_sancov_stubs",
+    srcs = ["weak_sancov_stubs.cc"],
+    deps = [
+        "//third_party/tcmalloc",
+    ],
+    alwayslink = 1,
+)
+
 # runner_fork_server can be linked to a binary or used directly as a .so via LD_PRELOAD.
 cc_library(
     name = "runner_fork_server",
