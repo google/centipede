@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("//tools/build_defs/testing:bzl_library.bzl", "bzl_library")
 load(":build_defs.bzl", "centipede_test_target", "centipede_test_target_sancov")
 
 package(default_visibility = ["//visibility:public"])
@@ -77,6 +78,19 @@ centipede_test_target_sancov(
     name = "test_fuzz_target_trace_pc",
     fuzz_target = "test_fuzz_target",
     sancov = "trace-pc",
+)
+
+# Empty fuzz target for testing weak_sancov_stubs.
+centipede_test_target(
+    name = "empty_fuzz_target",
+    data = [
+        "//third_party/centipede",
+    ],
+)
+
+centipede_test_target_sancov(
+    name = "empty_fuzz_target_sancov",
+    fuzz_target = "empty_fuzz_target",
 )
 
 # TODO(ussuri): [impl] move this and all other
@@ -229,6 +243,7 @@ cc_test(
     srcs = ["centipede_test.cc"],
     data = [
         ":abort_fuzz_target_sancov",
+        ":empty_fuzz_target_sancov",
         ":test_fuzz_target_sancov",
         ":test_input_filter",
     ],
@@ -255,6 +270,7 @@ sh_test(
     srcs = ["centipede_main_test.sh"],
     data = [
         ":abort_fuzz_target_sancov",
+        ":empty_fuzz_target_sancov",
         ":target_example",
         ":test_fuzz_target_sancov",
         "//third_party/centipede",
@@ -287,4 +303,12 @@ sh_test(
     deps = [
         "//testing/shbase",
     ],
+)
+
+bzl_library(
+    name = "build_defs_bzl",
+    srcs = ["build_defs.bzl"],
+    parse_tests = False,
+    visibility = ["//visibility:private"],
+    deps = ["//security/fuzzing/bazel:cc_fuzz_target_bzl"],
 )
