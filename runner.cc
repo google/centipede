@@ -36,10 +36,12 @@
 #include <unistd.h>
 
 #include <cstdint>
+#include <cstdlib>
 #include <mutex>  // NOLINT
 
 #include "./byte_array_mutator.h"
 #include "./defs.h"
+#include "./execution_request.h"
 #include "./execution_result.h"
 #include "./feature.h"
 #include "./runner_interface.h"
@@ -325,9 +327,14 @@ void ReadInputsFromShmemAndRun(const char *shmem_name_in,
           shmem_name_out);
   centipede::SharedMemoryBlobSequence inputs_blobseq(shmem_name_in);
   centipede::SharedMemoryBlobSequence feature_blobseq(shmem_name_out);
-  while (true) {
+  if (!execution_request::IsExecutionRequest(inputs_blobseq.Read())) return;
+  size_t num_inputs = 0;
+  if (!execution_request::IsNumInputs(inputs_blobseq.Read(), num_inputs))
+    return;
+  for (size_t i = 0; i < num_inputs; i++) {
     auto blob = inputs_blobseq.Read();
-    if (blob.size == 0) break;
+    if (!execution_request::IsDataInput(blob)) return;
+    if (!blob.IsValid()) return;
     // Copy from blob to data so that to not pass the shared memory further.
     memcpy(input_data, blob.data, blob.size);
 
@@ -434,17 +441,26 @@ static int MutateInputsFromShmem(
   unsigned int seed = GetRandomSeed();
   // Read max_num_mutants.
   size_t max_num_mutants = 0;
-  auto first_blob = inputs_blobseq.Read();
-  if (first_blob.size != sizeof(max_num_mutants)) return EXIT_FAILURE;
-  memcpy(&max_num_mutants, first_blob.data, sizeof(max_num_mutants));
+  size_t num_inputs = 0;
+  if (!execution_request::IsMutationRequest(inputs_blobseq.Read()))
+    return EXIT_FAILURE;
+  if (!execution_request::IsNumMutants(inputs_blobseq.Read(), max_num_mutants))
+    return EXIT_FAILURE;
+  if (!execution_request::IsNumInputs(inputs_blobseq.Read(), num_inputs))
+    return EXIT_FAILURE;
+
   // Produce mutants.
   for (size_t num_mutants = 0; num_mutants < max_num_mutants;) {
     auto blob = inputs_blobseq.Read();
     if (blob.size == 0) {      // No more inputs.
       inputs_blobseq.Reset();  // Start reading from the beginning again.
-      inputs_blobseq.Read();   // Skip the first blob.
+      inputs_blobseq.Read();   // Skip the first 3 blobs.
+      inputs_blobseq.Read();
+      inputs_blobseq.Read();
       continue;
     }
+
+    if (!execution_request::IsDataInput(blob)) return EXIT_FAILURE;
 
     if (blob.size > kMaxDataSize) continue;  // Ignore large inputs.
 

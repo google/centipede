@@ -15,8 +15,9 @@
 #ifndef THIRD_PARTY_CENTIPEDE_SHARED_MEMORY_BLOB_SEQUENCE_H_
 #define THIRD_PARTY_CENTIPEDE_SHARED_MEMORY_BLOB_SEQUENCE_H_
 
-#include <stddef.h>
-#include <stdint.h>
+#include <cstddef>
+#include <cstdint>
+#include <type_traits>
 // This library must not depend on anything other than libc,
 // so that it does not introduce any dependencies to its users.
 // Any such dependencies may get coverage-instrumented, introducing noise
@@ -103,6 +104,15 @@ class SharedMemoryBlobSequence {
   // A failed Write does not change the internal state.
   // Must not be called after Read() w/o first calling Reset().
   bool Write(Blob blob);
+
+  // Writes `tag`/`value` as a blob. `T` should be a POD.
+  // Returns true on success.
+  template <typename T>
+  bool Write(Blob::size_and_tag_type tag, T value) {
+    static_assert(std::is_pod_v<T>, "T must be a POD");
+    return Write(
+        {tag, sizeof(value), reinterpret_cast<const uint8_t *>(&value)});
+  }
 
   // Reads the next blob from the shared memory.
   // If no more blobs are left, returns a blob with size = 0.

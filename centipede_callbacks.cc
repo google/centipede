@@ -24,6 +24,7 @@
 #include "absl/strings/str_cat.h"
 #include "./command.h"
 #include "./defs.h"
+#include "./execution_request.h"
 #include "./execution_result.h"
 #include "./logging.h"
 #include "./util.h"
@@ -82,16 +83,11 @@ int CentipedeCallbacks::ExecuteCentipedeSancovBinaryWithShmem(
   outputs_blobseq_.Reset();
 
   // Feed the inputs to inputs_blobseq_.
-  size_t num_inputs_written = 0;
-  for (auto &input : inputs) {
-    if (!inputs_blobseq_.Write(
-            {1 /*unused tag*/, input.size(), input.data()})) {
-      LOG(INFO)
-          << "too many input bytes in the batch, inputs_blobseq_ overflown";
-      break;
-    }
-    num_inputs_written++;
-  }
+  size_t num_inputs_written =
+      execution_request::RequestExecution(inputs, inputs_blobseq_);
+
+  if (num_inputs_written == inputs.size())
+    LOG(INFO) << VV(num_inputs_written) << VV(inputs.size());
 
   // Run.
   Command &cmd = GetOrCreateCommandForBinary(binary);
@@ -123,17 +119,13 @@ bool CentipedeCallbacks::MutateViaExternalBinary(
     std::vector<ByteArray> &mutants) {
   inputs_blobseq_.Reset();
   outputs_blobseq_.Reset();
-  // Write mutants.size() as the first input.
-  size_t num_mutants = mutants.size();
-  CHECK(inputs_blobseq_.Write({1 /*unused tag*/, sizeof(num_mutants),
-                               reinterpret_cast<uint8_t *>(&num_mutants)}));
-  // Write all inputs.
-  for (auto &input : inputs) {
-    if (!inputs_blobseq_.Write(
-            {1 /*unused tag*/, input.size(), input.data()})) {
-      break;
-    }
-  }
+
+  size_t num_inputs_written = execution_request::RequestMutation(
+      mutants.size(), inputs, inputs_blobseq_);
+
+  if (num_inputs_written != inputs.size())
+    LOG(INFO) << VV(num_inputs_written) << VV(inputs.size());
+
   // Execute.
   Command cmd(binary, {},
               {absl::StrCat("CENTIPEDE_RUNNER_FLAGS=:mutate:arg1=",

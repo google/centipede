@@ -117,6 +117,18 @@ cc_library(
 )
 
 cc_library(
+    name = "execution_request",
+    srcs = ["execution_request.cc"],
+    hdrs = ["execution_request.h"],
+    deps = [
+        # This target must have a minimal set of dependencies since it is
+        # used in fuzz_target_runner.
+        ":shared_memory_blob_sequence",
+        ":defs",
+    ],
+)
+
+cc_library(
     name = "byte_array_mutator",
     srcs = ["byte_array_mutator.cc"],
     hdrs = ["byte_array_mutator.h"],
@@ -202,6 +214,7 @@ cc_library(
         ":command",
         ":defs",
         ":environment",
+        ":execution_request",
         ":execution_result",
         ":logging",
         ":shared_memory_blob_sequence",
@@ -326,6 +339,7 @@ cc_library(
     deps = [
         ":byte_array_mutator",
         ":defs",
+        ":execution_request",
         ":execution_result",
         ":feature",
         ":runner_fork_server",
