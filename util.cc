@@ -61,7 +61,7 @@ std::string AsString(const ByteArray &data, size_t max_len) {
     if (std::isprint(ch)) {
       out << ch;
     } else {
-      out << std::hex << ch;
+      out << "\\x" << std::uppercase << std::hex << static_cast<uint32_t>(ch);
     }
   }
   return out.str();
