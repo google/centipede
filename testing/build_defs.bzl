@@ -88,10 +88,14 @@ def __sancov_fuzz_target_impl(ctx):
         command = "cp %s %s" % (executable_src.path, executable_dst.path),
     )
 
-    # See https://docs.bazel.build/versions/master/skylark/lib/DefaultInfo.html
-    runfiles = ctx.runfiles(
-        collect_data = True,
-    )
+    # We need to explicitly collect the runfiles from all relevant attributes.
+    # See https://docs.bazel.build/versions/main/skylark/rules.html#runfiles
+    runfiles = ctx.runfiles()
+
+    # The transition transforms scalar attributes into lists,
+    # so we need to index into the list first.
+    fuzz_target = ctx.attr.fuzz_target[0]
+    runfiles = runfiles.merge(fuzz_target[DefaultInfo].default_runfiles)
     return [DefaultInfo(runfiles = runfiles, executable = executable_dst)]
 
 __sancov_fuzz_target = rule(
