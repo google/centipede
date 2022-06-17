@@ -51,7 +51,7 @@ def _sancov_transition_impl(settings, attr):
         ],
         # Disable tcmalloc to avoid coverage features from it.
         "//command_line_option:compilation_mode": "opt",
-        "//command_line_option:custom_malloc": "//base:system_malloc",
+        "//command_line_option:custom_malloc": "//third_party/centipede:weak_sancov_stubs",
         "//security/fuzzing/bazel:fuzzing_engine": "centipede",
         "//command_line_option:strip": "never",  # preserve debug info.
         "//command_line_option:features": filtered_features,
@@ -88,10 +88,14 @@ def __sancov_fuzz_target_impl(ctx):
         command = "cp %s %s" % (executable_src.path, executable_dst.path),
     )
 
-    # See https://docs.bazel.build/versions/master/skylark/lib/DefaultInfo.html
-    runfiles = ctx.runfiles(
-        collect_data = True,
-    )
+    # We need to explicitly collect the runfiles from all relevant attributes.
+    # See https://docs.bazel.build/versions/main/skylark/rules.html#runfiles
+    runfiles = ctx.runfiles()
+
+    # The transition transforms scalar attributes into lists,
+    # so we need to index into the list first.
+    fuzz_target = ctx.attr.fuzz_target[0]
+    runfiles = runfiles.merge(fuzz_target[DefaultInfo].default_runfiles)
     return [DefaultInfo(runfiles = runfiles, executable = executable_dst)]
 
 __sancov_fuzz_target = rule(
@@ -135,10 +139,11 @@ def centipede_test_target_sancov(name, sancov = "trace-pc-guard,pc-table,trace-l
         sancov = sancov,
     )
 
-def centipede_test_target(name):
+def centipede_test_target(name, data = None):
     cc_fuzz_target(
         name = name,
         srcs = [name + ".cc"],
+        data = data or [],
         componentid = 1187448,  #Language Platforms > Sanitizers > Centipede
         tags = [
             # Don't test this fuzz target on TAP or autofuzz,
