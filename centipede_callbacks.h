@@ -97,8 +97,11 @@ class CentipedeCallbacks {
 
   // Variables required for ExecuteCentipedeSancovBinaryWithShmem.
   // They are computed in CTOR, to avoid extra computation in the hot loop.
+  std::string temp_dir_ = TemporaryLocalDirPath();
   const std::string execute_log_path_ =
-      std::filesystem::path(TemporaryLocalDirPath()).append("log");
+      std::filesystem::path(temp_dir_).append("log");
+  std::string failure_description_path_ =
+      std::filesystem::path(temp_dir_).append("failure_description");
   const std::string shmem_name1_ = ProcessAndThreadUniqueID("/centipede-shm1-");
   const std::string shmem_name2_ = ProcessAndThreadUniqueID("/centipede-shm2-");
 

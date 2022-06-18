@@ -121,11 +121,13 @@ class BatchResult {
   int& exit_code() { return exit_code_; }
   int exit_code() const { return exit_code_; }
   size_t num_outputs_read() const { return num_outputs_read_; }
+  std::string &failure_description() { return failure_description_; }
 
  private:
   std::vector<ExecutionResult> results_;
   std::string log_;  // log_ is populated optionally, e.g. if there was a crash.
   int exit_code_ = EXIT_SUCCESS;  // Process exit code.
+  std::string failure_description_;
   size_t num_outputs_read_ = 0;
 };
 

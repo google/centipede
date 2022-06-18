@@ -52,6 +52,15 @@ namespace centipede {
 GlobalRunnerState state;
 thread_local ThreadLocalRunnerState tls;
 
+// Tries to write `description` to `state.failure_description_path`.
+static void WriteFailureDescription(const char *description) {
+  if (!state.failure_description_path) return;
+  FILE *f = fopen(state.failure_description_path, "w");
+  if (!f) return;
+  fwrite(description, 1, strlen(description), f);
+  fclose(f);
+}
+
 void ThreadLocalRunnerState::OnThreadStart() {
   std::scoped_lock<std::mutex> lock(state.tls_list_mu);
   // Add myself to state.tls_list.
@@ -96,9 +105,10 @@ static void CheckOOM() {
     size_t current_rss_mb = GetPeakRSSMb();
     if (current_rss_mb > state.run_time_flags.rss_limit_mb) {
       fprintf(stderr,
-              "========= OOM, RSS limit of %zdMb exceeded (%zdMb); aborting\n",
+              "========= OOM, RSS limit of %zdMb exceeded (%zdMb); exiting\n",
               state.run_time_flags.rss_limit_mb, current_rss_mb);
-      abort();
+      WriteFailureDescription("out-of-memory");
+      _exit(EXIT_FAILURE);
     }
   }
 }
@@ -109,9 +119,10 @@ static void CheckTimeout() {
   if (state.run_time_flags.timeout_in_seconds != 0) {
     if (curr_time - start_time >
         static_cast<time_t>(state.run_time_flags.timeout_in_seconds)) {
-      fprintf(stderr, "========= timeout of %zd seconds exceeded; aborting\n",
+      fprintf(stderr, "========= timeout of %zd seconds exceeded; exiting\n",
               state.run_time_flags.timeout_in_seconds);
-      abort();
+      WriteFailureDescription("timeout-exceeded");
+      _exit(EXIT_FAILURE);
     }
   }
 }

@@ -17,6 +17,7 @@
 #include <cctype>
 #include <cstddef>
 #include <cstdlib>
+#include <filesystem>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -60,13 +61,15 @@ Command &CentipedeCallbacks::GetOrCreateCommandForBinary(
   Command &cmd = commands_.emplace_back(Command(
       /*path=*/binary, /*args=*/{shmem_name1_, shmem_name2_},
       /*env=*/
-      {ConstructRunnerFlags(absl::StrCat(":shmem:arg1=", shmem_name1_,
-                                         ":arg2=", shmem_name2_, ":"),
-                            disable_coverage)},
+      {ConstructRunnerFlags(
+          absl::StrCat(":shmem:arg1=", shmem_name1_, ":arg2=", shmem_name2_,
+                       ":failure_description_path=", failure_description_path_,
+                       ":"),
+          disable_coverage)},
       /*out=*/execute_log_path_,
       /*err=*/execute_log_path_));
   if (env_.fork_server) {
-    cmd.StartForkServer(TemporaryLocalDirPath(), Hash(binary),
+    cmd.StartForkServer(temp_dir_, Hash(binary),
                         env_.GetForkServerHelperPath());
   }
 
@@ -108,8 +111,14 @@ int CentipedeCallbacks::ExecuteCentipedeSancovBinaryWithShmem(
     LOG(INFO) << "too few outputs while the subprocess succeeded. "
                  "outputs_blobseq_ may have overflown";
   }
-  if (retval != EXIT_SUCCESS)
+  if (retval != EXIT_SUCCESS) {
     ReadFromLocalFile(execute_log_path_, batch_result.log());
+    ReadFromLocalFile(failure_description_path_,
+                      batch_result.failure_description());
+    // Remove failure_description_ here so that it doesn't stay until another
+    // failed execution.
+    std::filesystem::remove(failure_description_path_);
+  }
   return retval;
 }
 
