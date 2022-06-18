@@ -14,6 +14,8 @@
 
 #include "./execution_request.h"
 
+#include <cstring>
+
 #include "./shared_memory_blob_sequence.h"
 
 namespace centipede {
