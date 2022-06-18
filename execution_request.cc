@@ -30,6 +30,7 @@ enum Tags : SharedMemoryBlobSequence::Blob::size_and_tag_type {
   kTagDataInput,
 };
 
+// Writes `inputs` to `blobseq`, returns the number of inputs written.
 static size_t WriteInputs(const std::vector<ByteArray> &inputs,
                           SharedMemoryBlobSequence &blobseq) {
   size_t num_inputs = inputs.size();
@@ -38,6 +39,7 @@ static size_t WriteInputs(const std::vector<ByteArray> &inputs,
   for (const auto &input : inputs) {
     if (!blobseq.Write({kTagDataInput, input.size(), input.data()}))
       return result;
+    ++result;
   }
   return result;
 }
