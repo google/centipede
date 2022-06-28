@@ -39,7 +39,7 @@ class CentipedeCallbacks {
  public:
   // `env` is used to pass flags to `this`, it must outlive `this`.
   CentipedeCallbacks(const Environment &env)
-      : env_(env), byte_array_mutator_(env.seed) {}
+      : env_(env), byte_array_mutator_(GetRandomSeed(env.seed)) {}
   virtual ~CentipedeCallbacks() {}
   // Feeds `inputs` into the `binary`, for every input populates `batch_result`.
   // Old contents of `batch_result` are cleared.

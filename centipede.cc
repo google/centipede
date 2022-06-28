@@ -115,6 +115,7 @@ Centipede::Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
                              .append("filter-input")),
       input_filter_cmd_(env_.input_filter, {input_filter_path_}, {/*env*/},
                   "/dev/null", "/dev/null") {
+  CHECK(env_.seed) << "env_.seed must not be zero";
   if (!env_.input_filter.empty()) {
     input_filter_cmd_.StartForkServer(TemporaryLocalDirPath(), "input_filter",
                                       env_.GetForkServerHelperPath());
@@ -404,7 +405,8 @@ void Centipede::MergeFromOtherCorpus(std::string_view merge_from_dir,
 
 void Centipede::FuzzingLoop() {
   LOG(INFO) << "shard: " << env_.my_shard_index << "/" << env_.total_shards
-            << " " << TemporaryLocalDirPath() << "\n\n\n";
+            << " " << TemporaryLocalDirPath() << " "
+            << "seed: " << env_.seed << "\n\n\n";
 
   {
     // Execute a dummy input.

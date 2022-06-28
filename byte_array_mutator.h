@@ -33,8 +33,10 @@ namespace centipede {
 // Typical usage is to have one such object per thread.
 class ByteArrayMutator {
  public:
-  // CTOR. Initializes the internal RNG with `seed`.
-  ByteArrayMutator(uintptr_t seed) : rng_(seed) {}
+  // CTOR. Initializes the internal RNG with `seed` (`seed` != 0).
+  ByteArrayMutator(uintptr_t seed) : rng_(seed) {
+    if (seed == 0) __builtin_trap();  // We don't include logging.h here.
+  }
 
   // Adds `dict_entries` to an internal dictionary.
   void AddToDictionary(const std::vector<ByteArray> &dict_entries);

@@ -212,7 +212,7 @@ Environment::Environment(int argc, char** argv)
       batch_size(absl::GetFlag(FLAGS_batch_size)),
       load_other_shard_frequency(
           absl::GetFlag(FLAGS_load_other_shard_frequency)),
-      seed(GetRandomSeed(absl::GetFlag(FLAGS_seed))),
+      seed(absl::GetFlag(FLAGS_seed)),
       prune_frequency(absl::GetFlag(FLAGS_prune_frequency)),
       address_space_limit_mb(absl::GetFlag(FLAGS_address_space_limit_mb)),
       rss_limit_mb(absl::GetFlag(FLAGS_rss_limit_mb)),
@@ -244,7 +244,6 @@ Environment::Environment(int argc, char** argv)
       binary_path(binary),
       binary_name(std::filesystem::path(coverage_binary).filename().string()),
       binary_hash(HashOfFileContents(coverage_binary)) {
-  CHECK_NE(seed, 0);
   if (size_t j = absl::GetFlag(FLAGS_j)) {
     total_shards = j;
     num_threads = j;
