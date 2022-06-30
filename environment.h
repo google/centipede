@@ -55,6 +55,7 @@ struct Environment {
   bool use_cmp_features;
   bool use_dataflow_features;
   bool use_counter_features;
+  size_t use_pcpair_features;
   bool generate_corpus_stats;
   size_t distill_shards;
   std::string fork_server_helper_path;

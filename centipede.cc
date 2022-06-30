@@ -206,6 +206,7 @@ void Centipede::Log(std::string_view log_type, size_t min_log_level) {
             << " df: " << fs_.CountFeatures(FeatureDomains::kDataFlow)
             << " cmp: " << fs_.CountFeatures(FeatureDomains::kCMP)
             << " path: " << fs_.CountFeatures(FeatureDomains::kBoundedPath)
+            << " pair: " << fs_.CountFeatures(FeatureDomains::kPCPair)
             << " corp: " << corpus_.NumActive() << "/" << corpus_.NumTotal()
             << " max/avg " << max << " " << avg << " exec/s: " << exec_speed
             << " mb: " << (MemoryUsage() >> 20);
@@ -238,6 +239,47 @@ bool Centipede::ExecuteAndReportCrash(std::string_view binary,
   return success;
 }
 
+// *** Highly experimental and risky. May not scale well for large targets. ***
+//
+// The idea: an unordered pair of two features {a, b} is by itself a feature.
+// In the worst case, the number of such synthetic features is a square of
+// the number of regular features, which may not scale.
+// For now, we only treat pairs of PCs as features, which is still quadratic
+// by the number of PCs. But in moderate-sized programs this may be tolerable.
+//
+// Rationale: if two different parts of the target are exercised simultaneously,
+// this may create interesting behaviour that is hard to capture with regular
+// control flow (or other) features.
+size_t Centipede::AddPcPairFeatures(FeatureVec &fv) {
+  // Using a scratch vector to avoid allocations.
+  auto &pcs = add_pc_pair_scratch_;
+  pcs.clear();
+
+  size_t num_pcs = pc_table_.size();
+  size_t num_added_pairs = 0;
+
+  // Collect PCs from fv.
+  for (auto feature : fv) {
+    if (FeatureDomains::k8bitCounters.Contains(feature))
+      pcs.push_back(Convert8bitCounterFeatureToPcIndex(feature));
+  }
+
+  // The quadratic loop: iterate all PC pairs (!!).
+  for (size_t i = 0, n = pcs.size(); i < n; ++i) {
+    size_t pc1 = pcs[i];
+    for (size_t j = i + 1; j < n; ++j) {
+      size_t pc2 = pcs[j];
+      feature_t f = FeatureDomains::kPCPair.ConvertToMe(
+          ConvertPcPairToNumber(pc1, pc2, num_pcs));
+      // If we have seen this pair at least once, ignore it.
+      if (fs_.Frequency(f)) continue;
+      fv.push_back(f);
+      ++num_added_pairs;
+    }
+  }
+  return num_added_pairs;
+}
+
 bool Centipede::RunBatch(const std::vector<ByteArray> &input_vec,
                          BatchResult &batch_result,
                          BlobFileAppender *corpus_file,
@@ -265,6 +307,8 @@ bool Centipede::RunBatch(const std::vector<ByteArray> &input_vec,
     bool function_filter_passed = function_filter_.filter(fv);
     bool input_gained_new_coverage =
         fs_.CountUnseenAndPruneFrequentFeatures(fv);
+    if (env_.use_pcpair_features && AddPcPairFeatures(fv))
+      input_gained_new_coverage = true;
     if (unconditional_features_file) {
       CHECK_OK(unconditional_features_file->Append(
           PackFeaturesAndHash(input_vec[i], fv)));

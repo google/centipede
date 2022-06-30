@@ -96,6 +96,9 @@ constexpr Domain kCMP = {kDataFlow.end(), 1UL << 40, "cmp"};
 // their number to 2^32.
 constexpr Domain kBoundedPath = {kCMP.end(), 1UL << 32, "path"};
 
+// Features derived from (unordered) pairs of PCs.
+constexpr Domain kPCPair = {kBoundedPath.end(), 1UL << 40, "pc-pair"};
+
 }  // namespace FeatureDomains
 
 // Converts a 8-bit coverage counter,  i.e. a pair of

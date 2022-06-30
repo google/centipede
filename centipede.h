@@ -121,6 +121,11 @@ class Centipede {
   void MergeFromOtherCorpus(std::string_view merge_from_dir,
                             size_t shard_index_to_merge);
 
+  // Collects all PCs from `fv`, then adds PC-pair features to `fv`.
+  // Returns the number of added features.
+  // See more comments in centipede.cc.
+  size_t AddPcPairFeatures(FeatureVec &fv);
+
   FeatureSet fs_;
   Timer timer_;  // counts time for coverage collection rate computation
   Corpus corpus_;
@@ -144,6 +149,9 @@ class Centipede {
 
   // Counts the number of crashes reported so far.
   int num_crash_reports_ = 0;
+
+  // Scratch object for AddPcPairFeatures.
+  std::vector<size_t> add_pc_pair_scratch_;
 
   // Path and command for the input_filter.
   std::string input_filter_path_;

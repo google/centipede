@@ -136,6 +136,9 @@ ABSL_FLAG(bool, use_counter_features, false,
           "When available from instrumentation, use features derived from "
           "counting the number of occurrences of a given PC. "
           "When enabled, supersedes --use_pc_features.");
+ABSL_FLAG(bool, use_pcpair_features, false,
+          "If true, PC pairs are used as additional synthetic features. "
+          "Experimental, use with care - it may explode the corpus.");
 ABSL_FLAG(bool, generate_corpus_stats, false,
           "If true, a file workdir/corpus-stats-BINARY.json containing"
           "corpus stats will be generated periodically");
@@ -226,6 +229,7 @@ Environment::Environment(int argc, char** argv)
       use_cmp_features(absl::GetFlag(FLAGS_use_cmp_features)),
       use_dataflow_features(absl::GetFlag(FLAGS_use_dataflow_features)),
       use_counter_features(absl::GetFlag(FLAGS_use_counter_features)),
+      use_pcpair_features(absl::GetFlag(FLAGS_use_pcpair_features)),
       generate_corpus_stats(absl::GetFlag(FLAGS_generate_corpus_stats)),
       distill_shards(absl::GetFlag(FLAGS_distill_shards)),
       fork_server_helper_path(absl::GetFlag(FLAGS_fork_server_helper_path)),
