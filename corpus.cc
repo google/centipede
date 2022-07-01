@@ -33,7 +33,7 @@ namespace centipede {
 // TODO(kcc): [impl] add tests.
 Coverage::PCIndexVec FeatureSet::ToCoveragePCs() const {
   absl::flat_hash_set<Coverage::PCIndex> pc_index_set;
-  auto feature_domain = FeatureDomains::k8bitCounters;
+  auto feature_domain = feature_domains::k8bitCounters;
   for (auto f : all_features_) {
     if (!feature_domain.Contains(f)) continue;
     pc_index_set.insert(Convert8bitCounterFeatureToPcIndex(f));
@@ -41,7 +41,7 @@ Coverage::PCIndexVec FeatureSet::ToCoveragePCs() const {
   return Coverage::PCIndexVec(pc_index_set.begin(), pc_index_set.end());
 }
 
-size_t FeatureSet::CountFeatures(FeatureDomains::Domain domain) {
+size_t FeatureSet::CountFeatures(feature_domains::Domain domain) {
   size_t res = 0;
   for (auto f : all_features_) {
     if (domain.Contains(f)) {
@@ -92,7 +92,7 @@ FeatureSet::ComputeWeight(const FeatureVec &features) const {
     //
     // We also multiply the feature-specific weight based on its frequency
     // by the feature's Importance based on its domain.
-    weight += FeatureDomains::Importance(feature) *
+    weight += feature_domains::Importance(feature) *
               (256 / frequencies_[Feature2Idx(feature)]);
   }
   return weight;

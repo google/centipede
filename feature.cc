@@ -17,7 +17,7 @@
 #include <cstdint>
 
 namespace centipede {
-namespace FeatureDomains {
+namespace feature_domains {
 namespace {
 
 struct DomainImportance {
@@ -42,5 +42,5 @@ uint32_t Importance(feature_t feature) {
   return 1;  // not one of the known ranges.
 }
 
-}  // namespace FeatureDomains
+}  // namespace feature_domains
 }  // namespace centipede

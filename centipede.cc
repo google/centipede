@@ -202,11 +202,11 @@ void Centipede::Log(std::string_view log_type, size_t min_log_level) {
   LOG(INFO) << "[" << num_runs_ << "]"
             << " " << log_type << ":"
             << " ft: " << fs_.size() << " cov: " << fs_.ToCoveragePCs().size()
-            << " cnt: " << fs_.CountFeatures(FeatureDomains::k8bitCounters)
-            << " df: " << fs_.CountFeatures(FeatureDomains::kDataFlow)
-            << " cmp: " << fs_.CountFeatures(FeatureDomains::kCMP)
-            << " path: " << fs_.CountFeatures(FeatureDomains::kBoundedPath)
-            << " pair: " << fs_.CountFeatures(FeatureDomains::kPCPair)
+            << " cnt: " << fs_.CountFeatures(feature_domains::k8bitCounters)
+            << " df: " << fs_.CountFeatures(feature_domains::kDataFlow)
+            << " cmp: " << fs_.CountFeatures(feature_domains::kCMP)
+            << " path: " << fs_.CountFeatures(feature_domains::kBoundedPath)
+            << " pair: " << fs_.CountFeatures(feature_domains::kPCPair)
             << " corp: " << corpus_.NumActive() << "/" << corpus_.NumTotal()
             << " max/avg " << max << " " << avg << " "
             << corpus_.MemoryUsageString() << " exec/s: " << exec_speed
@@ -214,7 +214,7 @@ void Centipede::Log(std::string_view log_type, size_t min_log_level) {
 }
 
 void Centipede::LogFeaturesAsSymbols(const FeatureVec &fv) {
-  auto feature_domain = FeatureDomains::k8bitCounters;
+  auto feature_domain = feature_domains::k8bitCounters;
   for (auto feature : fv) {
     if (!feature_domain.Contains(feature)) continue;
     Coverage::PCIndex pc_index = Convert8bitCounterFeatureToPcIndex(feature);
@@ -261,7 +261,7 @@ size_t Centipede::AddPcPairFeatures(FeatureVec &fv) {
 
   // Collect PCs from fv.
   for (auto feature : fv) {
-    if (FeatureDomains::k8bitCounters.Contains(feature))
+    if (feature_domains::k8bitCounters.Contains(feature))
       pcs.push_back(Convert8bitCounterFeatureToPcIndex(feature));
   }
 
@@ -270,7 +270,7 @@ size_t Centipede::AddPcPairFeatures(FeatureVec &fv) {
     size_t pc1 = pcs[i];
     for (size_t j = i + 1; j < n; ++j) {
       size_t pc2 = pcs[j];
-      feature_t f = FeatureDomains::kPCPair.ConvertToMe(
+      feature_t f = feature_domains::kPCPair.ConvertToMe(
           ConvertPcPairToNumber(pc1, pc2, num_pcs));
       // If we have seen this pair at least once, ignore it.
       if (fs_.Frequency(f)) continue;

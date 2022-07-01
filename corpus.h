@@ -54,7 +54,7 @@ class FeatureSet {
   Coverage::PCIndexVec ToCoveragePCs() const;
 
   // Returns the number of features in `this` from the given feature domain.
-  size_t CountFeatures(FeatureDomains::Domain domain);
+  size_t CountFeatures(feature_domains::Domain domain);
 
   // Returns the frequency associated with `feature`.
   size_t Frequency(feature_t feature) const {

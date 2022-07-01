@@ -54,7 +54,7 @@ using feature_t = uint64_t;
 // It typically does not contain repetitions, but it's ok to have them.
 using FeatureVec = std::vector<feature_t>;
 
-namespace FeatureDomains {
+namespace feature_domains {
 
 // Feature domain is a subset of 64-bit integers dedicated to a certain
 // kind of fuzzing features.
@@ -107,7 +107,7 @@ constexpr Domain kLastDomain = {kPCPair.end(), 1ULL << 40, "last"};
 // The result can be used for computing weights of feature vectors.
 uint32_t Importance(feature_t feature);
 
-}  // namespace FeatureDomains
+}  // namespace feature_domains
 
 // Converts a 8-bit coverage counter,  i.e. a pair of
 // {`pc_index`, `counter_value`} into a number.
@@ -164,7 +164,7 @@ inline void ForEachNonZeroByte(const uint8_t *bytes, size_t num_bytes,
 // Given the `feature` from the k8bitCounters domain, returns the feature's
 // pc_index. I.e. reverse of Convert8bitCounterToFeature.
 inline size_t Convert8bitCounterFeatureToPcIndex(feature_t feature) {
-  auto domain = FeatureDomains::k8bitCounters;
+  auto domain = feature_domains::k8bitCounters;
   if (!domain.Contains(feature)) __builtin_trap();
   return (feature - domain.begin) / 8;
 }
