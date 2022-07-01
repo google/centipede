@@ -180,7 +180,6 @@ cc_library(
     name = "corpus",
     srcs = ["corpus.cc"],
     hdrs = ["corpus.h"],
-    copts = ["-msse4.2"],  # __builtin_ia32_crc32di requires this under Bazel
     deps = [
         ":coverage",
         ":defs",

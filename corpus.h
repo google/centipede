@@ -71,14 +71,12 @@ class FeatureSet {
   const uint8_t frequency_threshold_;
 
   // Size of frequencies_. The bigger this is, the fewer collisions there are.
-  static const size_t kSize = 1ULL << 28;
+  // Must be a prime number, so that Feature2Idx works well.
+  // This value is taken from https://primes.utm.edu/lists/2small/0bit.html.
+  static constexpr size_t kSize = (1ULL << 28) - 57;
 
   // Maps feature into an index in frequencies_.
-  size_t Feature2Idx(feature_t feature) const {
-    return __builtin_ia32_crc32di(feature,
-                                  __builtin_ia32_crc32di(feature >> 32, 0)) %
-           kSize;
-  }
+  size_t Feature2Idx(feature_t feature) const { return feature % kSize; }
 
   // Maps features to their frequencies.
   // The index into this array is Feature2Idx(feature), and this is
