@@ -14,32 +14,29 @@
 
 #include "./feature.h"
 
+#include <array>
 #include <cstdint>
 
 namespace centipede {
 namespace FeatureDomains {
-namespace {
-
-struct DomainImportance {
-  Domain domain;
-  uint32_t importance;
-};
-
-// The mapping between the domain and its importance.
-// We don't embedd it into the domain definition because we may eventually
-// need a more dynamic mapping (computed on the flight, coming from flags, etc).
-const DomainImportance domain_importance[] = {
-    {kUnknown, 1}, {k8bitCounters, 100}, {kDataFlow, 10},
-    {kCMP, 10},    {kBoundedPath, 1},    {kPCPair, 1},
-};
-
-}  // namespace
 
 uint32_t Importance(feature_t feature) {
-  for (const auto &di : domain_importance) {
-    if (di.domain.Contains(feature)) return di.importance;
-  }
-  return 1;  // not one of the known ranges.
+  // The mapping between the domain and its importance.
+  // We don't embedd it into the domain definition because we may eventually
+  // need a more dynamic mapping (computed on the flight, coming from flags,
+  // etc).
+  static auto importance_by_domain = [&]() {
+    std::array<uint32_t, Domain::kLastDomain + 1> res;
+    res[Domain::kUnknown] = 1;
+    res[Domain::k8bitCounters] = 100;
+    res[Domain::kDataFlow] = 10;
+    res[Domain::kCMP] = 10;
+    res[Domain::kBoundedPath] = 1;
+    res[Domain::kPCPair] = 1;
+    res[Domain::kLastDomain] = 1;
+    return res;
+  }();
+  return importance_by_domain[Domain::FeatureToDomainId(feature)];
 }
 
 }  // namespace FeatureDomains

@@ -58,49 +58,72 @@ namespace FeatureDomains {
 
 // Feature domain is a subset of 64-bit integers dedicated to a certain
 // kind of fuzzing features.
+// All domains are of the same size (kSize), the first domain starts with zero,
+// the second is adjacent to the first and so on.
+// This way, we can compute a domain for a given feature by dividing by kSize.
 struct Domain {
-  feature_t begin;
-  size_t size;
-  const char *name;
+  enum DomainId {
+    kUnknown = 0,
+    k8bitCounters,
+    kDataFlow,
+    kCMP,
+    kBoundedPath,
+    kPCPair,
+    kLastDomain,  // Should remain the last.
+  };
+  static constexpr size_t kSize = 1ULL << 40;
 
-  constexpr feature_t end() const { return begin + size; }
+  DomainId domain_id;
+
+  constexpr feature_t begin() const { return kSize * domain_id; }
+  constexpr feature_t end() const { return begin() + kSize; }
   bool Contains(feature_t feature) const {
-    return feature >= begin && feature < end();
+    return feature >= begin() && feature < end();
   }
 
   // Converts any `number` into a feature in this domain.
-  feature_t ConvertToMe(size_t number) const { return begin + number % size; }
+  feature_t ConvertToMe(size_t number) const {
+    return begin() + number % kSize;
+  }
+
+  // Returns the DomainId of the domain that the feature belongs to, or
+  // LastDomain if the feature is outside of all domains.
+  static DomainId FeatureToDomainId(feature_t feature) {
+    size_t idx = feature / kSize;
+    if (idx >= kLastDomain) return kLastDomain;
+    return static_cast<DomainId>(idx);
+  }
 };
 
 // The first 2^32 features are reserved as unknown, just in case.
 // Fuzz runners that don't obey the rules in this file will likely utilize
 // features from this domain.
-constexpr Domain kUnknown = {0, 1UL << 32, "unknown"};
+constexpr Domain kUnknown = {Domain::kUnknown};
 
 // Features derived from
 // https://clang.llvm.org/docs/SanitizerCoverage.html#inline-8bit-counters.
 // Every such feature corresponds to one control flow edge and its counter,
 // see Convert8bitCounterToFeature and Convert8bitCounterFeatureToPcIndex.
-constexpr Domain k8bitCounters = {kUnknown.end(), 1UL << 32, "8bit-counter"};
+constexpr Domain k8bitCounters = {Domain::k8bitCounters};
 
 // Features derived from data flow edges.
 // A typical data flow edge is a pair of PCs: {store-PC, load-PC}.
 // Another variant of a data flow edge is a pair of {global-address, load-PC}.
-constexpr Domain kDataFlow = {k8bitCounters.end(), 1UL << 40, "data-flow"};
+constexpr Domain kDataFlow = {Domain::kDataFlow};
 
 // Features derived from instrumenting CMP instructions.
-constexpr Domain kCMP = {kDataFlow.end(), 1UL << 40, "cmp"};
+constexpr Domain kCMP = {Domain::kCMP};
 
 // Features derived from computing (bounded) control flow paths.
 // Even bounded paths can be very numerous, so we intentionally limit
 // their number to 2^32.
-constexpr Domain kBoundedPath = {kCMP.end(), 1UL << 32, "path"};
+constexpr Domain kBoundedPath = {Domain::kBoundedPath};
 
 // Features derived from (unordered) pairs of PCs.
-constexpr Domain kPCPair = {kBoundedPath.end(), 1UL << 40, "pc-pair"};
+constexpr Domain kPCPair = {Domain::kPCPair};
 
 // Don't put any domains after this one.
-constexpr Domain kLastDomain = {kPCPair.end(), 1ULL << 40, "last"};
+constexpr Domain kLastDomain = {Domain::kLastDomain};
 
 // Returns a number in range [1,1000) indicating how important `feature` is.
 // 1 is the least important.
@@ -166,7 +189,7 @@ inline void ForEachNonZeroByte(const uint8_t *bytes, size_t num_bytes,
 inline size_t Convert8bitCounterFeatureToPcIndex(feature_t feature) {
   auto domain = FeatureDomains::k8bitCounters;
   if (!domain.Contains(feature)) __builtin_trap();
-  return (feature - domain.begin) / 8;
+  return (feature - domain.begin()) / 8;
 }
 
 // Encodes {`pc1`, `pc2`} into a number.
