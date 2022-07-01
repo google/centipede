@@ -105,7 +105,8 @@ size_t Corpus::Prune(const FeatureSet &fs) {
       records_.pop_back();
       // Same for weighted_distribution_.
       auto weight = weighted_distribution_.PopBack();
-      weighted_distribution_.ChangeWeight(i, weight);
+      if (i < weighted_distribution_.size())
+        weighted_distribution_.ChangeWeight(i, weight);
       // Update prune counters.
       num_pruned_++;
       num_pruned_now++;
