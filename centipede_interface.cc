@@ -137,6 +137,10 @@ int CentipedeMain(const Environment &env,
   Coverage::PCTable pc_table;
   SymbolTable symbols;
   InitializeCoverage(env, pc_table, symbols);
+  if (env.use_pcpair_features) {
+    CHECK(!pc_table.empty())
+        << "use_pcpair_features requires non-empty pc_table";
+  }
 
   std::vector<std::thread> threads(env.num_threads);
   auto thread_callback = [&](size_t my_shard_index) {
