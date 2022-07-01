@@ -89,7 +89,11 @@ FeatureSet::ComputeWeight(const FeatureVec &features) const {
     // (frequency == 1) => (weight == 256)
     // (frequency == 2) => (weight == 128)
     // and so on.
-    weight += 256 / frequencies_[Feature2Idx(feature)];
+    //
+    // We also multiply the feature-specific weight based on its frequency
+    // by the feature's Importance based on its domain.
+    weight += FeatureDomains::Importance(feature) *
+              (256 / frequencies_[Feature2Idx(feature)]);
   }
   return weight;
 }

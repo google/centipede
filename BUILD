@@ -45,6 +45,7 @@ cc_binary(
 # This lib must have zero dependencies (other than libc). See feature.h.
 cc_library(
     name = "feature",
+    srcs = ["feature.cc"],
     hdrs = ["feature.h"],
 )
 

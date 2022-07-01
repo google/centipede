@@ -99,6 +99,14 @@ constexpr Domain kBoundedPath = {kCMP.end(), 1UL << 32, "path"};
 // Features derived from (unordered) pairs of PCs.
 constexpr Domain kPCPair = {kBoundedPath.end(), 1UL << 40, "pc-pair"};
 
+// Don't put any domains after this one.
+constexpr Domain kLastDomain = {kPCPair.end(), 1ULL << 40, "last"};
+
+// Returns a number in range [1,1000) indicating how important `feature` is.
+// 1 is the least important.
+// The result can be used for computing weights of feature vectors.
+uint32_t Importance(feature_t feature);
+
 }  // namespace FeatureDomains
 
 // Converts a 8-bit coverage counter,  i.e. a pair of
