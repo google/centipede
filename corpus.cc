@@ -20,7 +20,6 @@
 #include <string>
 #include <utility>
 
-#include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_cat.h"
 #include "./coverage.h"
 #include "./defs.h"
@@ -32,23 +31,11 @@ namespace centipede {
 
 // TODO(kcc): [impl] add tests.
 Coverage::PCIndexVec FeatureSet::ToCoveragePCs() const {
-  absl::flat_hash_set<Coverage::PCIndex> pc_index_set;
-  auto feature_domain = FeatureDomains::k8bitCounters;
-  for (auto f : all_features_) {
-    if (!feature_domain.Contains(f)) continue;
-    pc_index_set.insert(Convert8bitCounterFeatureToPcIndex(f));
-  }
-  return Coverage::PCIndexVec(pc_index_set.begin(), pc_index_set.end());
+  return Coverage::PCIndexVec(pc_index_set_.begin(), pc_index_set_.end());
 }
 
 size_t FeatureSet::CountFeatures(FeatureDomains::Domain domain) {
-  size_t res = 0;
-  for (auto f : all_features_) {
-    if (domain.Contains(f)) {
-      res++;
-    }
-  }
-  return res;
+  return features_per_domain_[domain.domain_id];
 }
 
 __attribute__((noinline))  // to see it in profile.
@@ -75,7 +62,12 @@ FeatureSet::CountUnseenAndPruneFrequentFeatures(FeatureVec &features) const {
 void FeatureSet::IncrementFrequencies(const FeatureVec &features) {
   for (auto f : features) {
     auto &freq = frequencies_[Feature2Idx(f)];
-    if (freq == 0) all_features_.push_back(f);
+    if (freq == 0) {
+      ++num_features_;
+      ++features_per_domain_[FeatureDomains::Domain::FeatureToDomainId(f)];
+      if (FeatureDomains::k8bitCounters.Contains(f))
+        pc_index_set_.insert(Convert8bitCounterFeatureToPcIndex(f));
+    }
     if (freq < frequency_threshold_) freq++;
   }
 }

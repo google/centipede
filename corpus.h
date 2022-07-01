@@ -22,6 +22,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_set.h"
 #include "./coverage.h"
 #include "./defs.h"
 #include "./feature.h"
@@ -48,7 +49,7 @@ class FeatureSet {
   void IncrementFrequencies(const FeatureVec &features);
 
   // How many different features are in the set.
-  size_t size() const { return all_features_.size(); }
+  size_t size() const { return num_features_; }
 
   // Returns features that originate from CFG counters, converted to PCIndexVec.
   Coverage::PCIndexVec ToCoveragePCs() const;
@@ -84,8 +85,14 @@ class FeatureSet {
   // where collisions are possible.
   std::vector<uint8_t> frequencies_;
 
-  // The actual features.
-  FeatureVec all_features_;
+  // Counts all unique features added to this.
+  size_t num_features_ = 0;
+
+  // Counts features in each domain.
+  size_t features_per_domain_[FeatureDomains::Domain::kLastDomain + 1] = {};
+
+  // Maintains the set of PC indices that correspond to added features.
+  absl::flat_hash_set<Coverage::PCIndex> pc_index_set_;
 };
 
 // WeightedDistribution maintains an array of integer weights.
