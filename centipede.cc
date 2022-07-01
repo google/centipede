@@ -208,7 +208,8 @@ void Centipede::Log(std::string_view log_type, size_t min_log_level) {
             << " path: " << fs_.CountFeatures(FeatureDomains::kBoundedPath)
             << " pair: " << fs_.CountFeatures(FeatureDomains::kPCPair)
             << " corp: " << corpus_.NumActive() << "/" << corpus_.NumTotal()
-            << " max/avg " << max << " " << avg << " exec/s: " << exec_speed
+            << " max/avg " << max << " " << avg << " "
+            << corpus_.MemoryUsageString() << " exec/s: " << exec_speed
             << " mb: " << (MemoryUsage() >> 20);
 }
 

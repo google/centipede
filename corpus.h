@@ -162,6 +162,9 @@ class Corpus {
   // Prints corpus stats in JSON format to `out` using `fs` for frequencies.
   void PrintStats(std::ostream &out, const FeatureSet &fs);
 
+  // Returns a string used for logging the corpus memory usage.
+  std::string MemoryUsageString() const;
+
  private:
   std::vector<CorpusRecord> records_;
   // Maintains weights for elements of records_.

@@ -21,6 +21,7 @@
 #include <utility>
 
 #include "absl/container/flat_hash_set.h"
+#include "absl/strings/str_cat.h"
 #include "./coverage.h"
 #include "./defs.h"
 #include "./feature.h"
@@ -157,6 +158,16 @@ void Corpus::PrintStats(std::ostream &out, const FeatureSet &fs) {
     out << "}";
   }
   out << "]}\n";
+}
+
+std::string Corpus::MemoryUsageString() const {
+  size_t data_size = 0;
+  size_t features_size = 0;
+  for (const auto &record : records_) {
+    data_size += record.data.capacity() * sizeof(record.data[0]);
+    features_size += record.features.capacity() * sizeof(record.features[0]);
+  }
+  return absl::StrCat("d", data_size >> 20, "/f", features_size >> 20);
 }
 
 //================= WeightedDistribution
