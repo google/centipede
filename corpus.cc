@@ -47,12 +47,10 @@ FeatureSet::CountUnseenAndPruneFrequentFeatures(FeatureVec &features) const {
     auto feature = features[i];
     auto freq = frequencies_[Feature2Idx(feature)];
     if (freq == 0) {
-      number_of_unseen_features++;
+      ++number_of_unseen_features;
+    }
+    if (freq < FrequencyThreshold(feature)) {
       features[num_kept++] = feature;
-    } else {
-      if (freq < frequency_threshold_) {
-        features[num_kept++] = feature;
-      }
     }
   }
   features.resize(num_kept);
@@ -68,7 +66,7 @@ void FeatureSet::IncrementFrequencies(const FeatureVec &features) {
       if (FeatureDomains::k8bitCounters.Contains(f))
         pc_index_set_.insert(Convert8bitCounterFeatureToPcIndex(f));
     }
-    if (freq < frequency_threshold_) freq++;
+    if (freq < FrequencyThreshold(f)) ++freq;
   }
 }
 

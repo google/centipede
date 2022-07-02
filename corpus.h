@@ -68,15 +68,24 @@ class FeatureSet {
   uint32_t ComputeWeight(const FeatureVec &features) const;
 
  private:
+  // Computes the frequency threshold based on the domain of `feature`.
+  // For now, just uses 1 for kPCPair and frequency_threshold_ for all others.
+  // Rationale: the kPCPair features might be too numerous, we don't want to
+  // store more than one of each such feature in the corpus.
+  uint8_t FrequencyThreshold(feature_t feature) const {
+    if (FeatureDomains::kPCPair.Contains(feature)) return 1;
+    return frequency_threshold_;
+  }
+
+  // Maps feature into an index in frequencies_.
+  size_t Feature2Idx(feature_t feature) const { return feature % kSize; }
+
   const uint8_t frequency_threshold_;
 
   // Size of frequencies_. The bigger this is, the fewer collisions there are.
   // Must be a prime number, so that Feature2Idx works well.
   // This value is taken from https://primes.utm.edu/lists/2small/0bit.html.
   static constexpr size_t kSize = (1ULL << 28) - 57;
-
-  // Maps feature into an index in frequencies_.
-  size_t Feature2Idx(feature_t feature) const { return feature % kSize; }
 
   // Maps features to their frequencies.
   // The index into this array is Feature2Idx(feature), and this is
