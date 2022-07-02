@@ -270,15 +270,20 @@ std::string Environment::GetForkServerHelperPath() const {
   if (!fork_server) return "";  // no need for the fork server helper.
 
   // If present, use the user-provided path as-is.
-  if (!fork_server_helper_path.empty()) return fork_server_helper_path;
+  std::string path = fork_server_helper_path;
 
-  // Compute fork_server_helper_path based on Centipede's path.
-  std::string path = std::filesystem::path(exec_name).parent_path().append(
-      "centipede_fork_server_helper.so");
-  if (!std::filesystem::exists(fork_server_helper_path)) {
-    LOG(INFO) << VV(fork_server_helper_path)
-              << " does not exist; %F for target binaries will not work";
+  if (path.empty()) {
+    // Compute fork_server_helper_path based on Centipede's path.
+    path = std::filesystem::absolute(
+               std::filesystem::path(exec_name).parent_path()) /
+           "libcentipede_fork_server_helper.so";
   }
+
+  if (!std::filesystem::exists(path)) {
+    LOG(INFO) << "Fork server helper not found (" << VV(path)
+              << "): %F for target binaries won't work";
+  }
+
   return path;
 }
 
