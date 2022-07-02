@@ -95,8 +95,8 @@ Notable features:
 TODO(b/229156316): [impl] explain how to use existing libFuzzer targets.
 
 ```
-% bazel build -c opt //third_party/centipede:centipede
-% bazel build -c opt //third_party/centipede:target_example
+% bazel build -c opt :centipede
+% bazel build -c opt :target_example
 ```
 
 `centipede` and `target_example` are two independent binaries that may not
