@@ -53,24 +53,24 @@
 
 #include <fcntl.h>
 #include <linux/limits.h>  // ARG_MAX
-#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <cstdlib>
 #include <cstring>
 
 namespace {
 
 // Writes a C string to stderr when debugging, no-op otherwise.
-void Write(const char *str) {
-  // write(2, str, strlen(str));  // Uncomment this line to debug.
+void Log(const char *str) {
+  // Uncomment these lines to debug.
+  // (void)write(STDERR_FILENO, str, strlen(str));
+  // fsync(STDERR_FILENO);
 }
 
 // Maybe writes the `reason` to stderr; then calls _exit.
 void Exit(const char *reason) {
-  Write(reason);
+  Log(reason);
   _exit(0);  // The exit code does not matter, it won't be checked anyway.
 }
 
@@ -87,7 +87,7 @@ void GetAllEnv() {
   env[sizeof(env) - 1] = 0;  // Just in case.
 }
 
-// Gets a zero-terminated string matching the environmant `key` (ends with '=').
+// Gets a zero-terminated string matching the environment `key` (ends with '=').
 const char *GetOneEnv(const char *key) {
   size_t key_len = strlen(key);
   bool in_the_beginning_of_key = true;
@@ -118,35 +118,38 @@ __attribute__((constructor)) void ForkServerCallMeVeryEarly() {
   const char *pipe0_name = GetOneEnv("CENTIPEDE_FORK_SERVER_FIFO0=");
   const char *pipe1_name = GetOneEnv("CENTIPEDE_FORK_SERVER_FIFO1=");
   if (!pipe0_name || !pipe1_name) return;
-  Write("###Centipede fork server requested\n");
+  Log("###Centipede fork server requested\n");
   int pipe0 = open(pipe0_name, O_RDONLY);
   if (pipe0 < 0) Exit("###open pipe0 failed\n");
   int pipe1 = open(pipe1_name, O_WRONLY);
   if (pipe1 < 0) Exit("###open pipe1 failed\n");
-  Write("###Centipede fork server ready\n");
+  Log("###Centipede fork server ready\n");
 
   // Loop.
   while (true) {
-    char ch;
-    Write("###Centipede fork server blocking on pipe0\n");
+    Log("###Centipede fork server blocking on pipe0\n");
     // This read will fail when Centipede shuts down the pipes.
-    if (1 != read(pipe0, &ch, 1)) Exit("###read from pipe0 failed\n");
-    Write("###Centipede starting fork\n");
+    char ch = 0;
+    if (read(pipe0, &ch, 1) != 1) Exit("###read from pipe0 failed\n");
+    Log("###Centipede starting fork\n");
     auto pid = fork();
-    if (pid < 0) Exit("###fork failed\n");
-    if (pid == 0) {
+    if (pid < 0) {
+      Exit("###fork failed\n");
+    } else if (pid == 0) {
       // Child process. Reset stdout/stderr and let it run normally.
       for (int fd = 1; fd <= 2; fd++) {
         lseek(fd, 0, SEEK_SET);
-        ftruncate(fd, 0);
+        if (ftruncate(fd, 0) == -1) Exit("###ftruncate failed\n");
       }
       return;
+    } else {
+      // Parent process.
+      int status = -1;
+      if (waitpid(pid, &status, 0) < 0) Exit("###waitpid failed\n");
+      Log("###Centipede fork done; writing to pipe1\n");
+      if (write(pipe1, &status, sizeof(status)) == -1)
+        Exit("###write to pipe1 failed\n");
     }
-    // parent
-    int status;
-    if (waitpid(pid, &status, 0) < 0) Exit("###waitpid failed\n");
-    Write("###Centipede fork done; writing to pipe1\n");
-    write(pipe1, &status, sizeof(status));
   }
   // The only way out of the loop is via Exit() or return.
   __builtin_unreachable();

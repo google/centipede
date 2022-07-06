@@ -96,8 +96,8 @@ bool Command::StartForkServer(std::string_view temp_dir_path,
           : "";
   auto command = absl::StrCat(
       preload_fork_server_helper, "CENTIPEDE_FORK_SERVER_FIFO0=", fifo_path_[0],
-      " ", " CENTIPEDE_FORK_SERVER_FIFO1=", fifo_path_[1], " ", ToString(),
-      " &");
+      " ", " CENTIPEDE_FORK_SERVER_FIFO1=", fifo_path_[1], " ",
+      full_command_string_, " &");
   LOG(INFO) << "the fork server command: " << command;
   int ret = system(command.c_str());
   CHECK_EQ(ret, 0) << "command failed: " << command;
