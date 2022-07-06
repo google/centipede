@@ -223,15 +223,8 @@ PrepareCoverage() {
 //
 // If `target_return_value == -1`, sets `features` to empty.  This way,
 // the engine will reject any input that causes the target to return -1.
-// This is an incompatible extension of libFuzzer interface.
-// As of 2022-06-07, libFuzzer requires that the target always returns 0.
-// Any target that doesn't return zero will cause libFuzzer to fail.
-// By allowing a target to return non-zero, we allow targets that are
-// incompatible with libFuzzer.
-// For now, we keep this feature undocumented / unadvertized.
-// If we see that it works, we will try to extend the public libFuzzer interface
-// to allow non-zero return values.
-// TODO(kcc): [impl] extend libFuzzer interface and document -1 return value.
+// LibFuzzer supports this return value as of 2022-07:
+// https://llvm.org/docs/LibFuzzer.html#rejecting-unwanted-inputs
 __attribute__((noinline))  // so that we see it in profile.
 static void
 PostProcessCoverage(int target_return_value) {
