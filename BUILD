@@ -270,7 +270,6 @@ cc_library(
         ":environment",
         ":logging",
         ":remote_file",
-        ":shared_memory_blob_sequence",
         ":util",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
@@ -331,7 +330,6 @@ cc_library(
     name = "fuzz_target_runner_no_main",
     srcs = [
         "runner.cc",
-        "runner_fork_server.cc",
         "runner_interceptors.cc",
         "runner_sancov.cc",
     ],
