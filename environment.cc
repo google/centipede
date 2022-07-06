@@ -276,7 +276,7 @@ std::string Environment::GetForkServerHelperPath() const {
     // Compute fork_server_helper_path based on Centipede's path.
     path = std::filesystem::absolute(
                std::filesystem::path(exec_name).parent_path()) /
-           "libcentipede_fork_server_helper.so";
+           "runner_fork_server_helper.so";
   }
 
   if (!std::filesystem::exists(path)) {

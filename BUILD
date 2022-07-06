@@ -314,7 +314,7 @@ cc_library(
 )
 
 cc_binary(
-    name = "centipede_fork_server_helper.so",
+    name = "runner_fork_server_helper.so",
     linkshared = 1,
     linkstatic = 1,
     deps = [":runner_fork_server"],
