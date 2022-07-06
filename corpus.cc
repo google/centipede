@@ -119,6 +119,7 @@ size_t Corpus::Prune(const FeatureSet &fs) {
 
 void Corpus::Add(const ByteArray &data, const FeatureVec &fv,
                  const FeatureSet &fs) {
+  CHECK(!data.empty());
   CHECK_EQ(records_.size(), weighted_distribution_.size());
   records_.push_back({data, fv});
   weighted_distribution_.AddWeight(fs.ComputeWeight(fv));

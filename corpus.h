@@ -144,7 +144,7 @@ class WeightedDistribution {
 // Allows to prune (forget) inputs that become uninteresting.
 class Corpus {
  public:
-  // Adds a corpus element, consisting of 'data' (the input bytes)
+  // Adds a corpus element, consisting of 'data' (the input bytes, non-empty)
   // and 'fv' (the features associated with this input).
   // `fs` is used to compute weights of `fv`.
   void Add(const ByteArray &data, const FeatureVec &fv, const FeatureSet &fs);

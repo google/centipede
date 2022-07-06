@@ -175,7 +175,7 @@ int Centipede::ExportCorpusFromLocalDir(const Environment &env,
     for (const auto &path : sharded_paths[shard]) {
       ByteArray input;
       ReadFromLocalFile(path, input);
-      if (existing_hashes.contains(Hash(input))) {
+      if (input.empty() || existing_hashes.contains(Hash(input))) {
         ++inputs_ignored;
         continue;
       }
