@@ -346,13 +346,16 @@ void ReadInputsFromShmemAndRun(const char *shmem_name_in,
     auto blob = inputs_blobseq.Read();
     if (!execution_request::IsDataInput(blob)) return;
     if (!blob.IsValid()) return;
+
+    // TODO(kcc): [impl] handle sizes larger than kMaxDataSize.
+    size_t size = std::min(kMaxDataSize, blob.size);
     // Copy from blob to data so that to not pass the shared memory further.
-    memcpy(input_data, blob.data, blob.size);
+    memcpy(input_data, blob.data, size);
 
     // Starting execution of one more input.
     if (!centipede::BatchResult::WriteInputBegin(feature_blobseq)) break;
 
-    RunOneInput(input_data, blob.size, test_one_input_cb);
+    RunOneInput(input_data, size, test_one_input_cb);
 
     // Copy features to shared memory.
     if (!centipede::BatchResult::WriteOneFeatureVec(
