@@ -354,7 +354,37 @@ cc_library(
     srcs = ["runner_main.cc"],
     visibility = ["//visibility:public"],
     deps = [
-        ":fuzz_target_runner_no_main",
+        ":fuzz_target_runner_no_main",  # buildcleaner: keep
         ":runner_interface",
+    ],
+)
+
+# A full self-contained library archive that external clients should link to their
+# fuzz targets to make them compatible with the Centipede main binary (the
+# `:centipede` target in this BUILD).
+# TODO(ussuri): Find a way to merge this with fuzz_target_runner: the list of
+#  the inputs sources is identical.
+cc_library(
+    name = "centipede_runner",
+    srcs = [
+        "byte_array_mutator.cc",
+        "byte_array_mutator.h",
+        "defs.h",
+        "execution_request.cc",
+        "execution_request.h",
+        "execution_result.cc",
+        "execution_result.h",
+        "feature.cc",
+        "feature.h",
+        "logging.h",
+        "runner.cc",
+        "runner.h",
+        "runner_fork_server.cc",
+        "runner_interceptors.cc",
+        "runner_interface.h",
+        "runner_main.cc",
+        "runner_sancov.cc",
+        "shared_memory_blob_sequence.cc",
+        "shared_memory_blob_sequence.h",
     ],
 )

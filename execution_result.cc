@@ -16,6 +16,7 @@
 
 #include <cstring>
 
+// TODO(b/238243867): Remove this.
 #include "./logging.h"
 #include "./shared_memory_blob_sequence.h"
 
@@ -95,6 +96,7 @@ bool BatchResult::Read(SharedMemoryBlobSequence &blobseq) {
   }
   // Missing outputs should have their features empty.
   for (size_t i = num_ends; i < num_expected_tuples; i++) {
+    // TODO(b/238243867): Eliminate the CHECK.
     CHECK(results()[i].features().empty());
   }
   num_outputs_read_ = num_ends;
