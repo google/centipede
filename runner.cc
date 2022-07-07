@@ -26,6 +26,7 @@
 #include <limits.h>
 #include <link.h>  // dl_iterate_phdr
 #include <pthread.h>
+#include <pthread.h>  // NOLINT: use pthread to avoid extra dependencies.
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,7 +38,6 @@
 
 #include <cstdint>
 #include <cstdlib>
-#include <mutex>  // NOLINT
 
 #include "./byte_array_mutator.h"
 #include "./defs.h"
@@ -62,7 +62,7 @@ static void WriteFailureDescription(const char *description) {
 }
 
 void ThreadLocalRunnerState::OnThreadStart() {
-  std::scoped_lock<std::mutex> lock(state.tls_list_mu);
+  LockGuard lock(state.tls_list_mu);
   // Add myself to state.tls_list.
   auto *old_list = state.tls_list;
   tls.next = old_list;
@@ -71,7 +71,7 @@ void ThreadLocalRunnerState::OnThreadStart() {
 }
 
 void ThreadLocalRunnerState::OnThreadStop() {
-  std::scoped_lock<std::mutex> lock(state.tls_list_mu);
+  LockGuard lock(state.tls_list_mu);
   // Remove myself from state.tls_list. The list never
   // becomes empty because the main thread does not call OnThreadStop().
   if (&tls == state.tls_list) {

@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CENTIPEDE_RUNNER_H_
 #define THIRD_PARTY_CENTIPEDE_RUNNER_H_
 
+#include <pthread.h>  // NOLINT: use pthread to avoid extra dependencies.
 #include <string.h>
 
 #include <atomic>
@@ -22,15 +23,22 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-// We use std::mutex to avoid extra dependencies in the runner.
-// As the result, we can't use ABSL_GUARDED_BY.
-#include <mutex>  // NOLINT.
 
 #include "./byte_array_mutator.h"
 #include "./execution_result.h"
 #include "./feature.h"
 
 namespace centipede {
+
+// Like std::lock_guard, but for pthread_mutex_t.
+class LockGuard {
+ public:
+  explicit LockGuard(pthread_mutex_t &mu) : mu_(mu) { pthread_mutex_lock(&mu); }
+  ~LockGuard() { pthread_mutex_unlock(&mu_); }
+
+ private:
+  pthread_mutex_t &mu_;
+};
 
 // Flags derived from CENTIPEDE_RUNNER_FLAGS.
 // Flags used in instrumentation callbacks are bit-packed for efficiency.
@@ -129,12 +137,12 @@ struct GlobalRunnerState {
 
   // Doubly linked list of TLSs of all live threads.
   ThreadLocalRunnerState *tls_list;
-  std::mutex tls_list_mu;  // Guards tls_list.
+  pthread_mutex_t tls_list_mu;  // Guards tls_list.
   // Iterates all TLS objects under tls_list_mu.
   // Calls `callback()` on every TLS.
   template <typename Callback>
   void ForEachTls(Callback callback) {
-    std::scoped_lock<std::mutex> lock(tls_list_mu);
+    LockGuard lock(tls_list_mu);
     for (auto *it = tls_list; it; it = it->next) callback(*it);
   }
 
