@@ -511,6 +511,18 @@ static void SetLimits() {
   }
 }
 
+// Create a fake reference to ForkServerCallMeVeryEarly() here so that the
+// fork server module is not dropped during linking.
+// Alternatives are
+//  * Use -Wl,--whole-archive when linking with the runner archive.
+//  * Use -Wl,-u,ForkServerCallMeVeryEarly when linking with the runner archive.
+//    (requires ForkServerCallMeVeryEarly to be extern "C").
+// These alternatives require extra flags and are thus more fragile.
+// We declare ForkServerCallMeVeryEarly() here instead of doing it in some
+// header file, because we want to keep the fork server header-free.
+extern void ForkServerCallMeVeryEarly();
+auto fake_reference_for_fork_server = &ForkServerCallMeVeryEarly;
+
 }  // namespace centipede
 
 // If HasFlag(:dump_pc_table:), dump the pc table to state.arg1.

@@ -59,7 +59,7 @@
 
 #include <cstring>
 
-namespace {
+namespace centipede {
 
 // Writes a C string to stderr when debugging, no-op otherwise.
 void Log(const char *str) {
@@ -155,7 +155,7 @@ __attribute__((constructor)) void ForkServerCallMeVeryEarly() {
   __builtin_unreachable();
 }
 
-__attribute__((section(".preinit_array"), used)) auto call_very_early =
+__attribute__((section(".preinit_array"))) auto call_very_early =
     ForkServerCallMeVeryEarly;
 
-}  // namespace
+}  // namespace centipede
