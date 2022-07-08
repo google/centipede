@@ -137,10 +137,7 @@ bool CentipedeCallbacks::MutateViaExternalBinary(
     LOG(INFO) << VV(num_inputs_written) << VV(inputs.size());
 
   // Execute.
-  Command cmd(binary, {},
-              {absl::StrCat("CENTIPEDE_RUNNER_FLAGS=:mutate:arg1=",
-                            shmem_name1_, ":arg2=", shmem_name2_, ":")},
-              "/dev/null", "/dev/null");
+  Command &cmd = GetOrCreateCommandForBinary(binary);
   int retval = cmd.Execute();
 
   // Read all mutants.

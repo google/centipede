@@ -321,24 +321,23 @@ ReadOneInputExecuteItAndDumpCoverage(
   fclose(features_file);
 }
 
-// Reads inputs from one shared memory location (`shmem_name_in`),
-// runs them, stores coverage features to another shared memory location
-// (`shmem_name_out`);
-void ReadInputsFromShmemAndRun(const char *shmem_name_in,
-                               const char *shmem_name_out,
-                               FuzzerTestOneInputCallback test_one_input_cb) {
-  fprintf(stderr, "ReadInputsFromShmemAndRun %s %s\n", shmem_name_in,
-          shmem_name_out);
-  centipede::SharedMemoryBlobSequence inputs_blobseq(shmem_name_in);
-  centipede::SharedMemoryBlobSequence feature_blobseq(shmem_name_out);
-  if (!execution_request::IsExecutionRequest(inputs_blobseq.Read())) return;
+// Handles an ExecutionRequest, see RequestExecution().
+// Reads inputs from `inputs_blobseq`, runs them,
+// saves coverage features to `feature_blobseq`.
+// Returns EXIT_SUCCESS on success and EXIT_FAILURE otherwise.
+static int ExecuteInputsFromShmem(
+    centipede::SharedMemoryBlobSequence &inputs_blobseq,
+    centipede::SharedMemoryBlobSequence &feature_blobseq,
+    FuzzerTestOneInputCallback test_one_input_cb) {
   size_t num_inputs = 0;
+  if (!execution_request::IsExecutionRequest(inputs_blobseq.Read()))
+    return EXIT_FAILURE;
   if (!execution_request::IsNumInputs(inputs_blobseq.Read(), num_inputs))
-    return;
+    return EXIT_FAILURE;
   for (size_t i = 0; i < num_inputs; i++) {
     auto blob = inputs_blobseq.Read();
-    if (!execution_request::IsDataInput(blob)) return;
-    if (!blob.IsValid()) return;
+    if (!execution_request::IsDataInput(blob)) return EXIT_FAILURE;
+    if (!blob.IsValid()) return EXIT_FAILURE;
 
     // TODO(kcc): [impl] handle sizes larger than kMaxDataSize.
     size_t size = std::min(kMaxDataSize, blob.size);
@@ -361,6 +360,7 @@ void ReadInputsFromShmemAndRun(const char *shmem_name_in,
     // We are done with this input.
     if (!centipede::BatchResult::WriteInputEnd(feature_blobseq)) break;
   }
+  return EXIT_SUCCESS;
 }
 
 // See man dl_iterate_phdr.
@@ -426,25 +426,21 @@ static void DumpPcTable(const char *output_path) {
 // TODO(kcc): [as-needed] optionally pass an external seed.
 static unsigned GetRandomSeed() { return time(nullptr); }
 
-// Mutates inputs read from `shmem_name_in`,
-// writes the mutants to `shmem_name_out`
+// Handles a Mutation Request, see RequestMutation().
+// Mutates inputs read from `inputs_blobseq`,
+// writes the mutants to `outputs_blobseq`
 // Returns EXIT_SUCCESS on success and EXIT_FAILURE on failure
 // so that main() can return its result.
 // If both `custom_mutator_cb` and `custom_crossover_cb` are nullptr,
 // returns EXIT_FAILURE.
 //
-// The first input blob is the number of requested mutants.
-// All other input blobs are the inputs to mutate.
-// See also: MutateViaExternalBinary.
 // TODO(kcc): [impl] make use of custom_crossover_cb, if available.
 static int MutateInputsFromShmem(
-    const char *shmem_name_in, const char *shmem_name_out,
+    centipede::SharedMemoryBlobSequence &inputs_blobseq,
+    centipede::SharedMemoryBlobSequence &outputs_blobseq,
     FuzzerCustomMutatorCallback custom_mutator_cb,
     FuzzerCustomCrossOverCallback custom_crossover_cb) {
   if (custom_mutator_cb == nullptr) return EXIT_FAILURE;
-  // Set up shmem blob sequences.
-  centipede::SharedMemoryBlobSequence inputs_blobseq(shmem_name_in);
-  centipede::SharedMemoryBlobSequence feature_blobseq(shmem_name_out);
   unsigned int seed = GetRandomSeed();
   // Read max_num_mutants.
   size_t max_num_mutants = 0;
@@ -476,8 +472,7 @@ static int MutateInputsFromShmem(
     size_t new_size =
         custom_mutator_cb(input_data, blob.size, kMaxDataSize, seed);
 
-    if (!feature_blobseq.Write({1 /*unused tag*/, new_size, input_data})) break;
-
+    if (!outputs_blobseq.Write({1 /*unused tag*/, new_size, input_data})) break;
     ++num_mutants;  // increment here, because we count only successful mutants.
     ++seed;         // Use different seed for every mutation.
   }
@@ -528,12 +523,9 @@ auto fake_reference_for_fork_server = &ForkServerCallMeVeryEarly;
 // If HasFlag(:dump_pc_table:), dump the pc table to state.arg1.
 //   Used to import the pc table into the caller process.
 //
-// If HasFlag(:mutate:), mutate inputs from shmem location state.arg1,
-//   and write mutants to shmem location state.arg2.
-//
 // If HasFlag(:shmem:), state.arg1 and state.arg2 are the names
 //  of in/out shared memory locations.
-//  Read inputs and write features to shared memory.
+//  Read inputs and write outputs via shared memory.
 //
 //  Default: Execute ReadOneInputExecuteItAndDumpCoverage() for all inputs.//
 //
@@ -565,16 +557,7 @@ extern "C" int CentipedeRunnerMain(
     return EXIT_SUCCESS;
   }
 
-  // Mutate inputs.
-  if (state.HasFlag(":mutate:")) {
-    if (!state.arg1 || !state.arg2) return EXIT_FAILURE;
-    state.byte_array_mutator =
-        new centipede::ByteArrayMutator(centipede::GetRandomSeed());
-    return centipede::MutateInputsFromShmem(
-        state.arg1, state.arg2, custom_mutator_cb, custom_crossover_cb);
-  }
-
-  // All further actions will execute LLVMFuzzerTestOneInput,
+  // All further actions will execute code in the target,
   // so we need to call LLVMFuzzerInitialize.
   if (initialize_cb) {
     initialize_cb(&argc, &argv);
@@ -583,9 +566,25 @@ extern "C" int CentipedeRunnerMain(
   // Inputs / outputs from shmem.
   if (state.HasFlag(":shmem:")) {
     if (!state.arg1 || !state.arg2) return EXIT_FAILURE;
-    centipede::ReadInputsFromShmemAndRun(state.arg1, state.arg2,
-                                         test_one_input_cb);
-    return EXIT_SUCCESS;
+    centipede::SharedMemoryBlobSequence inputs_blobseq(state.arg1);
+    centipede::SharedMemoryBlobSequence outputs_blobseq(state.arg2);
+    // Read the first blob. It indicates what further actions to take.
+    auto request_type_blob = inputs_blobseq.Read();
+    if (centipede::execution_request::IsMutationRequest(request_type_blob)) {
+      // Mutation request.
+      inputs_blobseq.Reset();
+      state.byte_array_mutator =
+          new centipede::ByteArrayMutator(centipede::GetRandomSeed());
+      return MutateInputsFromShmem(inputs_blobseq, outputs_blobseq,
+                                   custom_mutator_cb, custom_crossover_cb);
+    }
+    if (centipede::execution_request::IsExecutionRequest(request_type_blob)) {
+      // Execution request.
+      inputs_blobseq.Reset();
+      return ExecuteInputsFromShmem(inputs_blobseq, outputs_blobseq,
+                                    test_one_input_cb);
+    }
+    return EXIT_FAILURE;
   }
 
   // By default, run every iput file one-by-one.

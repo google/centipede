@@ -85,9 +85,10 @@ bool Command::StartForkServer(std::string_view temp_dir_path,
                       .append(absl::StrCat(prefix, "_FIFO0"));
   fifo_path_[1] = std::filesystem::path(temp_dir_path)
                       .append(absl::StrCat(prefix, "_FIFO1"));
-
+  (void)std::filesystem::create_directory(temp_dir_path);  // it may not exist.
   for (int i = 0; i < 2; ++i) {
-    CHECK_EQ(0, mkfifo(fifo_path_[i].c_str(), 0600)) << "errno:" << errno;
+    CHECK_EQ(mkfifo(fifo_path_[i].c_str(), 0600), 0)
+        << VV(errno) << VV(fifo_path_[i]);
   }
   std::stringstream ss;
   std::string preload_fork_server_helper =
