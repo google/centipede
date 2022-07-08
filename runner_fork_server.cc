@@ -139,7 +139,9 @@ __attribute__((constructor)) void ForkServerCallMeVeryEarly() {
       // Child process. Reset stdout/stderr and let it run normally.
       for (int fd = 1; fd <= 2; fd++) {
         lseek(fd, 0, SEEK_SET);
-        if (ftruncate(fd, 0) == -1) Exit("###ftruncate failed\n");
+        // NOTE: Allow ftruncate() to fail by ignoring its return; that okay to
+        // happen when the stdout/stderr are not redirected to a file.
+        (void)ftruncate(fd, 0);
       }
       return;
     } else {
