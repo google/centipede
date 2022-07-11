@@ -17,19 +17,6 @@
 
 #include "./runner_interface.h"
 
-// This is the header-less interface of libFuzzer, see
-// https://llvm.org/docs/LibFuzzer.html.
-extern "C" {
-int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size);
-__attribute__((weak)) int LLVMFuzzerInitialize(int *argc, char ***argv);
-__attribute__((weak)) size_t LLVMFuzzerCustomMutator(uint8_t *data, size_t size,
-                                                     size_t max_size,
-                                                     unsigned int seed);
-__attribute__((weak)) size_t LLVMFuzzerCustomCrossOver(
-    const uint8_t *data1, size_t size1, const uint8_t *data2, size_t size2,
-    uint8_t *out, size_t max_out_size, unsigned int seed);
-}  // extern "C"
-
 // Returns CentipedeRunnerMain() with the default fuzzer callbacks.
 int main(int argc, char **argv) {
   return CentipedeRunnerMain(argc, argv, LLVMFuzzerTestOneInput,

@@ -28,6 +28,19 @@ using FuzzerCustomCrossOverCallback = size_t (*)(
     const uint8_t *data1, size_t size1, const uint8_t *data2, size_t size2,
     uint8_t *out, size_t max_out_size, unsigned int seed);
 
+// This is the header-less interface of libFuzzer, see
+// https://llvm.org/docs/LibFuzzer.html.
+extern "C" {
+int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size);
+__attribute__((weak)) int LLVMFuzzerInitialize(int *argc, char ***argv);
+__attribute__((weak)) size_t LLVMFuzzerCustomMutator(uint8_t *data, size_t size,
+                                                     size_t max_size,
+                                                     unsigned int seed);
+__attribute__((weak)) size_t LLVMFuzzerCustomCrossOver(
+    const uint8_t *data1, size_t size1, const uint8_t *data2, size_t size2,
+    uint8_t *out, size_t max_out_size, unsigned int seed);
+}  // extern "C"
+
 // The main Centipede Runner function.
 // It performs actions prescribed by argc/argv and environment variables
 // and returns EXIT_SUCCESS or EXIT_FAILURE.
@@ -41,5 +54,9 @@ extern "C" int CentipedeRunnerMain(
     FuzzerInitializeCallback initialize_cb,
     FuzzerCustomMutatorCallback custom_mutator_cb,
     FuzzerCustomCrossOverCallback custom_crossover_cb);
+
+// https://llvm.org/docs/LibFuzzer.html#using-libfuzzer-as-a-library
+extern "C" int LLVMFuzzerRunDriver(
+    int *argc, char ***argv, FuzzerTestOneInputCallback test_one_input_cb);
 
 #endif  // THIRD_PARTY_CENTIPEDE_RUNNER_INTERFACE_H_

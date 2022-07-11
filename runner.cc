@@ -593,3 +593,10 @@ extern "C" int CentipedeRunnerMain(
   }
   return EXIT_SUCCESS;
 }
+
+extern "C" int LLVMFuzzerRunDriver(
+    int *argc, char ***argv, FuzzerTestOneInputCallback test_one_input_cb) {
+  return CentipedeRunnerMain(*argc, *argv, test_one_input_cb,
+                             LLVMFuzzerInitialize, LLVMFuzzerCustomMutator,
+                             LLVMFuzzerCustomCrossOver);
+}
