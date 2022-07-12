@@ -64,7 +64,7 @@ struct Environment {
   std::vector<std::string> corpus_dir;
   std::string llvm_symbolizer_path;
   std::string input_filter;
-  std::string dictionary;
+  std::vector<std::string> dictionary;
   std::string function_filter;
   std::string for_each_blob;
   bool exit_on_crash;

@@ -185,7 +185,7 @@ ABSL_FLAG(std::string, for_each_blob, "",
           "  centipede --for_each_blob='ls -l  %P && echo %H' corpus.0");
 
 ABSL_FLAG(std::string, dictionary, "",
-          "If non-empty, used as a path to a dictionary file. "
+          "A comma-separated list of paths to dictionary files. "
           "The dictionary file is either in AFL/libFuzzer plain text format or "
           "in the binary Centipede corpus file format. "
           "The flag is interpreted by CentipedeCallbacks so its meaning may "
@@ -240,7 +240,8 @@ Environment::Environment(int argc, char** argv)
                                 absl::SkipEmpty{})),
       llvm_symbolizer_path(absl::GetFlag(FLAGS_llvm_symbolizer_path)),
       input_filter(absl::GetFlag(FLAGS_input_filter)),
-      dictionary(absl::GetFlag(FLAGS_dictionary)),
+      dictionary(absl::StrSplit(absl::GetFlag(FLAGS_dictionary), ',',
+                                absl::SkipEmpty{})),
       function_filter(absl::GetFlag(FLAGS_function_filter)),
       for_each_blob(absl::GetFlag(FLAGS_for_each_blob)),
       exit_on_crash(absl::GetFlag(FLAGS_exit_on_crash)),

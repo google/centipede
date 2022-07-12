@@ -27,7 +27,9 @@ namespace centipede {
 
 CentipedeDefaultCallbacks::CentipedeDefaultCallbacks(const Environment &env)
     : CentipedeCallbacks(env) {
-  LoadDictionary(env.dictionary);
+  for (const auto &dictionary_path : env_.dictionary) {
+    LoadDictionary(dictionary_path);
+  }
   // Check if a custom mutator is available in the target.
   std::vector<ByteArray> mutants(1);
   if (MutateViaExternalBinary(env_.binary, {{0}}, mutants)) {
