@@ -381,7 +381,6 @@ cc_library(
         "execution_result.h",
         "feature.cc",
         "feature.h",
-        "logging.h",
         "runner.cc",
         "runner.h",
         "runner_fork_server.cc",
