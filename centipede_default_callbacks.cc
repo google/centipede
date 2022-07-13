@@ -47,15 +47,17 @@ bool CentipedeDefaultCallbacks::Execute(std::string_view binary,
          0;
 }
 
-void CentipedeDefaultCallbacks::Mutate(std::vector<ByteArray> &inputs) {
-  std::vector<ByteArray> mutants(inputs.size());
+void CentipedeDefaultCallbacks::Mutate(const std::vector<ByteArray> &inputs,
+                                       size_t num_mutants,
+                                       std::vector<ByteArray> &mutants) {
+  mutants.resize(num_mutants);
   if (custom_mutator_is_usable_ &&
       MutateViaExternalBinary(env_.binary, inputs, mutants)) {
-    inputs.swap(mutants);
     return;
   }
   // Either no custom mutator, or it failed for some reason.
-  byte_array_mutator_.MutateMany(inputs, env_.use_crossover);
+  byte_array_mutator_.MutateMany(inputs, num_mutants, env_.use_crossover,
+                                 mutants);
 }
 
 }  // namespace centipede

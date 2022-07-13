@@ -518,23 +518,24 @@ void Centipede::FuzzingLoop() {
   size_t number_of_batches =
       (env_.num_runs + env_.batch_size - 1) / env_.batch_size;
   size_t new_runs = 0;
-  std::vector<ByteArray> input_vec;
+  std::vector<ByteArray> inputs, mutants;
   BatchResult batch_result;
   for (size_t batch_index = 0; batch_index < number_of_batches; batch_index++) {
     if (EarlyExitRequested()) break;
     CHECK_LT(new_runs, env_.num_runs);
     auto remaining_runs = env_.num_runs - new_runs;
     auto batch_size = std::min(env_.batch_size, remaining_runs);
-    input_vec.resize(batch_size);
-    for (size_t i = 0; i < batch_size; i++) {
-      input_vec[i] = env_.use_corpus_weights ? corpus_.WeightedRandom(rng_())
-                                             : corpus_.UniformRandom(rng_());
+    // Pick a small but non-trivial number of inputs so that crossover works.
+    // TODO(kcc): may need to parametrize this constant.
+    inputs.resize(20);
+    for (auto &input : inputs) {
+      input = env_.use_corpus_weights ? corpus_.WeightedRandom(rng_())
+                                      : corpus_.UniformRandom(rng_());
     }
-    user_callbacks_.Mutate(input_vec);
-    bool gained_new_coverage =
-        RunBatch(input_vec, batch_result, corpus_file.get(),
-                 features_file.get(), nullptr);
-    new_runs += input_vec.size();
+    user_callbacks_.Mutate(inputs, batch_size, mutants);
+    bool gained_new_coverage = RunBatch(
+        mutants, batch_result, corpus_file.get(), features_file.get(), nullptr);
+    new_runs += mutants.size();
 
     bool batch_is_power_of_two = ((batch_index - 1) & batch_index) == 0;
 

@@ -35,6 +35,7 @@ namespace centipede {
 // pure virtual functions.
 //
 // The classes inherited from this one must be thread-compatible.
+// Note: the interface is not yet stable and may change w/o a notice.
 class CentipedeCallbacks {
  public:
   // `env` is used to pass flags to `this`, it must outlive `this`.
@@ -49,8 +50,10 @@ class CentipedeCallbacks {
   virtual bool Execute(std::string_view binary,
                        const std::vector<ByteArray> &inputs,
                        BatchResult &batch_result) = 0;
-  // Mutates every input in `inputs`.
-  virtual void Mutate(std::vector<ByteArray> &inputs) = 0;
+  // Takes non-empty `inputs`, discards old contents of `mutants`,
+  // adds `num_mutants` mutated inputs to `mutants`.
+  virtual void Mutate(const std::vector<ByteArray> &inputs, size_t num_mutants,
+                      std::vector<ByteArray> &mutants) = 0;
   // Returns some simple non-empty valid input.
   virtual ByteArray DummyValidInput() { return {0}; }
 

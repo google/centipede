@@ -154,20 +154,20 @@ void ByteArrayMutator::CrossOver(ByteArray &data, const ByteArray &other) {
   }
 }
 
-void ByteArrayMutator::MutateMany(std::vector<ByteArray> &data_vec,
-                                  bool allow_crossover) {
-  // CrossOver ~half of the time, if CrossOver is allowed.
-  size_t num_to_cross_over = allow_crossover ? rng_() % data_vec.size() : 0;
-  size_t idx = 0;
-  for (; idx < num_to_cross_over; idx++) {
-    // CrossOver the current element with one of the following
-    // elements, because the previous elements have already been
-    // mutated.
-    CrossOver(data_vec[idx],
-              data_vec[idx + 1 + rng_() % (data_vec.size() - idx - 1)]);
-  }
-  for (; idx < data_vec.size(); idx++) {
-    Mutate(data_vec[idx]);
+void ByteArrayMutator::MutateMany(const std::vector<ByteArray> &inputs,
+                                  size_t num_mutants, bool allow_crossover,
+                                  std::vector<ByteArray> &mutants) {
+  size_t num_inputs = inputs.size();
+  mutants.resize(num_mutants);
+  for (auto &mutant : mutants) {
+    mutant = inputs[rng_() % num_inputs];
+    if (allow_crossover && (rng_() % 2)) {
+      // CrossOver ~half of the time, if CrossOver is allowed.
+      // TODO(kcc): we may want to parametrize the crossover frequency.
+      CrossOver(mutant, inputs[rng_() % num_inputs]);
+    } else {
+      Mutate(mutant);
+    }
   }
 }
 
