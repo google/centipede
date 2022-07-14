@@ -436,45 +436,60 @@ static unsigned GetRandomSeed() { return time(nullptr); }
 //
 // TODO(kcc): [impl] make use of custom_crossover_cb, if available.
 static int MutateInputsFromShmem(
-    centipede::SharedMemoryBlobSequence &inputs_blobseq,
-    centipede::SharedMemoryBlobSequence &outputs_blobseq,
+    SharedMemoryBlobSequence &inputs_blobseq,
+    SharedMemoryBlobSequence &outputs_blobseq,
     FuzzerCustomMutatorCallback custom_mutator_cb,
     FuzzerCustomCrossOverCallback custom_crossover_cb) {
   if (custom_mutator_cb == nullptr) return EXIT_FAILURE;
   unsigned int seed = GetRandomSeed();
   // Read max_num_mutants.
-  size_t max_num_mutants = 0;
+  size_t num_mutants = 0;
   size_t num_inputs = 0;
   if (!execution_request::IsMutationRequest(inputs_blobseq.Read()))
     return EXIT_FAILURE;
-  if (!execution_request::IsNumMutants(inputs_blobseq.Read(), max_num_mutants))
+  if (!execution_request::IsNumMutants(inputs_blobseq.Read(), num_mutants))
     return EXIT_FAILURE;
   if (!execution_request::IsNumInputs(inputs_blobseq.Read(), num_inputs))
     return EXIT_FAILURE;
 
-  // Produce mutants.
-  for (size_t num_mutants = 0; num_mutants < max_num_mutants;) {
+  // TODO(kcc): unclear if we can continue using std::vector (or other STL)
+  // in the runner. But for now use std::vector.
+  // Collect the inputs into a vector. We copy them instead of using pointers
+  // into shared memory so that the user code doesn't touch the shared memory.
+  std::vector<std::vector<uint8_t>> inputs;
+  inputs.reserve(num_inputs);
+  for (size_t i = 0; i < num_inputs; ++i) {
     auto blob = inputs_blobseq.Read();
-    if (blob.size == 0) {      // No more inputs.
-      inputs_blobseq.Reset();  // Start reading from the beginning again.
-      inputs_blobseq.Read();   // Skip the first 3 blobs.
-      inputs_blobseq.Read();
-      inputs_blobseq.Read();
-      continue;
+    // If inputs_blobseq have overflown in the engine, we still want to
+    // handle the first few inputs.
+    if (!execution_request::IsDataInput(blob)) break;
+    // inputs.emplace_back().assign(blob.data, blob.data + blob.size);
+    inputs.emplace_back(blob.data, blob.data + blob.size);
+  }
+
+  // Use `input_data` as a scratch to produce mutants.
+  uint8_t *mutant = input_data;
+  constexpr size_t kMaxMutantSize = kMaxDataSize;
+
+  // Produce mutants.
+  for (size_t i = 0; i < num_mutants; ++i) {
+    const auto &input = inputs[rand_r(&seed) % num_inputs];
+
+    size_t size = std::min(input.size(), kMaxMutantSize);
+    memcpy(mutant, input.data(), size);
+    size_t new_size = 0;
+    if (custom_crossover_cb != nullptr && (rand_r(&seed) % 2)) {
+      // Perform crossover half of the time.
+      // TODO(kcc): we may want to parametrize the amount of crossover.
+      const auto &other = inputs[rand_r(&seed) % num_inputs];
+      new_size = custom_crossover_cb(input.data(), input.size(), other.data(),
+                                     other.size(), mutant, kMaxMutantSize,
+                                     rand_r(&seed));
+    } else {
+      new_size = custom_mutator_cb(mutant, size, kMaxDataSize, rand_r(&seed));
     }
 
-    if (!execution_request::IsDataInput(blob)) return EXIT_FAILURE;
-
-    if (blob.size > kMaxDataSize) continue;  // Ignore large inputs.
-
-    // Copy blob to input_data so that to not pass the shared memory further.
-    memcpy(input_data, blob.data, blob.size);
-    size_t new_size =
-        custom_mutator_cb(input_data, blob.size, kMaxDataSize, seed);
-
-    if (!outputs_blobseq.Write({1 /*unused tag*/, new_size, input_data})) break;
-    ++num_mutants;  // increment here, because we count only successful mutants.
-    ++seed;         // Use different seed for every mutation.
+    if (!outputs_blobseq.Write({1 /*unused tag*/, new_size, mutant})) break;
   }
   return EXIT_SUCCESS;
 }
