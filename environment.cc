@@ -202,7 +202,7 @@ namespace centipede {
 Environment::Environment(int argc, char** argv)
     : binary(absl::GetFlag(FLAGS_binary)),
       coverage_binary(absl::GetFlag(FLAGS_coverage_binary).empty()
-                          ? binary
+                          ? *absl::StrSplit(binary, ' ').begin()
                           : absl::GetFlag(FLAGS_coverage_binary)),
       extra_binaries(absl::StrSplit(absl::GetFlag(FLAGS_extra_binaries), ',',
                                     absl::SkipEmpty{})),
@@ -247,7 +247,7 @@ Environment::Environment(int argc, char** argv)
       for_each_blob(absl::GetFlag(FLAGS_for_each_blob)),
       exit_on_crash(absl::GetFlag(FLAGS_exit_on_crash)),
       max_num_crash_reports(absl::GetFlag(FLAGS_num_crash_reports)),
-      binary_path(binary),
+      cmd(binary),
       binary_name(std::filesystem::path(coverage_binary).filename().string()),
       binary_hash(HashOfFileContents(coverage_binary)) {
   if (size_t j = absl::GetFlag(FLAGS_j)) {
@@ -265,7 +265,6 @@ Environment::Environment(int argc, char** argv)
       args.push_back(argv[argno]);
     }
   }
-  for (auto c : binary) CHECK(!isspace(c));  // Don't allow spaces in 'binary'.
 }
 
 std::string Environment::GetForkServerHelperPath() const {
