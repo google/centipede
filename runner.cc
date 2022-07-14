@@ -463,7 +463,6 @@ static int MutateInputsFromShmem(
     // If inputs_blobseq have overflown in the engine, we still want to
     // handle the first few inputs.
     if (!execution_request::IsDataInput(blob)) break;
-    // inputs.emplace_back().assign(blob.data, blob.data + blob.size);
     inputs.emplace_back(blob.data, blob.data + blob.size);
   }
 
