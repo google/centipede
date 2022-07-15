@@ -40,6 +40,8 @@ ABSL_FLAG(std::string, merge_from, "",
           "Another working directory to merge the corpus from. "
           "Inputs from 'merge_from' will be added to 'workdir' "
           "if the add new features.");
+ABSL_FLAG(std::string, flags, "",
+          "A comma-separated list of flags passed to the target binary.");
 ABSL_FLAG(size_t, num_runs, 1000000000, "number of runs");
 ABSL_FLAG(size_t, seed, 0,
           "rng seed. "
@@ -207,6 +209,7 @@ Environment::Environment(int argc, char** argv)
                                     absl::SkipEmpty{})),
       workdir(absl::GetFlag(FLAGS_workdir)),
       merge_from(absl::GetFlag(FLAGS_merge_from)),
+      flags(absl::StrSplit(absl::GetFlag(FLAGS_flags), ',', absl::SkipEmpty{})),
       num_runs(absl::GetFlag(FLAGS_num_runs)),
       total_shards(absl::GetFlag(FLAGS_total_shards)),
       my_shard_index(absl::GetFlag(FLAGS_first_shard_index)),

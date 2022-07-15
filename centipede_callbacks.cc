@@ -58,8 +58,11 @@ Command &CentipedeCallbacks::GetOrCreateCommandForBinary(
   bool disable_coverage =
       std::find(env_.extra_binaries.begin(), env_.extra_binaries.end(),
                 binary) != env_.extra_binaries.end();
+  std::vector<std::string> args(env_.flags.begin(), env_.flags.end());
+  args.push_back(shmem_name1_);
+  args.push_back(shmem_name2_);
   Command &cmd = commands_.emplace_back(Command(
-      /*path=*/binary, /*args=*/{shmem_name1_, shmem_name2_},
+      /*path=*/binary, /*args=*/args,
       /*env=*/
       {ConstructRunnerFlags(
           absl::StrCat(":shmem:arg1=", shmem_name1_, ":arg2=", shmem_name2_,
