@@ -34,6 +34,7 @@ struct Environment {
   std::vector<std::string> extra_binaries;
   std::string workdir;
   std::string merge_from;
+  std::vector<std::string> flags;
   size_t num_runs;
   size_t total_shards;
   size_t my_shard_index;
