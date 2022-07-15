@@ -31,6 +31,7 @@
 #include "./blob_file.h"
 #include "./centipede.h"
 #include "./command.h"
+#include "./coverage.h"
 #include "./defs.h"
 #include "./environment.h"
 #include "./logging.h"
@@ -141,6 +142,7 @@ int CentipedeMain(const Environment &env,
     CHECK(!pc_table.empty())
         << "use_pcpair_features requires non-empty pc_table";
   }
+  CoverageLogger coverage_logger(pc_table, symbols);
 
   std::vector<std::thread> threads(env.num_threads);
   auto thread_callback = [&](size_t my_shard_index) {
@@ -149,7 +151,8 @@ int CentipedeMain(const Environment &env,
     my_env.my_shard_index = my_shard_index;
     my_env.seed = GetRandomSeed(env.seed);
     auto user_callbacks = callbacks_factory.create(my_env);
-    Centipede centipede(my_env, *user_callbacks, pc_table, symbols);
+    Centipede centipede(my_env, *user_callbacks, pc_table, symbols,
+                        coverage_logger);
     centipede.FuzzingLoop();
     callbacks_factory.destroy(user_callbacks);
   };

@@ -101,7 +101,8 @@ static std::vector<CorpusRecord> ReadCorpusRecords(const Environment &env,
 
 Centipede::Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
                      const Coverage::PCTable &pc_table,
-                     const SymbolTable &symbols)
+                     const SymbolTable &symbols,
+                     CoverageLogger &coverage_logger)
     : env_(env),
       user_callbacks_(user_callbacks),
       rng_(env_.seed),
@@ -110,11 +111,11 @@ Centipede::Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
       pc_table_(pc_table),
       symbols_(symbols),
       function_filter_(env_.function_filter, symbols_),
-      coverage_logger_(pc_table_, symbols_),
+      coverage_logger_(coverage_logger),
       input_filter_path_(std::filesystem::path(TemporaryLocalDirPath())
                              .append("filter-input")),
       input_filter_cmd_(env_.input_filter, {input_filter_path_}, {/*env*/},
-                  "/dev/null", "/dev/null") {
+                        "/dev/null", "/dev/null") {
   CHECK(env_.seed) << "env_.seed must not be zero";
   if (!env_.input_filter.empty() && env_.fork_server) {
     input_filter_cmd_.StartForkServer(TemporaryLocalDirPath(), "input_filter",

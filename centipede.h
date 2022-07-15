@@ -37,7 +37,8 @@ namespace centipede {
 class Centipede {
  public:
   Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
-            const Coverage::PCTable &pc_table, const SymbolTable &symbols);
+            const Coverage::PCTable &pc_table, const SymbolTable &symbols,
+            CoverageLogger &coverage_logger);
   virtual ~Centipede() {}
   // Main loop.
   void FuzzingLoop();
@@ -141,7 +142,8 @@ class Centipede {
   const FunctionFilter function_filter_;
 
   // Ensures every coverage location is reported at most once.
-  CoverageLogger coverage_logger_;
+  // This object is shared with other threads, it is thread-safe.
+  CoverageLogger &coverage_logger_;
   // Newly discovered coverage is logged
   // * with --v=2 (or higher) before "init-done".
   // * with --v=1 (or higher) after "init-done".
