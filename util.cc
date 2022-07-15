@@ -285,6 +285,10 @@ void ExtractCorpusRecords(const std::vector<ByteArray> &corpus_blobs,
     hash.insert(hash.end(), hash_and_features.end() - kHashLen,
                 hash_and_features.end());
     size_t num_feature_bytes = hash_and_features.size() - kHashLen;
+    if (num_feature_bytes == 0) {
+      hash_to_features[hash] = {FeatureDomains::kNoFeature};
+      continue;
+    }
     FeatureVec features(num_feature_bytes / sizeof(feature_t));
     memcpy(features.data(), hash_and_features.data(),
            features.size() * sizeof(feature_t));

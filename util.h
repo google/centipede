@@ -126,6 +126,8 @@ ByteArray PackFeaturesAndHash(const ByteArray &data,
 // `features_blobs` is a sequence of features/hash pairs,
 // each created by PackFeaturesAndHash.
 // This function unpacks these into a vector of CorpusRecords.
+// In a case where a feature blob is present for a given corpus element, but has
+// no features, the created CorpusRecord will be {FeatureDomains::kNoFeature}.
 void ExtractCorpusRecords(const std::vector<ByteArray> &corpus_blobs,
                           const std::vector<ByteArray> &features_blobs,
                           std::vector<CorpusRecord> &result);

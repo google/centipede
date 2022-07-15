@@ -100,6 +100,10 @@ struct Domain {
 // features from this domain.
 constexpr Domain kUnknown = {Domain::kUnknown};
 
+// Special feature used to indicate an absence of features. Typically used where
+// a feature array must not be empty, but doesn't have any other features.
+constexpr feature_t kNoFeature = kUnknown.begin();
+
 // Features derived from
 // https://clang.llvm.org/docs/SanitizerCoverage.html#inline-8bit-counters.
 // Every such feature corresponds to one control flow edge and its counter,

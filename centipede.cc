@@ -357,8 +357,6 @@ void Centipede::LoadShard(const Environment &load_env, size_t shard_index,
       if (rerun) {
         to_rerun.push_back(cr.data);
       }
-      // TODO(kcc): [impl] distinguish inputs that have zero infrequent features
-      // from inputs for which we don't know their features.
     } else {
       exported_with_features++;
       if (cr.features.empty()) continue;
