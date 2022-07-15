@@ -210,7 +210,7 @@ PrepareCoverage() {
     state.data_flow_feature_set.clear();
   if (state.run_time_flags.use_cmp_features) state.cmp_feature_set.clear();
   if (state.run_time_flags.use_pc_features) state.pc_feature_set.clear();
-  if (state.run_time_flags.use_path_features) {
+  if (state.run_time_flags.path_level) {
     state.path_feature_set.clear();
     state.ForEachTls([](centipede::ThreadLocalRunnerState &tls) {
       tls.path_ring_buffer.clear();
@@ -258,7 +258,7 @@ PostProcessCoverage(int target_return_value) {
   }
 
   // Convert path bit set to features.
-  if (state.run_time_flags.use_path_features) {
+  if (state.run_time_flags.path_level) {
     state.path_feature_set.ForEachNonZeroBit([](size_t idx) {
       features.push_back(
           centipede::FeatureDomains::kBoundedPath.ConvertToMe(idx));

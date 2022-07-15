@@ -34,6 +34,9 @@ namespace centipede {
 
 std::string CentipedeCallbacks::ConstructRunnerFlags(
     std::string_view extra_flags, bool disable_coverage) {
+  std::string path_level;
+  if (!disable_coverage)
+    path_level = absl::StrCat(":path_level=", env_.path_level, ":");
   return absl::StrCat(
       "CENTIPEDE_RUNNER_FLAGS=", ":timeout_in_seconds=", env_.timeout, ":",
       ":address_space_limit_mb=", env_.address_space_limit_mb, ":",
@@ -41,7 +44,7 @@ std::string CentipedeCallbacks::ConstructRunnerFlags(
       env_.use_pc_features && !disable_coverage ? ":use_pc_features:" : "",
       env_.use_counter_features && !disable_coverage ? ":use_counter_features:"
                                                      : "",
-      env_.use_path_features && !disable_coverage ? ":use_path_features:" : "",
+      path_level,
       env_.use_cmp_features && !disable_coverage ? ":use_cmp_features:" : "",
       env_.use_dataflow_features && !disable_coverage
           ? ":use_dataflow_features:"

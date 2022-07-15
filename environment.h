@@ -51,7 +51,7 @@ struct Environment {
   bool use_corpus_weights;
   int crossover_level;
   bool use_pc_features;
-  bool use_path_features;
+  int path_level;
   bool use_cmp_features;
   bool use_dataflow_features;
   bool use_counter_features;

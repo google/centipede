@@ -125,10 +125,11 @@ ABSL_FLAG(bool, use_pc_features, true,
 ABSL_FLAG(bool, use_cmp_features, true,
           "When available from instrumentation, use features derived from "
           "instrumentation of CMP instructions");
-ABSL_FLAG(bool, use_path_features, false,  // Not ready for wide usage.
+ABSL_FLAG(int, path_level, 0,  // Not ready for wide usage.
           "When available from instrumentation, use features derived from "
           "bounded execution paths. Be careful, may cause exponential feature "
-          "explosion");
+          "explosion. 0 means no path features. "
+          "Values between 1 and 100 define how agressively to use the paths. ");
 ABSL_FLAG(bool, use_dataflow_features, true,
           "When available from instrumentation, use features derived from "
           "data flows");
@@ -225,7 +226,7 @@ Environment::Environment(int argc, char** argv)
       use_corpus_weights(absl::GetFlag(FLAGS_use_corpus_weights)),
       crossover_level(absl::GetFlag(FLAGS_crossover_level)),
       use_pc_features(absl::GetFlag(FLAGS_use_pc_features)),
-      use_path_features(absl::GetFlag(FLAGS_use_path_features)),
+      path_level(absl::GetFlag(FLAGS_path_level)),
       use_cmp_features(absl::GetFlag(FLAGS_use_cmp_features)),
       use_dataflow_features(absl::GetFlag(FLAGS_use_dataflow_features)),
       use_counter_features(absl::GetFlag(FLAGS_use_counter_features)),

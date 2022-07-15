@@ -43,8 +43,8 @@ class LockGuard {
 // Flags derived from CENTIPEDE_RUNNER_FLAGS.
 // Flags used in instrumentation callbacks are bit-packed for efficiency.
 struct RunTimeFlags {
+  uint64_t path_level : 8;
   uint64_t use_pc_features : 1;
-  uint64_t use_path_features : 1;
   uint64_t use_dataflow_features : 1;
   uint64_t use_cmp_features : 1;
   uint64_t use_counter_features : 1;
@@ -96,8 +96,8 @@ struct GlobalRunnerState {
 
   // Flags.
   RunTimeFlags run_time_flags = {
+      .path_level = HasFlag(":path_level=", 0),
       .use_pc_features = HasFlag(":use_pc_features:"),
-      .use_path_features = HasFlag(":use_path_features:"),
       .use_dataflow_features = HasFlag(":use_dataflow_features:"),
       .use_cmp_features = HasFlag(":use_cmp_features:"),
       .use_counter_features = HasFlag(":use_counter_features:"),
