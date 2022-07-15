@@ -49,9 +49,10 @@ class ByteArrayMutator {
 
   // Takes non-empty `inputs`, produces `num_mutants` mutations in `mutants`.
   // Old contents of `mutants` are discarded.
-  // If `allow_crossover`, may randomly apply CrossOver across the inputs.
+  // `crossover_level` should be in [0,100].
+  // 0 means no crossover. Larger values mean more aggressive crossover.
   void MutateMany(const std::vector<ByteArray> &inputs, size_t num_mutants,
-                  bool allow_crossover, std::vector<ByteArray> &mutants);
+                  int crossover_level, std::vector<ByteArray> &mutants);
 
   // Mutates `data` by inserting a random part from `other`.
   void CrossOverInsert(ByteArray &data, const ByteArray &other);

@@ -50,6 +50,7 @@ struct RunTimeFlags {
   uint64_t use_counter_features : 1;
   uint64_t timeout_in_seconds;
   uint64_t rss_limit_mb;
+  uint64_t crossover_level;
 };
 
 // One such object is created in runner's TLS.
@@ -101,7 +102,8 @@ struct GlobalRunnerState {
       .use_cmp_features = HasFlag(":use_cmp_features:"),
       .use_counter_features = HasFlag(":use_counter_features:"),
       .timeout_in_seconds = HasFlag(":timeout_in_seconds=", 0),
-      .rss_limit_mb = HasFlag(":rss_limit_mb=", 0)};
+      .rss_limit_mb = HasFlag(":rss_limit_mb=", 0),
+      .crossover_level = HasFlag(":crossover_level=", 50)};
 
   // Returns true iff `flag` is present.
   // Typical usage: pass ":some_flag:", i.e. the flag name surrounded with ':'.

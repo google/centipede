@@ -49,7 +49,7 @@ struct Environment {
   bool fork_server;
   bool full_sync;
   bool use_corpus_weights;
-  bool use_crossover;
+  int crossover_level;
   bool use_pc_features;
   bool use_path_features;
   bool use_cmp_features;

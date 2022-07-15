@@ -56,7 +56,7 @@ void CentipedeDefaultCallbacks::Mutate(const std::vector<ByteArray> &inputs,
     return;
   }
   // Either no custom mutator, or it failed for some reason.
-  byte_array_mutator_.MutateMany(inputs, num_mutants, env_.use_crossover,
+  byte_array_mutator_.MutateMany(inputs, num_mutants, env_.crossover_level,
                                  mutants);
 }
 

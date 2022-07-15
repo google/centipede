@@ -46,7 +46,7 @@ std::string CentipedeCallbacks::ConstructRunnerFlags(
       env_.use_dataflow_features && !disable_coverage
           ? ":use_dataflow_features:"
           : "",
-      extra_flags);
+      ":crossover_level=", env_.crossover_level, ":", extra_flags);
 }
 
 Command &CentipedeCallbacks::GetOrCreateCommandForBinary(
