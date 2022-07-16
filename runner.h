@@ -67,7 +67,7 @@ struct ThreadLocalRunnerState {
   void OnThreadStop();
 
   // Paths are thread-local, so we maintain the current bounded path here.
-  // TODO(kcc): [impl] this may still cause unbounded path explosion.
+  // We allow paths of up to 16, controlled at run-time via the path_level flag.
   static constexpr size_t kBoundedPathLength = 16;
   HashedRingBuffer<kBoundedPathLength> path_ring_buffer;
 };
@@ -96,7 +96,8 @@ struct GlobalRunnerState {
 
   // Flags.
   RunTimeFlags run_time_flags = {
-      .path_level = HasFlag(":path_level=", 0),
+      .path_level = std::min(ThreadLocalRunnerState::kBoundedPathLength,
+                             HasFlag(":path_level=", 0)),
       .use_pc_features = HasFlag(":use_pc_features:"),
       .use_dataflow_features = HasFlag(":use_dataflow_features:"),
       .use_cmp_features = HasFlag(":use_cmp_features:"),

@@ -138,9 +138,8 @@ void __sanitizer_cov_trace_pc_guard(uint32_t *guard) {
   }
 
   // path features.
-  if (state.run_time_flags.path_level) {
-    // TODO(kcc): utilize different path_level values.
-    uintptr_t hash = tls.path_ring_buffer.push(offset);
+  if (auto path_level = state.run_time_flags.path_level) {
+    uintptr_t hash = tls.path_ring_buffer.push(offset, path_level);
     state.path_feature_set.set(hash);
   }
 }

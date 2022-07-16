@@ -260,16 +260,22 @@ inline size_t ConvertPcAndArgPairToNumber(uintptr_t a, uintptr_t b,
   return ab * max_pc + pc;
 }
 
-// Fixed-size ring buffer that maintains a hash of its `kSize` elements.
+// Fixed-size ring buffer that maintains a hash of its elements.
 // Create objects of this type as zero-initialized globals or thread-locals.
 // In a zero-initialized object all values and the hash are zero.
+// `kSize` indicates the maximum possible size for the ring-buffer.
+// The actual size is controlled by the `ring_buffer_size` argument of push().
 template <size_t kSize>
 class HashedRingBuffer {
  public:
   // Adds `new_item` and returns the new hash of the entire collection.
   // Evicts an old item.
-  size_t push(size_t new_item) {
-    size_t new_pos = (last_added_pos_ + 1) % kSize;
+  // `ring_buffer_size` must be <= kSize and must be the same for all push()
+  // calls for a given object.
+  // We don't enforce these constraints here to avoid overhead.
+  size_t push(size_t new_item, size_t ring_buffer_size) {
+    size_t new_pos = last_added_pos_ + 1;
+    if (new_pos >= ring_buffer_size) new_pos = 0;
     size_t evicted_item = buffer_[new_pos];
     // The items added are not necesserily random bit strings,
     // and just blindly XOR-ing them together may not work.
