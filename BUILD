@@ -68,6 +68,7 @@ cc_library(
         "util.cc",
     ],
     hdrs = ["util.h"],
+    linkopts = ["-lcrypto"],
     deps = [
         ":defs",
         ":feature",
