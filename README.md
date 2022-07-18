@@ -38,57 +38,95 @@ Notable features:
 
 ## Terminology
 
-* **Fuzz target**, or **target**:
-  A binary, a library, an API, or rather anything that can consume bytes for
-  input and produce some sort of coverage data as an output.
-  A [libFuzzer](https://llvm.org/docs/LibFuzzer.html)'s target can be
-  Centipede's target.
+#### Fuzzing engine a.k.a. fuzzer {#fuzzer}
 
-* **Fuzzing engine**: a program that produces an infinite stream of inputs for a
-  target and orchestrates the execution.
+A program that produces an infinite stream of inputs for a target and
+orchestrates the execution.
 
-* **Input**: a sequence of bytes that we can feed to a target. The input can be
-  an arbitrary bag of bytes, or some structured data, e.g. serialized proto.
+#### Fuzz target {#target}
 
-* **Coverage**: some information about the behaviour of the target when it
-  executes a given input. See e.g.
-  [SanitizerCoverage](https://clang.llvm.org/docs/SanitizerCoverage.html)
+A binary, a library, an API, or rather anything that can consume bytes for input
+and produce some sort of coverage data as an output.
+A [libFuzzer](https://llvm.org/docs/LibFuzzer.html)'s
+target can be a Centipede's target. Read
+more [here](https://github.com/google/fuzzing/blob/master/docs/good-fuzz-target.md)
+.
 
-* **Mutator**: a function that takes bytes as input and outputs a small random
-  mutation of the input. See also:
-  [Structure-aware-fuzzing](https://github.com/google/fuzzing/blob/master/docs/structure-aware-fuzzing.md)
-  .
+#### Input {#input}
 
-* **Executor**: a function that knows how to feed an input into a target and get
-  coverage in return (i.e. to **execute**).
+A sequence of bytes that can be fed to a target. The input can be an arbitrary
+bag of bytes, or some structured data, e.g. serialized proto.
 
-* **Centipede**: is a customizable fuzzing engine. It allows the user to
-  substitute the Mutator and the Executor.
+#### Feature
 
-* **Workdir** or **WD**: a local or remote directory that contains data produced
-  or consumed by a fuzzer.
+A number that represents some unique behavior of the target. E.g. a feature
+1234567 may represent the fact that a basic block number 987 in the target has
+been executed 7 times. When executing an input with the target, the fuzzer
+collects the features that were observed during execution.
 
-* **Corpus** (plural: **corpora**): a set of inputs.
+#### Feature set
 
-* **Feature**: A number that represents some unique behavior of the target. E.g.
-  a feature 1234567 may represent the fact that a basic block number 987 in the
-  target has been executed 7 times. When executing an input with the target, the
-  fuzzer collects the features that were observed during execution. **Feature
-  set** is a set of features associated with one specific input.
+A set of features associated with one specific input.
 
-* **Distillation** (creating a **distilled corpus**): a process of choosing a
-  subset of a larger corpus, such that the subset has the same coverage features
-  as the original corpus.
+#### Coverage
 
-* **Shard**: A file representing a subset of the corpus and another file
-  representing feature sets for that same subset of the corpus.
+Some information about the behaviour of the target when it executes a given
+input. Coverage is usually represented as feature set that the input has
+triggered in the target.
 
-* **Merge** shard B into shard A:
-  for every input in shard B that has features missing in shard A, add that
-  input to A.
+#### Mutator
 
-* **Job**: a single fuzzer process. One job writes only to one shard, but may
-  read multiple shards.
+A function that takes bytes as input and outputs a small random mutation of the
+input. See also:
+[structure-aware fuzzing](https://github.com/google/fuzzing/blob/master/docs/structure-aware-fuzzing.md)
+.
+
+#### Executor {#executor}
+
+A function that knows how to feed an input into a target and get coverage in
+return (i.e. to **execute**).
+
+#### Centipede
+
+A customizable fuzzing engine that allows the user to substitute the Mutator and
+the Executor.
+
+#### Centipede runner {#runner}
+
+A library that implements the executor interface expected by the Centipede
+fuzzer. The runner knows how to run
+a [sancov](https://clang.llvm.org/docs/SanitizerCoverage.html)-instrumented
+target, collect the resulting coverage, and pass it back to Centipede.
+Prospective Centipede fuzz targets can be linked with this library to make them
+runnable by Centipede.
+
+#### Corpus (_plural: corpora_)
+
+A set of [inputs](#input).
+
+#### Distillation (creating a _distilled corpus_)
+
+A process of choosing a subset of a larger corpus, such that the subset has the
+same coverage features as the original corpus.
+
+#### Shard
+
+A file representing a subset of the corpus and another file representing feature
+sets for that same subset of the corpus.
+
+#### Merging shards
+
+To merge shard B into shard A means: for every input in shard B that has
+features missing in shard A, add that input to A.
+
+#### Job
+
+A single fuzzer process. One job writes only to one shard, but may read multiple
+shards.
+
+#### Workdir or WD
+
+A local or remote directory that contains data produced or consumed by a fuzzer.
 
 ## Build
 
@@ -148,6 +186,7 @@ See what's in workdir:
 ```shell
 $ tree WD
 ```
+
 ```
 WD
 ├── corpus.0
@@ -168,6 +207,7 @@ See what's in workdir:
 ```shell
 $ tree WD
 ```
+
 ```
 WD
 ├── corpus.0
