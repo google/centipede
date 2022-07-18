@@ -77,7 +77,7 @@ struct Environment {
   std::vector<std::string> args;  // copied from argv[1:].
 
   // Created once in CTOR, don't override.
-  const std::string binary_path;  // Full path to the binary.
+  const std::string cmd;  // The command to execute the binary.
   const std::string binary_name;  // Name of coverage_binary, w/o directories.
   const std::string binary_hash;  // Hash of the coverage_binary file.
 
