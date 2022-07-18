@@ -92,8 +92,6 @@ Notable features:
 
 ## Build
 
-TODO(b/229156316): [impl] explain how to use existing libFuzzer targets.
-
 ```
 % bazel build -c opt :centipede
 % bazel build -c opt :target_example
@@ -109,11 +107,8 @@ fuzzer (`centipede`) needs to know how to properly execute the target
 The target could be anything that the fuzzer knows how to execute. In this
 example, `target_example` is a
 [fuzz target](https://github.com/google/fuzzing/blob/master/docs/good-fuzz-target.md)
-built with
-[sancov](https://clang.llvm.org/docs/SanitizerCoverage.html)
-via
-[bazel transitions](https://bazel.build/rules/lib/transition)
-.
+built with [sancov](https://clang.llvm.org/docs/SanitizerCoverage.html)
+via [bazel transitions](https://bazel.build/rules/lib/transition).
 
 ## Run locally
 
@@ -126,10 +121,15 @@ file system.
 DIR=$HOME/centipede_example_dir
 rm -rf $DIR # Careful!
 mkdir $DIR
-cp bazel-bin/third_party/centipede/testing/target_example $DIR
-cp bazel-bin/third_party/centipede/centipede $DIR
+cp bazel-bin/centipede/testing/target_example $DIR
+cp bazel-bin/centipede/centipede $DIR
 cd $DIR
 ```
+
+NOTE: You may need to add
+[`llvm-symbolizer`](https://llvm.org/docs/CommandGuide/llvm-symbolizer.html)
+to your `$PATH` for some of the Centipede functionality to work. The symbolizer
+can be installed as part of the [LLVM](https://releases.llvm.org) distribution.
 
 Create a workdir:
 
@@ -175,9 +175,6 @@ WD/target_example-467422156588a87805669f8334cb88889ab8958d:
 features.0  features.1  features.2  features.3  features.4
 ```
 
-TODO(b/229156316): [impl] describe output, corpus, features,
-export/import/distill, etc
-
 ## Corpus distillation
 
 Each Centipede shard typically does not cover all features that the entire
@@ -220,7 +217,6 @@ PARTIAL: FUNCTION_CCC ccc.cc:1:0
 
 ## Customization
 
-TODO(b/229156316): [impl] explain how to customize Mutator and/or Executor in
 Centipede.
 
 ## Related Reading
