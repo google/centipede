@@ -23,7 +23,8 @@
 
 set -eu -o pipefail
 
-readonly seed_and_puzzle_name="${0#*puzzles/run_}"
+readonly target_name="$(basename "$0")"
+readonly seed_and_puzzle_name="${target_name#run_}"
 readonly seed="${seed_and_puzzle_name:0:1}"
 readonly puzzle_name="${seed_and_puzzle_name:2}"
 readonly puzzle_source_name="${puzzle_name}.cc"
@@ -52,7 +53,6 @@ function Run() {
   rm -rf "${workdir}"
   mkdir "${workdir}"
   "${centipede}" \
-    --alsologtostderr \
     --workdir "${workdir}" \
     --binary "${puzzle_path}" \
     --seed="${seed}" \

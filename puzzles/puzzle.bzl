@@ -14,29 +14,32 @@
 
 """BUILD rule for Centipede puzzles"""
 
-load("@centipede///testing:build_defs.bzl", "centipede_test_target", "centipede_test_target_sancov")
-
 def puzzle(name):
-    """Generates a cc_fuzz_target target instrumented with sancov and a sh script to run it.
+    """Generates a sancov-instrumented cc_binary target + two sh_test targets to run it.
 
     Args:
-      name: A unique name for this target
+    name: A unique name for this target
     """
 
-    # Intermediate cc_fuzz_target rule.
-    centipede_test_target(
-        name = name,
-    )
-
-    # Bazel transition to build with the right sancov flags.
-    centipede_test_target_sancov(
+    native.cc_binary(
         name = name + "_centipede",
-        fuzz_target = name,
+        copts = [
+            "-O2",
+            "-fsanitize-coverage=trace-pc-guard,pc-table,trace-cmp",
+            "-fno-builtin",
+            "-gline-tables-only",
+        ],
+        linkopts = ["-ldl -lrt -lpthread"],
+        srcs = [name + ".cc"],
+        deps = [
+            "@centipede//:centipede_runner",
+        ],
     )
 
-    # We test every puzzle with two different seeds so that the result is more trustworthy.
-    # The seeds are fixed so that we have some degree of repeatability.
-    # Each sh_test performs a single run with a single seed, so that the log is minimal.
+    # We test every puzzle with two different seeds so that the result is more
+    # trustworthy. The seeds are fixed so that we have some degree of
+    # repeatability. Each sh_test performs a single run with a single seed, so
+    # that the log is minimal.
     for seed in ["1", "2"]:
         native.sh_test(
             name = "run_" + seed + "_" + name,
