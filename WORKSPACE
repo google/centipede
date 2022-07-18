@@ -74,16 +74,3 @@ http_archive(
     strip_prefix = "googletest-%s" % googletest_ver,
     url = "https://github.com/google/googletest/archive/%s.tar.gz" % googletest_ver,
 )
-
-###############################################################################
-# BoringSSL (Google's versions of OpenSSL)
-###############################################################################
-
-boringssl_ver = "18637c5f37b87e57ebde0c40fe19c1560ec88813"
-
-http_archive(
-    name = "boringssl",
-    sha256 = "7514826d98f032c16531de9f4c05e7bd05e07545ca39201d1616fa7ba3deadbc",
-    strip_prefix = "boringssl-%s" % boringssl_ver,
-    url = "https://github.com/google/boringssl/archive/%s.tar.gz" % boringssl_ver,
-)
