@@ -92,9 +92,9 @@ Notable features:
 
 ## Build
 
-```
-% bazel build -c opt :centipede
-% bazel build -c opt :target_example
+```shell
+$ bazel build -c opt :centipede
+$ bazel build -c opt :target_example
 ```
 
 `centipede` and `target_example` are two independent binaries that may not
@@ -108,7 +108,7 @@ The target could be anything that the fuzzer knows how to execute. In this
 example, `target_example` is a
 [fuzz target](https://github.com/google/fuzzing/blob/master/docs/good-fuzz-target.md)
 built with [sancov](https://clang.llvm.org/docs/SanitizerCoverage.html)
-via [bazel transitions](https://bazel.build/rules/lib/transition).
+via [Bazel transitions](https://bazel.build/rules/lib/transition).
 
 ## Run locally
 
@@ -117,13 +117,13 @@ fuzzer development stage. We recommend that both the fuzzer and the target are
 copied to a local directory before running in order to avoid stressing a network
 file system.
 
-```
-DIR=$HOME/centipede_example_dir
-rm -rf $DIR # Careful!
-mkdir $DIR
-cp bazel-bin/centipede/testing/target_example $DIR
-cp bazel-bin/centipede/centipede $DIR
-cd $DIR
+```shell
+$ DIR=$HOME/centipede_example_dir
+$ rm -rf $DIR # Careful!
+$ mkdir $DIR
+$ cp bazel-bin/centipede/testing/target_example $DIR
+$ cp bazel-bin/centipede/centipede $DIR
+$ cd $DIR
 ```
 
 NOTE: You may need to add
@@ -133,46 +133,55 @@ can be installed as part of the [LLVM](https://releases.llvm.org) distribution.
 
 Create a workdir:
 
-```
-mkdir WD
+```shell
+$ mkdir WD
 ```
 
 Run one fuzzing job. Will create a single shard.
 
-```
-./centipede --alsologtostderr --workdir=WD --binary=./target_example --num_runs=100
+```shell
+$ ./centipede --alsologtostderr --workdir=WD --binary=./target_example --num_runs=100
 ```
 
 See what's in workdir:
 
+```shell
+$ tree WD
 ```
-% ls WD/*
-WD/corpus.0  WD/coverage-report-target_example.0.txt
-
-WD/target_example-467422156588a87805669f8334cb88889ab8958d:
-features.0
+```
+WD
+├── corpus.0
+├── coverage-report-target_example.0.txt
+└── target_example-467422156588a87805669f8334cb88889ab8958d
+   └── features.0
 ```
 
 Run 5 concurrent fuzzing jobs. Don't run more than the number of cores on your
 machine.
 
-```
-for((shard=0;shard<5;shard++)); do
-  ./centipede --alsologtostderr --workdir=WD --binary=./target_example --num_runs=100 \
-    --first_shard_index=$shard --total_shards=5 2> $shard.log &
-done ; wait
-
+```shell
+$ ./centipede --binary=${BIN_DIR}/target_example --workdir=WD --num_runs=100 --j=5
 ```
 
 See what's in workdir:
 
+```shell
+$ tree WD
 ```
-% ls WD/*
-WD/corpus.0  WD/corpus.1  WD/corpus.2  WD/corpus.3  WD/corpus.4
-WD/coverage-report-target_example.0.txt
-
-WD/target_example-467422156588a87805669f8334cb88889ab8958d:
-features.0  features.1  features.2  features.3  features.4
+```
+WD
+├── corpus.0
+├── corpus.1
+├── corpus.2
+├── corpus.3
+├── corpus.4
+├── coverage-report-target_example.0.txt
+└── target_example-467422156588a87805669f8334cb88889ab8958d
+   ├── features.0
+   ├── features.1
+   ├── features.2
+   ├── features.3
+   └── features.4
 ```
 
 ## Corpus distillation
@@ -217,7 +226,7 @@ PARTIAL: FUNCTION_CCC ccc.cc:1:0
 
 ## Customization
 
-Centipede.
+TBD
 
 ## Related Reading
 
