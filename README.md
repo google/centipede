@@ -148,6 +148,10 @@ You can keep these files where they are or copy them somewhere.
 
 ## Build your fuzz target
 
+We provide two examples of building the target: one tiny single-file target and
+libpng. Once you've built your target, proceed to the
+[fuzz target running step](#run-step).
+
 ### The simple example
 
 This example uses one of the simple example fuzz targets, a.k.a. _puzzles_,
@@ -175,6 +179,31 @@ $ clang++ $BIN_DIR/$FUZZ_TARGET.o $BIN_DIR/libcentipede_runner.pic.a \
 ```
 
 Skip to the [running step](#run-step).
+
+### The libpng example
+
+#### Download and compile libpng
+
+```shell
+
+$ LIBPNG_BRANCH=v1.6.37  # You can experiment with other branches if you'd like
+$ git clone --branch $LIBPNG_BRANCH --single-branch https://github.com/glennrp/libpng.git
+$ cd libpng
+$ CC=clang CFLAGS=@$CENTIPEDE_SRC/clang-flags.txt ./configure --disable-shared
+$ make -j
+```
+
+#### Link ligpng's own fuzz target with libcentipede_runner.pic.a
+
+```shell
+$ FUZZ_TARGET=libpng_read_fuzzer
+$ clang++ -include cstdlib \
+    ./contrib/oss-fuzz/$FUZZ_TARGET.cc \
+    ./.libs/libpng16.a \
+    $BIN_DIR/libcentipede_runner.pic.a \
+    -ldl -lrt -lpthread -lz \
+    -o $BIN_DIR/$FUZZ_TARGET
+```
 
 ## Run Centipede locally {#run-step}
 
