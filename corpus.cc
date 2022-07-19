@@ -79,11 +79,11 @@ FeatureSet::ComputeWeight(const FeatureVec &features) const {
     // (frequency == 1) => (weight == 256)
     // (frequency == 2) => (weight == 128)
     // and so on.
-    //
-    // We also multiply the feature-specific weight based on its frequency
-    // by the feature's Importance based on its domain.
-    weight += FeatureDomains::Importance(feature) *
-              (256 / frequencies_[Feature2Idx(feature)]);
+    // The less frequent is the domain, the more valuable are its features.
+    auto domain_id = FeatureDomains::Domain::FeatureToDomainId(feature);
+    CHECK_NE(features_per_domain_[domain_id], 0);
+    auto domain_weight = num_features_ / features_per_domain_[domain_id];
+    weight += domain_weight * (256 / frequencies_[Feature2Idx(feature)]);
   }
   return weight;
 }

@@ -12,32 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "./feature.h"
-
-#include <array>
-#include <cstdint>
-
-namespace centipede {
-namespace FeatureDomains {
-
-uint32_t Importance(feature_t feature) {
-  // The mapping between the domain and its importance.
-  // We don't embedd it into the domain definition because we may eventually
-  // need a more dynamic mapping (computed on the flight, coming from flags,
-  // etc).
-  static auto importance_by_domain = [&]() {
-    std::array<uint32_t, Domain::kLastDomain + 1> res;
-    res[Domain::kUnknown] = 1;
-    res[Domain::k8bitCounters] = 100;
-    res[Domain::kDataFlow] = 10;
-    res[Domain::kCMP] = 10;
-    res[Domain::kBoundedPath] = 1;
-    res[Domain::kPCPair] = 1;
-    res[Domain::kLastDomain] = 1;
-    return res;
-  }();
-  return importance_by_domain[Domain::FeatureToDomainId(feature)];
-}
-
-}  // namespace FeatureDomains
-}  // namespace centipede
+// TODO(kcc): remove this file if nothing else gets added here.
