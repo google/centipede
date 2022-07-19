@@ -128,100 +128,120 @@ shards.
 
 A local or remote directory that contains data produced or consumed by a fuzzer.
 
-## Build
+## Build Centipede
 
 ```shell
-$ bazel build -c opt :centipede
-$ bazel build -c opt :target_example
+$ git clone https://github.com/google/centipede.git
+$ cd centipede
+$ CENTIPEDE_SRC=`pwd`
+$ BIN_DIR=$CENTIPEDE_SRC/bazel-bin
+$ bazel build -c opt :all
 ```
 
-`centipede` and `target_example` are two independent binaries that may not
-necessarily know about each other. But the executor built into the
-fuzzer (`centipede`) needs to know how to properly execute the target
-(`target_example`).
+What you will need for the subsequent steps:
 
-`centipede` is a regular C++ binary built with usual build options.
+* `$BIN_DIR/centipede` - the binary of the engine (the fuzzer).
+* `$BIN_DIR/libcentipede_runner.pic.a` - the library you need to link with your fuzz target (the runner).
+* `$CENTIPEDE_SRC/clang-flags.txt` - recommended clang compilation flags for the target.
 
-The target could be anything that the fuzzer knows how to execute. In this
-example, `target_example` is a
-[fuzz target](https://github.com/google/fuzzing/blob/master/docs/good-fuzz-target.md)
-built with [sancov](https://clang.llvm.org/docs/SanitizerCoverage.html)
-via [Bazel transitions](https://bazel.build/rules/lib/transition).
+You can keep these files where they are or copy them somewhere.
 
-## Run locally
+## Build your fuzz target
+
+### The simple example
+
+This example uses one of the simple example fuzz targets, a.k.a. _puzzles_,
+included in the Centipede repo.
+
+#### Compile
+
+NOTE: The commands below use the flags from $CENTIPEDE_SRC/clang-flags.txt.
+You may choose to use some other set of instrumentation flags:
+clang-flags.txt only provides a simple default option.
+
+```shell
+$ FUZZ_TARGET=byte_cmp_4  # or any other source under $CENTIPEDE_SRC/puzzles
+$ clang++ @$CENTIPEDE_SRC/clang-flags.txt -c $CENTIPEDE_SRC/puzzles/$FUZZ_TARGET.cc -o $BIN_DIR/$FUZZ_TARGET.o
+```
+
+#### Link
+
+This step links the just-built fuzz target with libcentipede_runner.pic.a and
+other required libraries.
+
+```shell
+$ clang++ $BIN_DIR/$FUZZ_TARGET.o $BIN_DIR/libcentipede_runner.pic.a \
+    -ldl -lrt -lpthread -o $BIN_DIR/$FUZZ_TARGET
+```
+
+Skip to the [running step](#run-step).
+
+## Run Centipede locally {#run-step}
 
 Running locally will not give the full scale, but it could be useful during the
 fuzzer development stage. We recommend that both the fuzzer and the target are
 copied to a local directory before running in order to avoid stressing a network
 file system.
 
+### Prepare for a run
+
 ```shell
-$ DIR=$HOME/centipede_example_dir
-$ rm -rf $DIR # Careful!
-$ mkdir $DIR
-$ cp bazel-bin/centipede/testing/target_example $DIR
-$ cp bazel-bin/centipede/centipede $DIR
-$ cd $DIR
+$ WD=$HOME/centipede_run
+$ mkdir -p $WD
 ```
 
 NOTE: You may need to add
 [`llvm-symbolizer`](https://llvm.org/docs/CommandGuide/llvm-symbolizer.html)
-to your `$PATH` for some of the Centipede functionality to work. The symbolizer
-can be installed as part of the [LLVM](https://releases.llvm.org) distribution.
+to your `$PATH` for some of the Centipede functionality to work. The
+symbolizer can be installed as part of the [LLVM](https://releases.llvm.org)
+distribution.
 
-Create a workdir:
-
-```shell
-$ mkdir WD
-```
-
-Run one fuzzing job. Will create a single shard.
+### Run one fuzzing job
 
 ```shell
-$ ./centipede --alsologtostderr --workdir=WD --binary=./target_example --num_runs=100
+$ rm -rf $WD/*
+$ $BIN_DIR/centipede --binary=$BIN_DIR/$FUZZ_TARGET --workdir=$WD --num_runs=100
 ```
 
-See what's in workdir:
+See what's in the working directory
 
 ```shell
-$ tree WD
+$ tree $WD
+```
+```
+...
+├── <fuzz target name>-d9d90139ee2ccc687f7c9d5821bcc04b8a847df5
+│   └── features.0
+└── corpus.0
 ```
 
-```
-WD
-├── corpus.0
-├── coverage-report-target_example.0.txt
-└── target_example-467422156588a87805669f8334cb88889ab8958d
-   └── features.0
-```
+### Run 5 concurrent fuzzing jobs
 
-Run 5 concurrent fuzzing jobs. Don't run more than the number of cores on your
-machine.
-
-```shell
-$ ./centipede --binary=${BIN_DIR}/target_example --workdir=WD --num_runs=100 --j=5
-```
-
-See what's in workdir:
+WARNING: Do not exceed the number of cores on your machine for the `--j` flag.
 
 ```shell
-$ tree WD
+$ rm -rf $WD/*
+$ $BIN_DIR/centipede --binary=$BIN_DIR/$FUZZ_TARGET --workdir=$WD --num_runs=100 --j=5
 ```
 
+See what's in the working directory:
+
+```shell
+$ tree $WD
 ```
-WD
+```
+...
+├── <fuzz target name>-d9d90139ee2ccc687f7c9d5821bcc04b8a847df5
+│   ├── features.0
+│   ├── features.1
+│   ├── features.2
+│   ├── features.3
+│   └── features.4
 ├── corpus.0
 ├── corpus.1
 ├── corpus.2
 ├── corpus.3
-├── corpus.4
-├── coverage-report-target_example.0.txt
-└── target_example-467422156588a87805669f8334cb88889ab8958d
-   ├── features.0
-   ├── features.1
-   ├── features.2
-   ├── features.3
-   └── features.4
+└── corpus.4
 ```
 
 ## Corpus distillation
