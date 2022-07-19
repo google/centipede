@@ -131,11 +131,11 @@ A local or remote directory that contains data produced or consumed by a fuzzer.
 ## Build Centipede
 
 ```shell
-$ git clone https://github.com/google/centipede.git
-$ cd centipede
-$ CENTIPEDE_SRC=`pwd`
-$ BIN_DIR=$CENTIPEDE_SRC/bazel-bin
-$ bazel build -c opt :all
+git clone https://github.com/google/centipede.git
+cd centipede
+CENTIPEDE_SRC=`pwd`
+BIN_DIR=$CENTIPEDE_SRC/bazel-bin
+bazel build -c opt :all
 ```
 
 What you will need for the subsequent steps:
@@ -164,8 +164,8 @@ You may choose to use some other set of instrumentation flags:
 clang-flags.txt only provides a simple default option.
 
 ```shell
-$ FUZZ_TARGET=byte_cmp_4  # or any other source under $CENTIPEDE_SRC/puzzles
-$ clang++ @$CENTIPEDE_SRC/clang-flags.txt -c $CENTIPEDE_SRC/puzzles/$FUZZ_TARGET.cc -o $BIN_DIR/$FUZZ_TARGET.o
+FUZZ_TARGET=byte_cmp_4  # or any other source under $CENTIPEDE_SRC/puzzles
+clang++ @$CENTIPEDE_SRC/clang-flags.txt -c $CENTIPEDE_SRC/puzzles/$FUZZ_TARGET.cc -o $BIN_DIR/$FUZZ_TARGET.o
 ```
 
 #### Link
@@ -174,7 +174,7 @@ This step links the just-built fuzz target with libcentipede_runner.pic.a and
 other required libraries.
 
 ```shell
-$ clang++ $BIN_DIR/$FUZZ_TARGET.o $BIN_DIR/libcentipede_runner.pic.a \
+clang++ $BIN_DIR/$FUZZ_TARGET.o $BIN_DIR/libcentipede_runner.pic.a \
     -ldl -lrt -lpthread -o $BIN_DIR/$FUZZ_TARGET
 ```
 
@@ -186,18 +186,18 @@ Skip to the [running step](#run-step).
 
 ```shell
 
-$ LIBPNG_BRANCH=v1.6.37  # You can experiment with other branches if you'd like
-$ git clone --branch $LIBPNG_BRANCH --single-branch https://github.com/glennrp/libpng.git
-$ cd libpng
-$ CC=clang CFLAGS=@$CENTIPEDE_SRC/clang-flags.txt ./configure --disable-shared
-$ make -j
+LIBPNG_BRANCH=v1.6.37  # You can experiment with other branches if you'd like
+git clone --branch $LIBPNG_BRANCH --single-branch https://github.com/glennrp/libpng.git
+cd libpng
+CC=clang CFLAGS=@$CENTIPEDE_SRC/clang-flags.txt ./configure --disable-shared
+make -j
 ```
 
 #### Link ligpng's own fuzz target with libcentipede_runner.pic.a
 
 ```shell
-$ FUZZ_TARGET=libpng_read_fuzzer
-$ clang++ -include cstdlib \
+FUZZ_TARGET=libpng_read_fuzzer
+clang++ -include cstdlib \
     ./contrib/oss-fuzz/$FUZZ_TARGET.cc \
     ./.libs/libpng16.a \
     $BIN_DIR/libcentipede_runner.pic.a \
@@ -215,8 +215,8 @@ file system.
 ### Prepare for a run
 
 ```shell
-$ WD=$HOME/centipede_run
-$ mkdir -p $WD
+WD=$HOME/centipede_run
+mkdir -p $WD
 ```
 
 NOTE: You may need to add
@@ -228,14 +228,14 @@ distribution.
 ### Run one fuzzing job
 
 ```shell
-$ rm -rf $WD/*
-$ $BIN_DIR/centipede --binary=$BIN_DIR/$FUZZ_TARGET --workdir=$WD --num_runs=100
+rm -rf $WD/*
+$BIN_DIR/centipede --binary=$BIN_DIR/$FUZZ_TARGET --workdir=$WD --num_runs=100
 ```
 
 See what's in the working directory
 
 ```shell
-$ tree $WD
+tree $WD
 ```
 ```
 ...
@@ -249,14 +249,14 @@ $ tree $WD
 WARNING: Do not exceed the number of cores on your machine for the `--j` flag.
 
 ```shell
-$ rm -rf $WD/*
-$ $BIN_DIR/centipede --binary=$BIN_DIR/$FUZZ_TARGET --workdir=$WD --num_runs=100 --j=5
+rm -rf $WD/*
+$BIN_DIR/centipede --binary=$BIN_DIR/$FUZZ_TARGET --workdir=$WD --num_runs=100 --j=5
 ```
 
 See what's in the working directory:
 
 ```shell
-$ tree $WD
+tree $WD
 ```
 ```
 ...
