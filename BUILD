@@ -331,6 +331,7 @@ cc_library(
     hdrs = ["runner_interface.h"],
 )
 
+# NOTE: This target must never be built with sancov instrumentation.
 cc_library(
     name = "fuzz_target_runner_no_main",
     srcs = [
@@ -354,6 +355,7 @@ cc_library(
 
 # A fuzz target needs to link with this library (containing main()) in order to
 # run with Centipede.
+# NOTE: This target must never be built with sancov instrumentation.
 cc_library(
     name = "fuzz_target_runner",
     srcs = ["runner_main.cc"],
