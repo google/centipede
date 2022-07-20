@@ -514,8 +514,8 @@ void Centipede::FuzzingLoop() {
   GenerateCoverageReport();
 
   // num_runs / batch_size, rounded up.
-  size_t number_of_batches =
-      (env_.num_runs + env_.batch_size - 1) / env_.batch_size;
+  size_t number_of_batches = env_.num_runs / env_.batch_size;
+  if (env_.num_runs % env_.batch_size != 0) ++number_of_batches;
   size_t new_runs = 0;
   std::vector<ByteArray> inputs, mutants;
   BatchResult batch_result;
