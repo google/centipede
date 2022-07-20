@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Centipede puzzle: easy-to-reach timeout.
-// RUN: Run && SolutionIs SLO && ExpectTimeout
+// RUN: Run --timeout=2 && SolutionIs SLO && ExpectTimeout
 #include <unistd.h>
 
 #include <cstddef>
