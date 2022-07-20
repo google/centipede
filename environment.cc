@@ -17,6 +17,7 @@
 #include <cctype>
 #include <cstddef>
 #include <filesystem>
+#include <limits>
 #include <string>
 #include <string_view>
 
@@ -40,7 +41,8 @@ ABSL_FLAG(std::string, merge_from, "",
           "Another working directory to merge the corpus from. "
           "Inputs from 'merge_from' will be added to 'workdir' "
           "if the add new features.");
-ABSL_FLAG(size_t, num_runs, 1000000000, "number of runs");
+ABSL_FLAG(size_t, num_runs, std::numeric_limits<size_t>::max(),
+          "number of runs");
 ABSL_FLAG(size_t, seed, 0,
           "rng seed. "
           "If 0, some other random number is used as seed");
