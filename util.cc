@@ -131,8 +131,12 @@ std::string HashOfFileContents(std::string_view file_path) {
 }
 
 int64_t MemoryUsage() {
-  // TODO(b/233909173): [impl]
-  return 0;
+  // Read VmRSS from statm. Not the most accurate, but (probably?) good enough.
+  std::ifstream f(std::string{"/proc/self/statm"});
+  size_t value;
+  f >> value;  // skip the first value.
+  f >> value;
+  return value * getpagesize();  // value is in pages.
 }
 
 std::string ProcessAndThreadUniqueID(std::string_view prefix) {
