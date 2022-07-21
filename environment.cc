@@ -157,9 +157,9 @@ ABSL_FLAG(std::string, corpus_dir, "",
           "At startup, the files are exported into the corpus in workdir. "
           "While fuzzing the new corpus elements are written to the first dir. "
           "This makes it more convenient to interop with libFuzzer corpora.");
-ABSL_FLAG(std::string, llvm_symbolizer_path, "llvm-symbolizer",
-          "Path to the llvm-symbolizer tool. "
-          "Default is to assume it is in PATH");
+ABSL_FLAG(std::string, symbolizer_path, "llvm-symbolizer",
+          "Path to the symbolizer tool. By default, we use llvm-symbolizer "
+          "and assume it is in PATH");
 ABSL_FLAG(
     size_t, distill_shards, 0,
     "The first `distill_shards` will write the distilled corpus to "
@@ -242,7 +242,7 @@ Environment::Environment(int argc, char** argv)
           absl::GetFlag(FLAGS_export_corpus_from_local_dir)),
       corpus_dir(absl::StrSplit(absl::GetFlag(FLAGS_corpus_dir), ',',
                                 absl::SkipEmpty{})),
-      llvm_symbolizer_path(absl::GetFlag(FLAGS_llvm_symbolizer_path)),
+      symbolizer_path(absl::GetFlag(FLAGS_symbolizer_path)),
       input_filter(absl::GetFlag(FLAGS_input_filter)),
       dictionary(absl::StrSplit(absl::GetFlag(FLAGS_dictionary), ',',
                                 absl::SkipEmpty{})),

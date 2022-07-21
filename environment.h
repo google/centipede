@@ -62,7 +62,7 @@ struct Environment {
   std::string save_corpus_to_local_dir;
   std::string export_corpus_from_local_dir;
   std::vector<std::string> corpus_dir;
-  std::string llvm_symbolizer_path;
+  std::string symbolizer_path;
   std::string input_filter;
   std::vector<std::string> dictionary;
   std::string function_filter;

@@ -66,7 +66,7 @@ void InitializeCoverage(const Environment &env, Coverage::PCTable &pc_table,
     std::string tmp1 = std::filesystem::path(tmpdir).append("sym-tmp1");
     std::string tmp2 = std::filesystem::path(tmpdir).append("sym-tmp2");
     symbols.GetSymbolsFromBinary(pc_table, env.coverage_binary,
-                                 env.llvm_symbolizer_path, tmp1, tmp2);
+                                 env.symbolizer_path, tmp1, tmp2);
     if (symbols.size() != pc_table.size()) {
       LOG(INFO) << "symbolization failed, debug symbols will not be used";
       pc_table.clear();
