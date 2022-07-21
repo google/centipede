@@ -73,12 +73,9 @@ class Centipede {
   //   * the input is written to `corpus_file` (if that's non-null).
   //   * its features are written to `features_file` (if that's non-null).
   // Returns true if new features were observed.
-  // `batch_result` is used as a scratch storage to avoid extra mallocs.
   // Post-condition: `batch_result.results.size()` == `input_vec.size()`.
-  // If RunBatch runs in a hot loop, define `batch_result` outside the loop.
   bool RunBatch(const std::vector<ByteArray> &input_vec,
-                BatchResult &batch_result, BlobFileAppender *corpus_file,
-                BlobFileAppender *features_file,
+                BlobFileAppender *corpus_file, BlobFileAppender *features_file,
                 BlobFileAppender *unconditional_features_file);
   // Loads a shard `shard_index` from `load_env.workdir`.
   // Note: `load_env_` may be different from `env_`.

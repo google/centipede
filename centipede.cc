@@ -283,10 +283,10 @@ size_t Centipede::AddPcPairFeatures(FeatureVec &fv) {
 }
 
 bool Centipede::RunBatch(const std::vector<ByteArray> &input_vec,
-                         BatchResult &batch_result,
                          BlobFileAppender *corpus_file,
                          BlobFileAppender *features_file,
                          BlobFileAppender *unconditional_features_file) {
+  BatchResult batch_result;
   bool success = ExecuteAndReportCrash(env_.binary, input_vec, batch_result);
   CHECK_EQ(input_vec.size(), batch_result.results().size());
 
@@ -386,9 +386,8 @@ void Centipede::LoadShard(const Environment &load_env, size_t shard_index,
   while (!to_rerun.empty()) {
     size_t batch_size = std::min(to_rerun.size(), env_.batch_size);
     std::vector<ByteArray> batch(to_rerun.end() - batch_size, to_rerun.end());
-    BatchResult batch_result;
     to_rerun.resize(to_rerun.size() - batch_size);
-    if (RunBatch(batch, batch_result, nullptr, nullptr, features_file.get())) {
+    if (RunBatch(batch, nullptr, nullptr, features_file.get())) {
       Log("rerun-old", 1);
     }
   }
@@ -517,8 +516,6 @@ void Centipede::FuzzingLoop() {
   size_t number_of_batches = env_.num_runs / env_.batch_size;
   if (env_.num_runs % env_.batch_size != 0) ++number_of_batches;
   size_t new_runs = 0;
-  std::vector<ByteArray> inputs, mutants;
-  BatchResult batch_result;
   for (size_t batch_index = 0; batch_index < number_of_batches; batch_index++) {
     if (EarlyExitRequested()) break;
     CHECK_LT(new_runs, env_.num_runs);
@@ -526,14 +523,15 @@ void Centipede::FuzzingLoop() {
     auto batch_size = std::min(env_.batch_size, remaining_runs);
     // Pick a small but non-trivial number of inputs so that crossover works.
     // TODO(kcc): may need to parametrize this constant.
+    std::vector<ByteArray> inputs, mutants;
     inputs.resize(20);
     for (auto &input : inputs) {
       input = env_.use_corpus_weights ? corpus_.WeightedRandom(rng_())
                                       : corpus_.UniformRandom(rng_());
     }
     user_callbacks_.Mutate(inputs, batch_size, mutants);
-    bool gained_new_coverage = RunBatch(
-        mutants, batch_result, corpus_file.get(), features_file.get(), nullptr);
+    bool gained_new_coverage =
+        RunBatch(mutants, corpus_file.get(), features_file.get(), nullptr);
     new_runs += mutants.size();
 
     bool batch_is_power_of_two = ((batch_index - 1) & batch_index) == 0;
