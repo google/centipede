@@ -25,7 +25,6 @@
 #include <elf.h>
 #include <limits.h>
 #include <link.h>  // dl_iterate_phdr
-#include <pthread.h>
 #include <pthread.h>  // NOLINT: use pthread to avoid extra dependencies.
 #include <stddef.h>
 #include <stdio.h>
@@ -36,8 +35,10 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <algorithm>
+#include <atomic>
 #include <cstdint>
-#include <cstdlib>
+#include <vector>
 
 #include "./byte_array_mutator.h"
 #include "./defs.h"

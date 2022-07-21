@@ -23,6 +23,7 @@
 #include <dlfcn.h>  // for dlsym()
 #include <pthread.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 

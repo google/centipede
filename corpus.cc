@@ -17,9 +17,12 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <ostream>
 #include <string>
 #include <utility>
+#include <vector>
 
+#include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_cat.h"
 #include "./coverage.h"
 #include "./defs.h"

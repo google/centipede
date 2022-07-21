@@ -17,12 +17,13 @@
 
 #include <pthread.h>  // NOLINT: use pthread to avoid extra dependencies.
 #include <string.h>
+#include <time.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
-#include <cstring>
 
 #include "./byte_array_mutator.h"
 #include "./execution_result.h"

@@ -18,6 +18,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
+
 // This library must not depend on anything other than libc,
 // so that it does not introduce any dependencies to its users.
 // Any such dependencies may get coverage-instrumented, introducing noise

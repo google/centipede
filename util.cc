@@ -16,8 +16,9 @@
 
 #include <unistd.h>
 
+#include <algorithm>
+#include <atomic>
 #include <cctype>
-#include <charconv>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -26,19 +27,21 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
+#include <initializer_list>
 #include <sstream>
 #include <string>
 #include <string_view>
 #include <thread>  // NOLINT(build/c++11)
+#include <utility>
 #include <vector>
 
 #include "absl/base/attributes.h"
 #include "absl/base/const_init.h"
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_map.h"
-#include "absl/strings/str_split.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_replace.h"
+#include "absl/strings/str_split.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
 #include "./defs.h"
@@ -106,8 +109,10 @@ void WriteToLocalFile(std::string_view file_path,
 
 void WriteToLocalFile(std::string_view file_path, std::string_view data) {
   static_assert(sizeof(decltype(data)::value_type) == sizeof(uint8_t));
-  WriteToLocalFile(file_path, absl::Span<const uint8_t>(
-      reinterpret_cast<const uint8_t *>(data.data()), data.size()));
+  WriteToLocalFile(
+      file_path,
+      absl::Span<const uint8_t>(reinterpret_cast<const uint8_t *>(data.data()),
+                                data.size()));
 }
 
 void WriteToLocalFile(std::string_view file_path, const FeatureVec &data) {

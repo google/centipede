@@ -14,7 +14,9 @@
 
 #include "./execution_request.h"
 
+#include <cstddef>
 #include <cstring>
+#include <vector>
 
 #include "./shared_memory_blob_sequence.h"
 

@@ -15,8 +15,9 @@
 #ifndef THIRD_PARTY_CENTIPEDE_EXECUTION_RESULT_H_
 #define THIRD_PARTY_CENTIPEDE_EXECUTION_RESULT_H_
 
+#include <cstddef>
+#include <cstdint>
 #include <cstdlib>
-#include <cstring>
 #include <string>
 #include <vector>
 

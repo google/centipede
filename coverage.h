@@ -15,6 +15,8 @@
 #ifndef THIRD_PARTY_CENTIPEDE_COVERAGE_H_
 #define THIRD_PARTY_CENTIPEDE_COVERAGE_H_
 
+#include <stddef.h>
+
 #include <algorithm>
 #include <cstdint>
 #include <ostream>

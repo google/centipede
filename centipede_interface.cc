@@ -20,8 +20,8 @@
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
+#include <memory>
 #include <string>
-#include <string_view>
 #include <thread>  // NOLINT(build/c++11)
 #include <vector>
 

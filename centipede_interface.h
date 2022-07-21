@@ -15,10 +15,6 @@
 #ifndef THIRD_PARTY_CENTIPEDE_CENTIPEDE_INTERFACE_H_
 #define THIRD_PARTY_CENTIPEDE_CENTIPEDE_INTERFACE_H_
 
-#include <string>
-#include <string_view>
-#include <vector>
-
 #include "./centipede_callbacks.h"
 #include "./environment.h"
 

@@ -14,8 +14,11 @@
 
 #include "./blob_file.h"
 
+#include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <string_view>
+#include <vector>
 
 #include "absl/status/status.h"
 #include "absl/types/span.h"

@@ -16,6 +16,7 @@
 #define THIRD_PARTY_CENTIPEDE_BLOB_FILE_H_
 
 #include <cstdint>
+#include <memory>
 #include <string_view>
 
 #include "absl/status/status.h"

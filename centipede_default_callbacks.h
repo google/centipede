@@ -18,7 +18,10 @@
 
 #ifndef THIRD_PARTY_CENTIPEDE_CENTIPEDE_DEFAULT_CALLBACKS_H_
 #define THIRD_PARTY_CENTIPEDE_CENTIPEDE_DEFAULT_CALLBACKS_H_
+
+#include <cstddef>
 #include <string_view>
+#include <vector>
 
 #include "./centipede_interface.h"
 #include "./execution_result.h"

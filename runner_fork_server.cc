@@ -53,10 +53,10 @@
 
 #include <fcntl.h>
 #include <linux/limits.h>  // ARG_MAX
-#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <cstddef>
 #include <cstring>
 
 namespace centipede {

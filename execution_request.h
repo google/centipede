@@ -15,6 +15,9 @@
 #ifndef THIRD_PARTY_CENTIPEDE_EXECUTION_REQUEST_H_
 #define THIRD_PARTY_CENTIPEDE_EXECUTION_REQUEST_H_
 
+#include <cstddef>
+#include <vector>
+
 #include "./defs.h"
 #include "./shared_memory_blob_sequence.h"
 

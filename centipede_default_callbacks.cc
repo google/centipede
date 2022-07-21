@@ -14,6 +14,8 @@
 
 #include "./centipede_default_callbacks.h"
 
+#include <cstddef>
+#include <string>
 #include <string_view>
 #include <vector>
 

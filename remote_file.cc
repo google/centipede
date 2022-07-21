@@ -20,6 +20,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <string_view>
+#include <vector>
 
 #include "absl/base/attributes.h"
 #include "./defs.h"

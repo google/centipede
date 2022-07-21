@@ -14,8 +14,9 @@
 
 #include "./centipede_callbacks.h"
 
-#include <cctype>
+#include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <filesystem>
 #include <string>

@@ -14,6 +14,7 @@
 
 #include "./byte_array_mutator.h"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
