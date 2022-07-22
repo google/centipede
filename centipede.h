@@ -83,6 +83,9 @@ class Centipede {
   // If `rerun` is true, then also re-runs any inputs
   // for which the features are not found in `load_env.workdir`.
   void LoadShard(const Environment &load_env, size_t shard_index, bool rerun);
+  // Runs all inputs from `to_rerun`, adds their features to the features file
+  // of env_.my_shard_index, adds interesting inputs to the corpus.
+  void Rerun(std::vector<ByteArray> &to_rerun);
   // Prints one logging line with `log_type` in it
   // if `min_log_level` is not greater than `env_.log_level`.
   void Log(std::string_view log_type, size_t min_log_level);

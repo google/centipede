@@ -70,36 +70,10 @@
 #include "./feature.h"
 #include "./logging.h"
 #include "./remote_file.h"
+#include "./shard_reader.h"
 #include "./util.h"
 
 namespace centipede {
-
-// Reads corpus records (corpus and features, from different blob files),
-// returns vector of CorpusRecord objects.
-static std::vector<CorpusRecord> ReadCorpusRecords(const Environment &env,
-                                                   size_t shard_index) {
-  std::vector<CorpusRecord> result;
-  std::unique_ptr<BlobFileReader> corpus_reader =
-      DefaultBlobFileReaderFactory();
-  std::unique_ptr<BlobFileReader> features_reader =
-      DefaultBlobFileReaderFactory();
-  // When opening files for reading, we ignore errors, because these files may
-  // not exist.
-  corpus_reader->Open(env.MakeCorpusPath(shard_index)).IgnoreError();
-  features_reader->Open(env.MakeFeaturesPath(shard_index)).IgnoreError();
-
-  absl::Span<uint8_t> blob;
-  std::vector<ByteArray> corpus_blobs, feature_blobs;
-  while (corpus_reader->Read(blob).ok()) {
-    corpus_blobs.emplace_back().assign(blob.begin(), blob.end());
-  }
-  while (features_reader->Read(blob).ok()) {
-    feature_blobs.emplace_back().assign(blob.begin(), blob.end());
-  }
-
-  ExtractCorpusRecords(corpus_blobs, feature_blobs, result);
-  return result;
-}
 
 Centipede::Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
                      const Coverage::PCTable &pc_table,
@@ -348,39 +322,33 @@ bool Centipede::RunBatch(const std::vector<ByteArray> &input_vec,
 // TODO(kcc): [impl] don't reread the same corpus twice.
 void Centipede::LoadShard(const Environment &load_env, size_t shard_index,
                           bool rerun) {
-  std::vector<CorpusRecord> records = ReadCorpusRecords(load_env, shard_index);
-  size_t exported_with_features = 0;
-  size_t exported_without_features = 0;
   size_t added_to_corpus = 0;
   std::vector<ByteArray> to_rerun;
-  for (auto &cr : records) {
-    if (cr.features.empty()) {
-      exported_without_features++;
+  auto input_features_callback = [&](const ByteArray &input,
+                                     FeatureVec &features) {
+    if (features.empty()) {
       if (rerun) {
-        to_rerun.push_back(cr.data);
+        to_rerun.push_back(input);
       }
     } else {
-      exported_with_features++;
-      if (cr.features.empty()) continue;
-      LogFeaturesAsSymbols(cr.features);
-      if (fs_.CountUnseenAndPruneFrequentFeatures(cr.features)) {
-        fs_.IncrementFrequencies(cr.features);
-        corpus_.Add(cr.data, cr.features, fs_);
+      LogFeaturesAsSymbols(features);
+      if (fs_.CountUnseenAndPruneFrequentFeatures(features)) {
+        fs_.IncrementFrequencies(features);
+        corpus_.Add(input, features, fs_);
         added_to_corpus++;
       }
     }
-  }
-  // We don't prune the corpus while loading shards,
-  // as it will interfere with distillation.
-  // LOG(INFO) << "LoadShard:"
-  //           << " shard: " << shard_index << " total: " << records.size()
-  //           << " w/features: " << exported_with_features
-  //           << " added: " << added_to_corpus;
+  };
+  ReadShard(load_env.MakeCorpusPath(shard_index),
+            load_env.MakeFeaturesPath(shard_index), input_features_callback);
   if (added_to_corpus) Log("load-shard", 1);
+  Rerun(to_rerun);
+}
 
+void Centipede::Rerun(std::vector<ByteArray> &to_rerun) {
   if (to_rerun.empty()) return;
   auto features_file = DefaultBlobFileAppenderFactory();
-  CHECK_OK(features_file->Open(env_.MakeFeaturesPath(shard_index)));
+  CHECK_OK(features_file->Open(env_.MakeFeaturesPath(env_.my_shard_index)));
 
   LOG(INFO) << to_rerun.size() << " inputs to rerun";
   // Re-run all inputs for which we don't know their features.

@@ -284,31 +284,6 @@ ByteArray PackFeaturesAndHash(const ByteArray &data,
   return feature_bytes_with_hash;
 }
 
-void ExtractCorpusRecords(const std::vector<ByteArray> &corpus_blobs,
-                          const std::vector<ByteArray> &features_blobs,
-                          std::vector<CorpusRecord> &result) {
-  absl::flat_hash_map<std::string, FeatureVec> hash_to_features;
-  for (const auto &hash_and_features : features_blobs) {
-    CHECK_GE(hash_and_features.size(), kHashLen);
-    std::string hash;
-    hash.insert(hash.end(), hash_and_features.end() - kHashLen,
-                hash_and_features.end());
-    size_t num_feature_bytes = hash_and_features.size() - kHashLen;
-    if (num_feature_bytes == 0) {
-      hash_to_features[hash] = {FeatureDomains::kNoFeature};
-      continue;
-    }
-    FeatureVec features(num_feature_bytes / sizeof(feature_t));
-    memcpy(features.data(), hash_and_features.data(),
-           features.size() * sizeof(feature_t));
-    hash_to_features[hash] = features;
-  }
-  for (const auto &input : corpus_blobs) {
-    auto &features = hash_to_features[Hash(input)];
-    result.push_back({input, features});
-  }
-}
-
 // Returns a vector of string pairs that are used to replace special characters
 // and hex values in ParseAFLDictionary.
 static std::vector<std::pair<std::string, std::string>>
