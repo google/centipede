@@ -224,6 +224,18 @@ cc_library(
 )
 
 cc_library(
+    name = "shard_reader",
+    hdrs = ["shard_reader.h"],
+    deps = [
+        ":blob_file",
+        ":defs",
+        ":feature",
+        ":util",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+cc_library(
     name = "centipede_lib",
     srcs = [
         "centipede.cc",
