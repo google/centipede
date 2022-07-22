@@ -40,7 +40,10 @@ class CentipedeCallbacks {
  public:
   // `env` is used to pass flags to `this`, it must outlive `this`.
   CentipedeCallbacks(const Environment &env)
-      : env_(env), byte_array_mutator_(GetRandomSeed(env.seed)) {}
+      : env_(env),
+        byte_array_mutator_(GetRandomSeed(env.seed)),
+        inputs_blobseq_(shmem_name1_.c_str(), env.shmem_size_mb << 20),
+        outputs_blobseq_(shmem_name2_.c_str(), env.shmem_size_mb << 20) {}
   virtual ~CentipedeCallbacks() {}
   // Feeds `inputs` into the `binary`, for every input populates `batch_result`.
   // Old contents of `batch_result` are cleared.
@@ -108,14 +111,8 @@ class CentipedeCallbacks {
   const std::string shmem_name1_ = ProcessAndThreadUniqueID("/centipede-shm1-");
   const std::string shmem_name2_ = ProcessAndThreadUniqueID("/centipede-shm2-");
 
-  // Set the shared memory sizes to 1Gb. There seem to be no penalty
-  // for creating large shared memory regions if they are not actually
-  // fully utilized.
-  const size_t kBlobSeqSize = 1 << 30;  // 1Gb.
-  SharedMemoryBlobSequence inputs_blobseq_ = {shmem_name1_.c_str(),
-                                              kBlobSeqSize};
-  SharedMemoryBlobSequence outputs_blobseq_ = {shmem_name2_.c_str(),
-                                               kBlobSeqSize};
+  SharedMemoryBlobSequence inputs_blobseq_;
+  SharedMemoryBlobSequence outputs_blobseq_;
 
   std::vector<Command> commands_;
 };
