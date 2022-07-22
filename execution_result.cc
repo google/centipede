@@ -95,10 +95,6 @@ bool BatchResult::Read(SharedMemoryBlobSequence &blobseq) {
                       features_beg + features_size);
     }
   }
-  // Missing outputs should have their features empty.
-  for (size_t i = num_ends; i < num_expected_tuples; i++) {
-    if (!results()[i].features().empty()) return false;  // should not happen.
-  }
   num_outputs_read_ = num_ends;
   return true;
 }
