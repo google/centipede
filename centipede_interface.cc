@@ -61,6 +61,11 @@ void InitializeCoverage(const Environment &env, Coverage::PCTable &pc_table,
   std::string pc_table_path = std::filesystem::path(tmpdir).append("pc_table");
   pc_table = Coverage::GetPcTableFromBinary(env.coverage_binary, pc_table_path);
   if (pc_table.empty()) {
+    if (env.require_pc_table) {
+      LOG(INFO) << "Could not get PCTable, exiting (override with "
+                   "--require_pc_table=0)";
+      exit(EXIT_FAILURE);
+    }
     LOG(INFO) << "Could not get PCTable, debug symbols will not be used";
   } else {
     std::string tmp1 = std::filesystem::path(tmpdir).append("sym-tmp1");

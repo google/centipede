@@ -142,6 +142,8 @@ ABSL_FLAG(bool, use_counter_features, false,
 ABSL_FLAG(bool, use_pcpair_features, false,
           "If true, PC pairs are used as additional synthetic features. "
           "Experimental, use with care - it may explode the corpus.");
+ABSL_FLAG(bool, require_pc_table, true,
+          "If true, Centipede will exit if the pc_table is not found.");
 ABSL_FLAG(bool, generate_corpus_stats, false,
           "If true, a file workdir/corpus-stats-BINARY.json containing"
           "corpus stats will be generated periodically");
@@ -198,6 +200,9 @@ ABSL_FLAG(std::string, function_filter, "",
           "A comma-separated list of functions that fuzzing needs to focus on. "
           "If this list is non-empty, the fuzzer will mutate only those inputs "
           "that trigger code in one of these functions. ");
+ABSL_FLAG(size_t, shmem_size_mb, 1024,
+          "Size of the shared memory regions used to communicate between the "
+          "ending and the runner.");
 
 namespace centipede {
 
@@ -234,6 +239,7 @@ Environment::Environment(int argc, char** argv)
       use_dataflow_features(absl::GetFlag(FLAGS_use_dataflow_features)),
       use_counter_features(absl::GetFlag(FLAGS_use_counter_features)),
       use_pcpair_features(absl::GetFlag(FLAGS_use_pcpair_features)),
+      require_pc_table(absl::GetFlag(FLAGS_require_pc_table)),
       generate_corpus_stats(absl::GetFlag(FLAGS_generate_corpus_stats)),
       distill_shards(absl::GetFlag(FLAGS_distill_shards)),
       fork_server_helper_path(absl::GetFlag(FLAGS_fork_server_helper_path)),
@@ -250,6 +256,7 @@ Environment::Environment(int argc, char** argv)
       for_each_blob(absl::GetFlag(FLAGS_for_each_blob)),
       exit_on_crash(absl::GetFlag(FLAGS_exit_on_crash)),
       max_num_crash_reports(absl::GetFlag(FLAGS_num_crash_reports)),
+      shmem_size_mb(absl::GetFlag(FLAGS_shmem_size_mb)),
       cmd(binary),
       binary_name(std::filesystem::path(coverage_binary).filename().string()),
       binary_hash(HashOfFileContents(coverage_binary)) {

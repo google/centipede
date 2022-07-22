@@ -56,6 +56,7 @@ struct Environment {
   bool use_dataflow_features;
   bool use_counter_features;
   size_t use_pcpair_features;
+  bool require_pc_table;
   bool generate_corpus_stats;
   size_t distill_shards;
   std::string fork_server_helper_path;
@@ -69,6 +70,7 @@ struct Environment {
   std::string for_each_blob;
   bool exit_on_crash;
   size_t max_num_crash_reports;
+  size_t shmem_size_mb;
 
   // Set to zero to reduce logging in tests.
   size_t log_level = 1;
