@@ -93,8 +93,11 @@ int CentipedeCallbacks::ExecuteCentipedeSancovBinaryWithShmem(
   size_t num_inputs_written =
       execution_request::RequestExecution(inputs, inputs_blobseq_);
 
-  if (num_inputs_written != inputs.size())
-    LOG(INFO) << VV(num_inputs_written) << VV(inputs.size());
+  if (num_inputs_written != inputs.size()) {
+    LOG(INFO) << "wrote " << num_inputs_written << "/" << inputs.size()
+              << " inputs; shmem_size_mb might be too small: "
+              << env_.shmem_size_mb;
+  }
 
   // Run.
   Command &cmd = GetOrCreateCommandForBinary(binary);
@@ -112,9 +115,10 @@ int CentipedeCallbacks::ExecuteCentipedeSancovBinaryWithShmem(
   // * some outputs were not written because the outputs_blobseq_ overflown.
   //   * Logged by the following code.
   if (retval == 0 && batch_result.num_outputs_read() != num_inputs_written) {
-    LOG(INFO) << "too few outputs while the subprocess succeeded. "
-                 "outputs_blobseq_ may have overflown"
-              << VV(num_inputs_written) << VV(batch_result.num_outputs_read());
+    LOG(INFO) << "read " << batch_result.num_outputs_read() << "/"
+              << num_inputs_written
+              << " outputs; shmem_size_mb might be too small: "
+              << env_.shmem_size_mb;
   }
   if (retval != EXIT_SUCCESS) {
     ReadFromLocalFile(execute_log_path_, batch_result.log());

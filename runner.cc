@@ -337,8 +337,9 @@ static int ExecuteInputsFromShmem(
     return EXIT_FAILURE;
   for (size_t i = 0; i < num_inputs; i++) {
     auto blob = inputs_blobseq.Read();
+    // TODO(kcc): distinguish bad input from end of stream.
+    if (!blob.IsValid()) return EXIT_SUCCESS;  // no more blobs to read.
     if (!execution_request::IsDataInput(blob)) return EXIT_FAILURE;
-    if (!blob.IsValid()) return EXIT_FAILURE;
 
     // TODO(kcc): [impl] handle sizes larger than kMaxDataSize.
     size_t size = std::min(kMaxDataSize, blob.size);
