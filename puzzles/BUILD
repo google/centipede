@@ -36,4 +36,5 @@ package(default_visibility = ["//visibility:public"])
     "oom",
     "timeout",
     "independent_compares",
+    "paths",
 ]]
