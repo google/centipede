@@ -72,10 +72,7 @@ Command &CentipedeCallbacks::GetOrCreateCommandForBinary(
           disable_coverage)},
       /*out=*/execute_log_path_,
       /*err=*/execute_log_path_));
-  if (env_.fork_server) {
-    cmd.StartForkServer(temp_dir_, Hash(binary),
-                        env_.GetForkServerHelperPath());
-  }
+  if (env_.fork_server) cmd.StartForkServer(temp_dir_, Hash(binary));
 
   return cmd;
 }

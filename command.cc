@@ -34,8 +34,7 @@
 namespace centipede {
 
 // See the definition of --fork_server flag.
-inline constexpr std::string_view kForkServerHelperRequestPrefix("%F");
-inline constexpr std::string_view kNoForkServerHelperRequestPrefix("%f");
+inline constexpr std::string_view kNoForkServerRequestPrefix("%f");
 
 std::string Command::ToString() const {
   std::stringstream ss;
@@ -46,10 +45,8 @@ std::string Command::ToString() const {
   // path.
   std::string path = path_;
   // Strip the % prefixes, if any.
-  if (absl::StartsWith(path, kForkServerHelperRequestPrefix)) {
-    path = path.substr(kForkServerHelperRequestPrefix.size());
-  } else if (absl::StartsWith(path, kNoForkServerHelperRequestPrefix)) {
-    path = path.substr(kNoForkServerHelperRequestPrefix.size());
+  if (absl::StartsWith(path, kNoForkServerRequestPrefix)) {
+    path = path.substr(kNoForkServerRequestPrefix.size());
   }
   ss << path << " ";
   // args.
@@ -74,9 +71,8 @@ std::string Command::ToString() const {
 }
 
 bool Command::StartForkServer(std::string_view temp_dir_path,
-                              std::string_view prefix,
-                              std::string_view fork_server_helper_path) {
-  if (absl::StartsWith(path_, kNoForkServerHelperRequestPrefix)) {
+                              std::string_view prefix) {
+  if (absl::StartsWith(path_, kNoForkServerRequestPrefix)) {
     LOG(INFO) << "fork server disabled for " << path();
     return false;
   }
@@ -92,14 +88,10 @@ bool Command::StartForkServer(std::string_view temp_dir_path,
         << VV(errno) << VV(fifo_path_[i]);
   }
   std::stringstream ss;
-  std::string preload_fork_server_helper =
-      absl::StartsWith(path_, kForkServerHelperRequestPrefix)
-          ? absl::StrCat("LD_PRELOAD=", fork_server_helper_path, " ")
-          : "";
-  auto command = absl::StrCat(
-      preload_fork_server_helper, "CENTIPEDE_FORK_SERVER_FIFO0=", fifo_path_[0],
-      " ", " CENTIPEDE_FORK_SERVER_FIFO1=", fifo_path_[1], " ",
-      full_command_string_, " &");
+  auto command =
+      absl::StrCat("CENTIPEDE_FORK_SERVER_FIFO0=", fifo_path_[0], " ",
+                   "CENTIPEDE_FORK_SERVER_FIFO1=", fifo_path_[1], " ",
+                   full_command_string_, " &");
   LOG(INFO) << "the fork server command: " << command;
   int ret = system(command.c_str());
   CHECK_EQ(ret, 0) << "command failed: " << command;

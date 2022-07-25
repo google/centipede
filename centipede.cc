@@ -93,10 +93,8 @@ Centipede::Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
       input_filter_cmd_(env_.input_filter, {input_filter_path_}, {/*env*/},
                         "/dev/null", "/dev/null") {
   CHECK(env_.seed) << "env_.seed must not be zero";
-  if (!env_.input_filter.empty() && env_.fork_server) {
-    input_filter_cmd_.StartForkServer(TemporaryLocalDirPath(), "input_filter",
-                                      env_.GetForkServerHelperPath());
-  }
+  if (!env_.input_filter.empty() && env_.fork_server)
+    input_filter_cmd_.StartForkServer(TemporaryLocalDirPath(), "input_filter");
 }
 
 int Centipede::SaveCorpusToLocalDir(const Environment &env,

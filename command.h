@@ -71,9 +71,8 @@ class Command final {
   // Attempts to start a fork server, returns true on success.
   // Pipe files for the fork server are created in `temp_dir_path`
   // with prefix `prefix`.
-  // See runner_fork_server.cc for detauls.
-  bool StartForkServer(std::string_view temp_dir_path, std::string_view prefix,
-                       std::string_view fork_server_helper);
+  // See runner_fork_server.cc for details.
+  bool StartForkServer(std::string_view temp_dir_path, std::string_view prefix);
 
   // Accessors.
   const std::string& path() const { return path_; }

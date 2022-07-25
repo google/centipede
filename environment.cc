@@ -99,15 +99,9 @@ ABSL_FLAG(size_t, timeout, 60,
 ABSL_FLAG(bool, fork_server, true,
           "If true (default) tries to execute the target(s) via the fork "
           "server, if supported by the target(s). "
-          "If the target binary does not natively support Centipede's "
-          "fork server, prepend the binary path with '%F' and the "
-          "fork server helper will be LD_PRELOAD-ed. "
           "Prepend the binary path with '%f' to disable the fork server. "
           "--fork_server applies to binaries passed via these flags: "
           "--binary, --extra_binaries, --input_filter");
-ABSL_FLAG(std::string, fork_server_helper_path, "",
-          "Path to the fork server helper DSO. "
-          "If empty, the helper is assumed to be in the same dir as Centipede");
 ABSL_FLAG(bool, full_sync, false,
           "Perform a full corpus sync on startup. If true, feature sets and "
           "corpora are read from all shards before fuzzing. This way fuzzing "
@@ -250,7 +244,6 @@ Environment::Environment(int argc, char** argv)
       require_pc_table(absl::GetFlag(FLAGS_require_pc_table)),
       generate_corpus_stats(absl::GetFlag(FLAGS_generate_corpus_stats)),
       distill_shards(absl::GetFlag(FLAGS_distill_shards)),
-      fork_server_helper_path(absl::GetFlag(FLAGS_fork_server_helper_path)),
       save_corpus_to_local_dir(absl::GetFlag(FLAGS_save_corpus_to_local_dir)),
       export_corpus_from_local_dir(
           absl::GetFlag(FLAGS_export_corpus_from_local_dir)),
@@ -283,27 +276,6 @@ Environment::Environment(int argc, char** argv)
       args.push_back(argv[argno]);
     }
   }
-}
-
-std::string Environment::GetForkServerHelperPath() const {
-  if (!fork_server) return "";  // no need for the fork server helper.
-
-  // If present, use the user-provided path as-is.
-  std::string path = fork_server_helper_path;
-
-  if (path.empty()) {
-    // Compute fork_server_helper_path based on Centipede's path.
-    path = std::filesystem::absolute(
-               std::filesystem::path(exec_name).parent_path()) /
-           "runner_fork_server_helper.so";
-  }
-
-  if (!std::filesystem::exists(path)) {
-    LOG(INFO) << "Fork server helper not found (" << VV(path)
-              << "): %F for target binaries won't work";
-  }
-
-  return path;
 }
 
 std::string Environment::MakeCoverageDirPath() const {

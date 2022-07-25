@@ -332,13 +332,6 @@ cc_library(
     alwayslink = 1,  # Otherwise the linker drops the fork server.
 )
 
-cc_binary(
-    name = "runner_fork_server_helper.so",
-    linkshared = 1,
-    linkstatic = 1,
-    deps = [":runner_fork_server"],
-)
-
 cc_library(
     name = "runner_interface",
     hdrs = ["runner_interface.h"],
