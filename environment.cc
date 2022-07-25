@@ -142,6 +142,12 @@ ABSL_FLAG(bool, use_counter_features, false,
 ABSL_FLAG(bool, use_pcpair_features, false,
           "If true, PC pairs are used as additional synthetic features. "
           "Experimental, use with care - it may explode the corpus.");
+ABSL_FLAG(size_t, feature_frequency_threshold, 100,
+          "Internal flag. "
+          "When a given feature is present in the corpus this many times "
+          "Centipede will stop recording it for future corpus elements. "
+          "Larger values will use more RAM but may improve corpus weights. "
+          "Valid values are 1 - 255.");
 ABSL_FLAG(bool, require_pc_table, true,
           "If true, Centipede will exit if the pc_table is not found.");
 ABSL_FLAG(bool, generate_corpus_stats, false,
@@ -239,6 +245,8 @@ Environment::Environment(int argc, char** argv)
       use_dataflow_features(absl::GetFlag(FLAGS_use_dataflow_features)),
       use_counter_features(absl::GetFlag(FLAGS_use_counter_features)),
       use_pcpair_features(absl::GetFlag(FLAGS_use_pcpair_features)),
+      feature_frequency_threshold(
+          absl::GetFlag(FLAGS_feature_frequency_threshold)),
       require_pc_table(absl::GetFlag(FLAGS_require_pc_table)),
       generate_corpus_stats(absl::GetFlag(FLAGS_generate_corpus_stats)),
       distill_shards(absl::GetFlag(FLAGS_distill_shards)),

@@ -83,7 +83,7 @@ Centipede::Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
       user_callbacks_(user_callbacks),
       rng_(env_.seed),
       // TODO(kcc): [impl] find a better way to compute frequency_threshold.
-      fs_(100 /*arbitrary frequency_threshold*/),
+      fs_(env_.feature_frequency_threshold),
       pc_table_(pc_table),
       symbols_(symbols),
       function_filter_(env_.function_filter, symbols_),

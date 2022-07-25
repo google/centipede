@@ -56,6 +56,7 @@ struct Environment {
   bool use_dataflow_features;
   bool use_counter_features;
   size_t use_pcpair_features;
+  size_t feature_frequency_threshold;
   bool require_pc_table;
   bool generate_corpus_stats;
   size_t distill_shards;
