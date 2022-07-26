@@ -479,7 +479,8 @@ static int MutateInputsFromShmem(
     size_t size = std::min(input.size(), kMaxMutantSize);
     memcpy(mutant, input.data(), size);
     size_t new_size = 0;
-    if (rand_r(&seed) % 100 < state.run_time_flags.crossover_level) {
+    if (custom_crossover_cb &&
+        rand_r(&seed) % 100 < state.run_time_flags.crossover_level) {
       // Perform crossover `crossover_level`% of the time.
       const auto &other = inputs[rand_r(&seed) % num_inputs];
       new_size = custom_crossover_cb(input.data(), input.size(), other.data(),
