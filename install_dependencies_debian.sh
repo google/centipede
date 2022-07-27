@@ -17,8 +17,6 @@
 #
 # * git: to get the Centipede sources.
 # * bazel: to build Centipede.
-#    You may need to do these steps first:
-#    https://docs.bazel.build/versions/main/install-ubuntu.html
 # * libssl-dev: to link Centipede (it uses SHA1).
 # * binutils: Centipede uses objdump.
 # * clang: to build Centipede and the targets.
@@ -28,7 +26,25 @@
 #   The functionality currently requiring fresh clang from source:
 #     * -fsanitize-coverage=trace-loads
 #     (https://clang.llvm.org/docs/SanitizerCoverage.html#tracing-data-flow)
-sudo apt-get install git bazel binutils clang libssl-dev
+
+# Add Bazel distribution URI as a package source following:
+# https://docs.bazel.build/versions/main/install-ubuntu.html
+apt install -y curl gnupg apt-transport-https
+curl -fsSL https://bazel.build/bazel-release.pub.gpg \
+  | gpg --dearmor > /etc/apt/trusted.gpg.d/bazel.gpg
+echo "deb [arch=amd64] https://storage.googleapis.com/bazel-apt stable jdk1.8" \
+  | tee /etc/apt/sources.list.d/bazel.list
+apt update
+
+# Install dependencies.
+apt install -y git bazel binutils libssl-dev
+
+# Get Clang-14, the earlist version that supports dataflow tracing:
+#   * Download Clang from Chromium to support old OS (e.g. Ubuntu 16).
+#   * Alternatively, download the fresh Clang from https://releases.llvm.org/
+mkdir /clang
+curl https://commondatastorage.googleapis.com/chromium-browser-clang/Linux_x64/clang-llvmorg-14-init-9436-g65120988-1.tgz -o /clang-14.tgz
+tar zxvf /clang-14.tgz -C /clang
 
 # * TODO(kcc): llvm-symbolizer is required for running Centipede.
 #   it comes with clang, but may be called e.g. llvm-symbolizer-11
