@@ -39,6 +39,7 @@
 // <vector> is an exception, because it's too clumsy w/o it, and it introduces
 // minimal code footprint.
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <vector>
 
@@ -80,7 +81,11 @@ struct Domain {
     kPCPair,
     kLastDomain,  // Should remain the last.
   };
-  static constexpr size_t kSize = 1ULL << 40;
+
+  // kSize is the largest power of two such that all domains fit.
+  static constexpr size_t kSize = 1ULL << 61;
+  static_assert(std::numeric_limits<size_t>::max() / kSize > kLastDomain,
+                "domains must fit into 64 bits");
 
   DomainId domain_id;
 
@@ -310,7 +315,7 @@ class HashedRingBuffer {
 template <size_t kSizeInBits>
 class ConcurrentBitSet {
  public:
-  static_assert((kSizeInBits % 512) == 0);
+static_assert((kSizeInBits % 512) == 0);
   // Constructs an empty bit set.
   ConcurrentBitSet() { clear(); }
 
