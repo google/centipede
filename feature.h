@@ -54,6 +54,15 @@ using feature_t = uint64_t;
 // It typically does not contain repetitions, but it's ok to have them.
 using FeatureVec = std::vector<feature_t>;
 
+// Computes a hash of `bits`. The purpose is to use the result for XOR-ing with
+// some other values, such that all resulting bits look random.
+inline uint64_t Hash64Bits(uint64_t bits) {
+  // This particular prime number seems to mix bits well.
+  // TODO(kcc): find a more scientific way to mix bits, e.g. switch to Murmur.
+  constexpr uint64_t kPrime = 13441014529ULL;
+  return bits * kPrime;
+}
+
 namespace FeatureDomains {
 
 // Feature domain is a subset of 64-bit integers dedicated to a certain
@@ -203,24 +212,25 @@ inline size_t ConvertPcPairToNumber(uintptr_t pc1, uintptr_t pc2,
   return pc1 * max_pc + pc2;
 }
 
-// Encodes {pc, a, b} into a number.
-// a and b are arguments of an instruction "a CMP b" at pc.
-// pc is less than max_pc.
+// Encodes {context, a, b} into a number.
+// `a` and `b` are arguments of an instruction "a CMP b".
+// `context` identifies the CMP call site.
+// Usually, `context` is a random-looking number derived from a hash function.
 //
 // This function has several mutually conflicting requirements:
 //  * it must be very fast, as it is executed on every CMP instruction.
 //  * it must allow to distinguish {a,b} pairs in some non-trivial way.
 //  * it must not produce too many different values
 //    (where "too many" is hard to define)
-inline size_t ConvertPcAndArgPairToNumber(uintptr_t a, uintptr_t b,
-                                          uintptr_t pc, uintptr_t max_pc) {
+inline size_t ConvertContextAndArgPairToNumber(uintptr_t a, uintptr_t b,
+                                               uintptr_t context) {
   // Below is a giant unscientific heuristic.
   // Expect quite a bit of tuning effort here.
   //
-  // The idea is to treat different {pc,a,b} tuples as different features,
-  // so that a sufficiently new argument pair for a given pc is recognized
+  // The idea is to treat different {context,a,b} tuples as different features,
+  // so that a sufficiently new argument pair for a given context is recognized
   // as interesting.
-  // Obviously, we can't generate max_pc*2^128 different features
+  // Obviously, we can't generate 2^128 different features per context
   // and so we need to bucketize them.
   //
   // The following relationships between a and b seem worthy of
@@ -250,14 +260,14 @@ inline size_t ConvertPcAndArgPairToNumber(uintptr_t a, uintptr_t b,
     uintptr_t msb_eq_component = __builtin_clzll(a ^ b);
     ab = (diff_component << 0) | (hamming_component << 6) |
          (diff_log2_component << 12) | (msb_eq_component << 18);
-    // This gives us whooping 2^24 different features for just one PC.
+    // This gives us whooping 2^24 different features for just one context.
     // In theory this is pretty bad: it will bloat the corpus beyond reasonable.
     // Whether it's bad in practice remains to be seen.
     // We may want to reduce the number of different features with e.g. this:
     // ab %= 7919;  // mod large prime
   }
-  // Combine {a,b} and pc.
-  return ab * max_pc + pc;
+  // Combine {a,b} and context.
+  return ab ^ context;
 }
 
 // Fixed-size ring buffer that maintains a hash of its elements.
@@ -277,11 +287,7 @@ class HashedRingBuffer {
     size_t new_pos = last_added_pos_ + 1;
     if (new_pos >= ring_buffer_size) new_pos = 0;
     size_t evicted_item = buffer_[new_pos];
-    // The items added are not necesserily random bit strings,
-    // and just blindly XOR-ing them together may not work.
-    // So, mix all bits in new_item by multiplying it by a large prime.
-    constexpr size_t kPrimeMultiplier = 13441014529ULL;
-    new_item *= kPrimeMultiplier;
+    new_item = Hash64Bits(new_item);
     buffer_[new_pos] = new_item;
     hash_ ^= evicted_item;
     hash_ ^= new_item;
