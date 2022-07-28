@@ -98,6 +98,30 @@ std::string ProcessAndThreadUniqueID(std::string_view prefix);
 // Test-only. Returns a temp dir for use inside tests.
 std::string GetTestTempDir();
 
+// Computes a random subset of `set` that needs to be
+// removed to reach `target_size` non-zero weights in the set.
+// `set` is an array of weights, some of which could be zero.
+//
+// Subsets with smaller combined weight are more likely to be returned.
+// The return value is a sorted vector of indices of elements of `set`
+// that need to be removed, including those with zero weights.
+// Randomness is retrieved from `rng`.
+//
+// Example:  set = {20, 10, 0, 40, 50}
+//   For target_size >= 4, the return value will be {2}, i.e. indices of all 0s.
+//   For target_size == 3, the return value will be one of
+//   {1, 2}, {0, 2}, {2, 3}, {2, 4}, i.e. the indices of 0s and one more index.
+//   {1, 2} is more likely than {2, 4} because set[1] < set[4].
+//
+// This is a flavour of https://en.wikipedia.org/wiki/Reservoir_sampling
+// with two differences:
+//   * Elements with weight 0 are unconditionally included.
+//   * We choose which elements to remove insted of which elements to pick.
+//     We use this inverted algorithm because in a typical use case
+//     `target_size` is just slightly smaller than set.size().
+std::vector<size_t> RandomWeightedSubset(absl::Span<const uint32_t> set,
+                                         size_t target_size, Rng &rng);
+
 // Adds a prefix and a postfix to `data` such that the result can be
 // appended to another such packed data and then the operation can be reversed.
 // The purpose is to allow appending blobs of data to a (possibly remote) file

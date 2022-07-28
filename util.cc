@@ -28,6 +28,7 @@
 #include <fstream>
 #include <functional>
 #include <initializer_list>
+#include <queue>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -334,6 +335,60 @@ bool ParseAFLDictionary(std::string_view dictionary_text,
     dictionary_entries.emplace_back(replaced.begin(), replaced.end());
   }
   return true;
+}
+
+std::vector<size_t> RandomWeightedSubset(absl::Span<const uint32_t> set,
+                                         size_t target_size, Rng &rng) {
+  std::vector<size_t> res;
+
+  // Collect indices of all zeros.
+  for (size_t i = 0, n = set.size(); i < n; ++i) {
+    if (set[i] == 0) res.push_back(i);
+  }
+
+  // Check how many more elements need to be removed to reach `target_size`.
+  if (set.size() - res.size() <= target_size) return res;
+  size_t to_remove = set.size() - res.size() - target_size;
+
+  // Pairs of index and floating point weight, ordered by weight.
+  struct index_and_weight {
+    size_t index;
+    double weight;
+    bool operator<(const index_and_weight &other) const {
+      return weight < other.weight;
+    }
+  };
+
+  // Similar to https://en.wikipedia.org/wiki/Reservoir_sampling#Algorithm_A-Res
+  // except that we pick elements to remove from the set.
+  // Invariant: queue contains up to `to_remove` smallest weights observed.
+  std::priority_queue<index_and_weight> queue;
+  std::uniform_real_distribution<double> unif(0, 1);  // values in [0, 1).
+  for (size_t i = 0; i < set.size(); ++i) {
+    auto w = set[i];
+    if (w == 0) continue;
+    // The idea of using rand(0,1)^(1./w) is described in the link above.
+    index_and_weight iw{i, pow(unif(rng), 1. / w)};
+
+    if (queue.size() < to_remove) {
+      // queue is not full, add iw unconditionally.
+      queue.push(iw);
+    } else {
+      // queue is full. Swap the top of queue with iw if iw is smaller.
+      if (iw < queue.top()) {
+        queue.pop();
+        queue.push(iw);
+      }
+    }
+  }
+
+  // Move elements from queue to res, and sort res.
+  while (!queue.empty()) {
+    res.push_back(queue.top().index);
+    queue.pop();
+  }
+  std::sort(res.begin(), res.end());
+  return res;
 }
 
 static std::atomic<int> requested_exit_code(EXIT_SUCCESS);
