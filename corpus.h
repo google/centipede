@@ -185,6 +185,38 @@ class Corpus {
   // Maintains weights for elements of records_.
   WeightedDistribution weighted_distribution_;
   size_t num_pruned_ = 0;
+  friend class CoverageFrontier;
+};
+
+// Coverage frontier is a set of PCs that are themselves covered, but some of
+// adjacent PCs in the same function are not.
+// This class implements a bit simplified variant of coverage frontier:
+// If a function is partially covered, all of its PCs are in the frontier.
+// If a function is fully covered or not covered, all of it's PCs are not in the
+// frontier.
+//
+// Rationale:
+// If a function is fully covered, there is little to be gained by
+// focusing on this function (compared to not-fully covered ones).
+// If a function is not covered, we can not focus on it, and need to find a call
+// statement that calls it, which is most likely in an uncovered part of a
+// partially covered function.
+class CoverageFrontier {
+ public:
+  CoverageFrontier(const Coverage::PCTable &pc_table)
+      : pc_table_(pc_table), frontier_(pc_table.size()) {}
+
+  // Computes the coverage frontier of `corpus`.
+  // Returns the number of functions in the frontier.
+  size_t Compute(const Corpus &corpus);
+
+  // Returns true iff `idx` belongs to the frontier.
+  bool PcIndexIsFrontier(size_t idx) const { return frontier_.at(idx); }
+
+ private:
+  const Coverage::PCTable pc_table_;
+  // frontier_[idx] is true iff pc_table_[i] is part of the coverage frontier.
+  std::vector<bool> frontier_;
 };
 
 }  // namespace centipede

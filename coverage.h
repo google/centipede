@@ -112,6 +112,23 @@ class Coverage {
   std::vector<PartiallyCoveredFunction> partially_covered_funcs;
 };
 
+// Iterates `pc_table`, calls `callback` on every pair {beg, end}, such that
+// pc_table[beg] is PCInfo::kFuncEntry, and pc_table[beg + 1 : end] are not.
+template <typename Callback>
+void IteratePcTableFunctions(const Coverage::PCTable &pc_table,
+                             Callback callback) {
+  for (size_t beg = 0, n = pc_table.size(); beg < n;) {
+    if (pc_table[beg].has_flag(Coverage::PCInfo::kFuncEntry)) {
+      size_t end = beg + 1;
+      while (end < n && !pc_table[end].has_flag(Coverage::PCInfo::kFuncEntry)) {
+        ++end;
+      }
+      callback(beg, end);
+      beg = end;
+    }
+  }
+}
+
 // CoverageLogger helps to log coverage locations once for each location.
 // CoverageLogger is thread-safe.
 class CoverageLogger {

@@ -218,4 +218,39 @@ uint32_t WeightedDistribution::PopBack() {
   return result;
 }
 
+//================= CoverageFrontier
+size_t CoverageFrontier::Compute(const Corpus &corpus) {
+  std::fill(frontier_.begin(), frontier_.end(), false);
+
+  // Use frontier_ as a scratch to record all PCs covered by corpus.
+  for (const auto &record : corpus.records_) {
+    for (auto feature : record.features) {
+      if (!FeatureDomains::k8bitCounters.Contains(feature)) continue;
+      size_t idx = Convert8bitCounterFeatureToPcIndex(feature);
+      if (idx >= pc_table_.size()) continue;
+      frontier_[idx] = true;
+    }
+  }
+
+  // Iterate all functions, set frontier_[] depending on whether the function
+  // is partially covered or not.
+  size_t num_functions_in_frontier = 0;
+  IteratePcTableFunctions(pc_table_, [&](size_t beg, size_t end) {
+    auto frontier_begin = frontier_.begin() + beg;
+    auto frontier_end = frontier_.begin() + end;
+    size_t cov_size_in_this_func =
+        std::count(frontier_begin, frontier_end, true);
+    if (cov_size_in_this_func == 0) return;  // Function not covered.
+    if (cov_size_in_this_func == end - beg) {
+      // function fully covered => not in the forntier.
+      std::fill(frontier_begin, frontier_end, false);
+      return;
+    }
+    // This function is in the frontier.
+    std::fill(frontier_begin, frontier_end, true);
+    ++num_functions_in_frontier;
+  });
+  return num_functions_in_frontier;
+}
+
 }  // namespace centipede
