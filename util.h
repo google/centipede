@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CENTIPEDE_UTIL_H_
 #define THIRD_PARTY_CENTIPEDE_UTIL_H_
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -121,6 +122,22 @@ std::string GetTestTempDir();
 //     `target_size` is just slightly smaller than set.size().
 std::vector<size_t> RandomWeightedSubset(absl::Span<const uint32_t> set,
                                          size_t target_size, Rng &rng);
+
+// Removes all elements from `set` whose indices are found in `subset_indices`.
+// `subset_indices` is a sorted vector.
+template <typename T>
+void RemoveSubset(const std::vector<size_t> &subset_indices,
+                  std::vector<T> &set) {
+  size_t pos_to_write = 0;
+  for (size_t i = 0, n = set.size(); i < n; i++) {
+    // If subset_indices.size() is k, this loop's complexity is O(n*log(k)).
+    // We can do it in O(n+k) with a bit more code, but this loop is not
+    // expected to be hot. Besides, k would typically be small.
+    if (!std::binary_search(subset_indices.begin(), subset_indices.end(), i))
+      set[pos_to_write++] = std::move(set[i]);
+  }
+  set.resize(pos_to_write);
+}
 
 // Adds a prefix and a postfix to `data` such that the result can be
 // appended to another such packed data and then the operation can be reversed.
