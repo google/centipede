@@ -134,7 +134,7 @@ void RemoveSubset(const std::vector<size_t> &subset_indices,
     // We can do it in O(n+k) with a bit more code, but this loop is not
     // expected to be hot. Besides, k would typically be small.
     if (!std::binary_search(subset_indices.begin(), subset_indices.end(), i))
-      set[pos_to_write++] = std::move(set[i]);
+      std::swap(set[pos_to_write++], set[i]);
   }
   set.resize(pos_to_write);
 }
