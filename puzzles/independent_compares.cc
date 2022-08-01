@@ -20,6 +20,7 @@
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
   int mask = 0;
+  if (size > 4) return 0;
   if (size > 0 && data[0] == 'F') mask |= 1;
   if (size > 1 && data[1] == 'U') mask |= 2;
   if (size > 2 && data[2] == 'Z') mask |= 4;
