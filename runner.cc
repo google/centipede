@@ -533,6 +533,12 @@ static void SetLimits() {
 // header file, because we want to keep the fork server header-free.
 extern void ForkServerCallMeVeryEarly();
 auto fake_reference_for_fork_server = &ForkServerCallMeVeryEarly;
+// Same for runner_sancov.cc. Avoids the following situation:
+// * weak implementations of sancov callbacks are given in the command line
+//   before centipede.a.
+// * linker sees them and decides to drop runner_sancov.o.
+extern void RunnerSancov();
+auto fake_reference_for_runner_sancov = &RunnerSancov;
 
 }  // namespace centipede
 

@@ -20,6 +20,10 @@
 #include "./feature.h"
 #include "./runner.h"
 
+namespace centipede {
+  void RunnerSancov(){}  // to be referenced in runner.cc
+}  // namespace centipede
+
 using centipede::state;
 using centipede::tls;
 
