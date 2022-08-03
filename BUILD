@@ -212,6 +212,7 @@ cc_library(
     deps = [
         ":byte_array_mutator",
         ":command",
+        ":coverage",
         ":defs",
         ":environment",
         ":execution_request",
@@ -311,6 +312,7 @@ cc_library(
     hdrs = ["centipede_default_callbacks.h"],
     deps = [
         ":centipede_interface",
+        ":coverage",
         ":defs",
         ":environment",
         ":execution_result",

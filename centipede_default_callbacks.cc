@@ -20,9 +20,11 @@
 #include <vector>
 
 #include "./centipede_interface.h"
+#include "./coverage.h"
 #include "./defs.h"
 #include "./environment.h"
 #include "./logging.h"
+#include "./symbol_table.h"
 #include "./util.h"
 
 namespace centipede {
@@ -60,6 +62,36 @@ void CentipedeDefaultCallbacks::Mutate(const std::vector<ByteArray> &inputs,
   // Either no custom mutator, or it failed for some reason.
   byte_array_mutator_.MutateMany(inputs, num_mutants, env_.crossover_level,
                                  mutants);
+}
+
+bool CentipedeDefaultCallbacks::PopulateSymbolAndPcTables(
+    SymbolTable &symbols, Coverage::PCTable &pc_table) {
+  // Running in main thread, create our own temp dir.
+  auto tmpdir = TemporaryLocalDirPath();
+  if (!std::filesystem::exists(tmpdir)) {
+    CreateLocalDirRemovedAtExit(tmpdir);
+  }
+  std::string pc_table_path = std::filesystem::path(tmpdir).append("pc_table");
+  pc_table =
+      Coverage::GetPcTableFromBinary(env_.coverage_binary, pc_table_path);
+  if (pc_table.empty()) {
+    if (env_.require_pc_table) {
+      LOG(ERROR) << "Could not get PCTable, exiting (override with "
+                    "--require_pc_table=0)";
+      return false;
+    }
+    LOG(WARNING) << "Could not get PCTable, debug symbols will not be used";
+    return true;
+  }
+  std::string tmp1 = std::filesystem::path(tmpdir).append("sym-tmp1");
+  std::string tmp2 = std::filesystem::path(tmpdir).append("sym-tmp2");
+  symbols.GetSymbolsFromBinary(pc_table, env_.coverage_binary,
+                               env_.symbolizer_path, tmp1, tmp2);
+  if (symbols.size() != pc_table.size()) {
+    LOG(WARNING) << "symbolization failed, debug symbols will not be used";
+    pc_table.clear();
+  }
+  return true;
 }
 
 }  // namespace centipede
