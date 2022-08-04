@@ -79,7 +79,9 @@ void InitializeCoverage(const Environment &env, Coverage::PCTable &pc_table,
                                  tmp1, tmp2);
     if (symbols.size() != pc_table.size()) {
       LOG(INFO) << "symbolization failed, debug symbols will not be used";
-      pc_table.clear();
+      // Preserve the pc_table. Set symbols to unknown so that the sizes of
+      // pc_table and symbols continue to match.
+      symbols.SetAllToUnknown(pc_table.size());
     }
   }
 }

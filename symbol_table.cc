@@ -75,4 +75,11 @@ void SymbolTable::GetSymbolsFromBinary(const Coverage::PCTable &pc_table,
   std::filesystem::remove(symbols_path);
 }
 
+void SymbolTable::SetAllToUnknown(size_t size) {
+  entries_.resize(size);
+  for (auto &entry : entries_) {
+    entry = {"?", "?"};
+  }
+}
+
 }  // namespace centipede

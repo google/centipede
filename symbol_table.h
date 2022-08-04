@@ -47,6 +47,9 @@ class SymbolTable {
                             std::string_view tmp_path1,
                             std::string_view tmp_path2);
 
+  // Sets the table to `size` symbols all of which are unknown.
+  void SetAllToUnknown(size_t size);
+
   // Returns the number of symbol entries.
   size_t size() const { return entries_.size(); }
 
