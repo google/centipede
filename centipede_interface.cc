@@ -27,6 +27,7 @@
 
 #include "absl/status/status.h"
 #include "absl/strings/str_replace.h"
+#include "absl/strings/str_split.h"
 #include "absl/types/span.h"
 #include "./blob_file.h"
 #include "./centipede.h"
@@ -70,8 +71,12 @@ void InitializeCoverage(const Environment &env, Coverage::PCTable &pc_table,
   } else {
     std::string tmp1 = std::filesystem::path(tmpdir).append("sym-tmp1");
     std::string tmp2 = std::filesystem::path(tmpdir).append("sym-tmp2");
-    symbols.GetSymbolsFromBinary(pc_table, env.coverage_binary,
-                                 env.symbolizer_path, tmp1, tmp2);
+    CHECK(!env.coverage_binary.empty());
+    std::vector<std::string> binary_flags =
+        absl::StrSplit(env.coverage_binary, ' ');
+    std::string binary_name = binary_flags[0];
+    symbols.GetSymbolsFromBinary(pc_table, binary_name, env.symbolizer_path,
+                                 tmp1, tmp2);
     if (symbols.size() != pc_table.size()) {
       LOG(INFO) << "symbolization failed, debug symbols will not be used";
       pc_table.clear();
