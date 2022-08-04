@@ -27,7 +27,6 @@
 
 #include "absl/status/status.h"
 #include "absl/strings/str_replace.h"
-#include "absl/strings/str_split.h"
 #include "absl/types/span.h"
 #include "./blob_file.h"
 #include "./centipede.h"
@@ -52,38 +51,6 @@ void SetSignalHandlers() {
     RequestEarlyExit(EXIT_FAILURE);
   };
   sigaction(SIGINT, &sigact, nullptr);
-}
-
-void InitializeCoverage(const Environment &env, Coverage::PCTable &pc_table,
-                        SymbolTable &symbols) {
-  // Running in main thread, create our own temp dir.
-  CreateLocalDirRemovedAtExit(TemporaryLocalDirPath());
-  auto tmpdir = TemporaryLocalDirPath();
-  std::string pc_table_path = std::filesystem::path(tmpdir).append("pc_table");
-  pc_table = Coverage::GetPcTableFromBinary(env.coverage_binary, pc_table_path);
-  if (pc_table.empty()) {
-    if (env.require_pc_table) {
-      LOG(INFO) << "Could not get PCTable, exiting (override with "
-                   "--require_pc_table=0)";
-      exit(EXIT_FAILURE);
-    }
-    LOG(INFO) << "Could not get PCTable, debug symbols will not be used";
-  } else {
-    std::string tmp1 = std::filesystem::path(tmpdir).append("sym-tmp1");
-    std::string tmp2 = std::filesystem::path(tmpdir).append("sym-tmp2");
-    CHECK(!env.coverage_binary.empty());
-    std::vector<std::string> binary_flags =
-        absl::StrSplit(env.coverage_binary, ' ');
-    std::string binary_name = binary_flags[0];
-    symbols.GetSymbolsFromBinary(pc_table, binary_name, env.symbolizer_path,
-                                 tmp1, tmp2);
-    if (symbols.size() != pc_table.size()) {
-      LOG(INFO) << "symbolization failed, debug symbols will not be used";
-      // Preserve the pc_table. Set symbols to unknown so that the sizes of
-      // pc_table and symbols continue to match.
-      symbols.SetAllToUnknown(pc_table.size());
-    }
-  }
 }
 
 // Runs env.for_each_blob on every blob extracted from env.args.
@@ -147,9 +114,11 @@ int CentipedeMain(const Environment &env,
   LOG(INFO) << "coverage dir " << env.MakeCoverageDirPath();
   RemoteMkdir(env.MakeCoverageDirPath());
 
+  auto one_time_callbacks = callbacks_factory.create(env);
   Coverage::PCTable pc_table;
   SymbolTable symbols;
-  InitializeCoverage(env, pc_table, symbols);
+  one_time_callbacks->PopulateSymbolAndPcTables(symbols, pc_table);
+  callbacks_factory.destroy(one_time_callbacks);
   if (env.use_pcpair_features) {
     CHECK(!pc_table.empty())
         << "use_pcpair_features requires non-empty pc_table";

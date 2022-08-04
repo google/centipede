@@ -212,6 +212,7 @@ cc_library(
     deps = [
         ":byte_array_mutator",
         ":command",
+        ":coverage",
         ":defs",
         ":environment",
         ":execution_request",

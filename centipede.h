@@ -134,7 +134,7 @@ class Centipede {
   size_t num_runs_ = 0;  // counts executed inputs
 
   // Coverage-related data, initialized at startup, once per process,
-  // by InitializeCoverage.
+  // by calling the PopulateSymbolAndPcTables callback.
   const Coverage::PCTable &pc_table_;
   const SymbolTable &symbols_;
 

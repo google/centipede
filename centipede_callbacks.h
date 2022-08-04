@@ -23,10 +23,12 @@
 
 #include "./byte_array_mutator.h"
 #include "./command.h"
+#include "./coverage.h"
 #include "./defs.h"
 #include "./environment.h"
 #include "./execution_result.h"
 #include "./shared_memory_blob_sequence.h"
+#include "./symbol_table.h"
 #include "./util.h"
 
 namespace centipede {
@@ -45,6 +47,7 @@ class CentipedeCallbacks {
         inputs_blobseq_(shmem_name1_.c_str(), env.shmem_size_mb << 20),
         outputs_blobseq_(shmem_name2_.c_str(), env.shmem_size_mb << 20) {}
   virtual ~CentipedeCallbacks() {}
+
   // Feeds `inputs` into the `binary`, for every input populates `batch_result`.
   // Old contents of `batch_result` are cleared.
   // Returns true on success, false on failure.
@@ -53,10 +56,20 @@ class CentipedeCallbacks {
   virtual bool Execute(std::string_view binary,
                        const std::vector<ByteArray> &inputs,
                        BatchResult &batch_result) = 0;
+
   // Takes non-empty `inputs`, discards old contents of `mutants`,
   // adds `num_mutants` mutated inputs to `mutants`.
   virtual void Mutate(const std::vector<ByteArray> &inputs, size_t num_mutants,
                       std::vector<ByteArray> &mutants) = 0;
+
+  // Populates the symbol and PC tables using the `symbolizer_path` and
+  // `coverage_binary` in `env_`.
+  // The tables may not be populated if the PC table cannot be determined from
+  // the `coverage_binary` or if symbolization fails.
+  // Exits if PC table was not populated and `env_.require_pc_table` is set.
+  virtual void PopulateSymbolAndPcTables(SymbolTable &symbols,
+                                         Coverage::PCTable &pc_table);
+
   // Returns some simple non-empty valid input.
   virtual ByteArray DummyValidInput() { return {0}; }
 
