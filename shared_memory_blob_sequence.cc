@@ -39,14 +39,14 @@ SharedMemoryBlobSequence::SharedMemoryBlobSequence(const char *name,
   ErrorOnFailure(size < sizeof(Blob::size), "size too small");
   fd_ = shm_open(name, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
   name_to_unlink_ = strdup(name);  // Using raw C strings to avoid dependencies.
-  ErrorOnFailure(fd_ <= 0, "shm_open failed");
+  ErrorOnFailure(fd_ < 0, "shm_open failed");
   ErrorOnFailure(ftruncate(fd_, size_), "ftruncate failed)");
   MmapData();
 }
 
 SharedMemoryBlobSequence::SharedMemoryBlobSequence(const char *name) {
   fd_ = shm_open(name, O_RDWR, 0);
-  ErrorOnFailure(fd_ <= 0, "shm_open failed");
+  ErrorOnFailure(fd_ < 0, "shm_open failed");
   struct stat statbuf;
   ErrorOnFailure(fstat(fd_, &statbuf), "fstat failed");
   size_ = statbuf.st_size;
