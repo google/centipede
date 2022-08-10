@@ -131,6 +131,16 @@ class WeightedDistribution {
   // after call(s) to ChangeWeight().
   void RecomputeInternalState();
 
+  // Computes a random weighted subset of elements to remove.
+  // Removes this subset from `this`.
+  // Returns the subset as a sorted array of indices.
+  std::vector<size_t> RemoveRandomWeightedSubset(size_t target_size, Rng &rng) {
+    auto subset_to_remove = RandomWeightedSubset(weights_, target_size, rng);
+    RemoveSubset(subset_to_remove, weights_);
+    RemoveSubset(subset_to_remove, cumulative_weights_);
+    return subset_to_remove;
+  }
+
  private:
   // The array of weights. The probability of choosing the index Idx
   // is weights_[Idx] / SumOfAllWeights.
