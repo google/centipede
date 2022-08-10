@@ -300,6 +300,9 @@ class HashedRingBuffer {
     return hash_;
   }
 
+  // returns the current hash.
+  size_t hash() const { return hash_; }
+
   // Zero-initialize the object.
   void clear() { memset(this, 0, sizeof(*this)); }
 

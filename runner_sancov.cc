@@ -66,8 +66,10 @@ ENFORCE_INLINE static void TraceCmp(uint64_t Arg1, uint64_t Arg2) {
   if (!state.run_time_flags.use_cmp_features) return;
   auto caller_pc = reinterpret_cast<uintptr_t>(__builtin_return_address(0));
   auto pc_offset = caller_pc - state.main_object_start_address;
-  state.cmp_feature_set.set(centipede::ConvertContextAndArgPairToNumber(
-      Arg1, Arg2, centipede::Hash64Bits(pc_offset)));
+  uintptr_t hash =
+      centipede::Hash64Bits(pc_offset) ^ tls.path_ring_buffer.hash();
+  state.cmp_feature_set.set(
+      centipede::ConvertContextAndArgPairToNumber(Arg1, Arg2, hash));
 }
 
 //------------------------------------------------------------------------------

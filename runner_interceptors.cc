@@ -95,8 +95,10 @@ extern "C" int memcmp(const void *s1, const void *s2, size_t n) {
     uintptr_t caller_pc =
         reinterpret_cast<uintptr_t>(__builtin_return_address(0));
     uintptr_t pc_offset = caller_pc - state.main_object_start_address;
-    state.cmp_feature_set.set(centipede::ConvertContextAndArgPairToNumber(
-        a, b, centipede::Hash64Bits(pc_offset)));
+    uintptr_t hash =
+        centipede::Hash64Bits(pc_offset) ^ tls.path_ring_buffer.hash();
+    state.cmp_feature_set.set(
+        centipede::ConvertContextAndArgPairToNumber(a, b, hash));
   }
   if (memcmp_orig) return memcmp_orig(s1, s2, n);
   return memcmp_fallback(s1, s2, n);
