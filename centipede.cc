@@ -301,7 +301,7 @@ bool Centipede::RunBatch(const std::vector<ByteArray> &input_vec,
       }
       if (env_.prune_frequency != 0 &&
           (corpus_.NumTotal() % env_.prune_frequency) == 0) {
-        corpus_.Prune(fs_);
+        corpus_.Prune(fs_, env_.max_corpus_size, rng_);
       }
       if (corpus_file) {
         CHECK_OK(corpus_file->Append(input_vec[i]));

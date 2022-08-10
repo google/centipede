@@ -182,8 +182,10 @@ class Corpus {
   // Returns the element with index 'idx', where `idx` < NumActive().
   const ByteArray &Get(size_t idx) const { return records_[idx].data; }
   // Removes elements that contain only frequent features, according to 'fs'.
+  // Also randomly removes elements to reduce the size to <= `max_corpus_size`.
+  // `max_corpus_size` should be positive.
   // Returns the number of removed elements.
-  size_t Prune(const FeatureSet &fs);
+  size_t Prune(const FeatureSet &fs, size_t max_corpus_size, Rng &rng);
   // Prints corpus stats in JSON format to `out` using `fs` for frequencies.
   void PrintStats(std::ostream &out, const FeatureSet &fs);
 

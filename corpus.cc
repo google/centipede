@@ -93,7 +93,8 @@ FeatureSet::ComputeWeight(const FeatureVec &features) const {
 
 //================= Corpus
 
-size_t Corpus::Prune(const FeatureSet &fs) {
+size_t Corpus::Prune(const FeatureSet &fs, size_t max_corpus_size, Rng &rng) {
+  CHECK(max_corpus_size);
   if (records_.size() < 2UL) return 0;
   // Recompute the weights.
   size_t num_zero_weights = 0;
@@ -105,17 +106,18 @@ size_t Corpus::Prune(const FeatureSet &fs) {
   }
 
   // Remove zero weights and the corresponding corpus record.
-  // TODO(kcc): remove some non-zero-weight elements as well.
-  // This will require passing `rng` and the target corpus size as parameters.
-  Rng rng(0);  // this will need to be passed as a parameter.
+  // Also remove some random elements, if the corpus is still too big.
   // The corpus must not be empty, hence target_size is at least 1.
-  size_t target_size = std::max(1UL, records_.size() - num_zero_weights);
+  // It should also be <= max_corpus_size.
+  size_t target_size = std::min(
+      max_corpus_size, std::max(1UL, records_.size() - num_zero_weights));
   auto subset_to_remove =
       weighted_distribution_.RemoveRandomWeightedSubset(target_size, rng);
   RemoveSubset(subset_to_remove, records_);
 
   weighted_distribution_.RecomputeInternalState();
   CHECK(!records_.empty());
+  num_pruned_ += subset_to_remove.size();
   return subset_to_remove.size();
 }
 

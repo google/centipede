@@ -49,6 +49,7 @@ struct Environment {
   bool fork_server;
   bool full_sync;
   bool use_corpus_weights;
+  size_t max_corpus_size;
   int crossover_level;
   bool use_pc_features;
   int path_level;
