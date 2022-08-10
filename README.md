@@ -193,7 +193,7 @@ CC=clang CFLAGS=@$CENTIPEDE_SRC/clang-flags.txt ./configure --disable-shared
 make -j
 ```
 
-#### Link ligpng's own fuzz target with libcentipede_runner.pic.a
+#### Link libpng's own fuzz target with libcentipede_runner.pic.a
 
 ```shell
 FUZZ_TARGET=libpng_read_fuzzer
