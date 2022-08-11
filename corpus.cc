@@ -117,6 +117,13 @@ size_t Corpus::Prune(const FeatureSet &fs, size_t max_corpus_size, Rng &rng) {
 
   weighted_distribution_.RecomputeInternalState();
   CHECK(!records_.empty());
+
+  // Features may have shrunk from CountUnseenAndPruneFrequentFeatures.
+  // Call shrink_to_fit for the features that survived the pruning.
+  for (auto &record : records_) {
+    record.features.shrink_to_fit();
+  }
+
   num_pruned_ += subset_to_remove.size();
   return subset_to_remove.size();
 }
