@@ -299,10 +299,6 @@ bool Centipede::RunBatch(const std::vector<ByteArray> &input_vec,
       if (function_filter_passed) {
         corpus_.Add(input_vec[i], fv, fs_);
       }
-      if (env_.prune_frequency != 0 &&
-          (corpus_.NumTotal() % env_.prune_frequency) == 0) {
-        corpus_.Prune(fs_, env_.max_corpus_size, rng_);
-      }
       if (corpus_file) {
         CHECK_OK(corpus_file->Append(input_vec[i]));
       }
@@ -484,6 +480,7 @@ void Centipede::FuzzingLoop() {
   size_t number_of_batches = env_.num_runs / env_.batch_size;
   if (env_.num_runs % env_.batch_size != 0) ++number_of_batches;
   size_t new_runs = 0;
+  size_t corpus_size_at_last_prune = corpus_.NumActive();
   for (size_t batch_index = 0; batch_index < number_of_batches; batch_index++) {
     if (EarlyExitRequested()) break;
     CHECK_LT(new_runs, env_.num_runs);
@@ -522,6 +519,14 @@ void Centipede::FuzzingLoop() {
           (env_.my_shard_index + 1 + rand) % env_.total_shards;
       CHECK_NE(other_shard_index, env_.my_shard_index);
       LoadShard(env_, other_shard_index, /*rerun*/ false);
+    }
+
+    // Prune if we added enough new elements since last prune.
+    if (env_.prune_frequency &&
+        corpus_.NumActive() >
+            corpus_size_at_last_prune + env_.prune_frequency) {
+      corpus_.Prune(fs_, env_.max_corpus_size, rng_);
+      corpus_size_at_last_prune = corpus_.NumActive();
     }
   }
   Log("end-fuzz", 0);  // Tests rely on this line being present at the end.
