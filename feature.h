@@ -143,11 +143,6 @@ constexpr Domain kPCPair = {Domain::kPCPair};
 // Don't put any domains after this one.
 constexpr Domain kLastDomain = {Domain::kLastDomain};
 
-// Returns a number in range [1,1000) indicating how important `feature` is.
-// 1 is the least important.
-// The result can be used for computing weights of feature vectors.
-uint32_t Importance(feature_t feature);
-
 }  // namespace FeatureDomains
 
 // Converts a 8-bit coverage counter,  i.e. a pair of
