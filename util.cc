@@ -190,13 +190,6 @@ void CreateLocalDirRemovedAtExit(std::string_view path) {
   dirs_to_delete_at_exit->emplace_back(path);
 }
 
-// Honor $TEST_TMPDIR first, then $TMPDIR, then fall back to /tmp.
-std::string GetTestTempDir() {
-  if (auto path = getenv("TEST_TMPDIR")) return path;
-  if (auto path = getenv("TMPDIR")) return path;
-  return "/tmp";
-}
-
 static const size_t kMagicLen = 11;
 static const uint8_t kPackBegMagic[] = "-Centipede-";
 static const uint8_t kPackEndMagic[] = "-edepitneC-";
