@@ -96,9 +96,6 @@ size_t GetRandomSeed(size_t seed);
 // the caller's process and thread.
 std::string ProcessAndThreadUniqueID(std::string_view prefix);
 
-// Test-only. Returns a temp dir for use inside tests.
-std::string GetTestTempDir();
-
 // Computes a random subset of `set` that needs to be
 // removed to reach `target_size` non-zero weights in the set.
 // `set` is an array of weights, some of which could be zero.
