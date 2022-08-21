@@ -28,7 +28,7 @@ exports_files([
 ################################################################################
 
 cc_binary(
-    name = "centipede",
+    name = "centipede_main",
     srcs = ["centipede_main.cc"],
     deps = [
         ":centipede_default_callbacks",
@@ -36,6 +36,11 @@ cc_binary(
         ":environment",
         "@com_google_absl//absl/flags:parse",
     ],
+)
+
+alias(
+    name = "centipede",
+    actual = ":centipede_main",
 )
 
 ################################################################################
