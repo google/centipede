@@ -32,7 +32,7 @@ readonly centipede_dir="${TEST_SRCDIR}/centipede"
 readonly puzzle_path="${centipede_dir}/puzzles/${puzzle_name}_centipede"
 readonly puzzle_source_path="${centipede_dir}/puzzles/${puzzle_source_name}"
 
-readonly centipede="${centipede_dir}/centipede"
+readonly centipede="${centipede_dir}/centipede_main"
 readonly workdir="${TEST_TMPDIR}/workdir"
 readonly log="${TEST_TMPDIR}/log"
 readonly script="${TEST_TMPDIR}/script"
