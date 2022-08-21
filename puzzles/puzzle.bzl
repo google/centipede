@@ -47,6 +47,6 @@ def puzzle(name):
             data = [
                 ":" + name + "_centipede",
                 name + ".cc",
-                "@centipede//:centipede",
+                "@centipede//:centipede_main",
             ],
         )

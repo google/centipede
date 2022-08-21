@@ -223,7 +223,12 @@ NOTE: You may need to add
 [`llvm-symbolizer`](https://llvm.org/docs/CommandGuide/llvm-symbolizer.html)
 to your `$PATH` for some of the Centipede functionality to work. The
 symbolizer can be installed as part of the [LLVM](https://releases.llvm.org)
-distribution.
+distribution:
+
+```shell
+sudo apt install llvm
+which llvm-symbolizer  # normally /usr/bin/llvm-symbolizer
+```
 
 ### Run one fuzzing job
 

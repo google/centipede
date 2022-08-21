@@ -28,7 +28,7 @@ exports_files([
 ################################################################################
 
 cc_binary(
-    name = "centipede",
+    name = "centipede_main",
     srcs = ["centipede_main.cc"],
     deps = [
         ":centipede_default_callbacks",
@@ -36,6 +36,11 @@ cc_binary(
         ":environment",
         "@com_google_absl//absl/flags:parse",
     ],
+)
+
+alias(
+    name = "centipede",
+    actual = ":centipede_main",
 )
 
 ################################################################################
@@ -398,4 +403,22 @@ cc_library(
         "shared_memory_blob_sequence.cc",
         "shared_memory_blob_sequence.h",
     ],
+)
+
+################################################################################
+#                        General-purpose testing utilities
+################################################################################
+
+cc_library(
+    name = "test_util",
+    srcs = ["test_util.cc"],
+    hdrs = ["test_util.h"],
+    deps = [
+        ":logging",
+    ],
+)
+
+sh_library(
+    name = "test_util_sh",
+    srcs = ["test_util.sh"],
 )
