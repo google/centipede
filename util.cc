@@ -61,7 +61,7 @@ std::string AsString(const ByteArray &data, size_t max_len) {
   std::ostringstream out;
   size_t len = std::min(max_len, data.size());
   for (size_t i = 0; i < len; ++i) {
-    char ch = data[i];
+    const auto ch = data[i];
     if (std::isprint(ch)) {
       out << ch;
     } else {
@@ -188,13 +188,6 @@ void CreateLocalDirRemovedAtExit(std::string_view path) {
     atexit(&RemoveDirsAtExit);
   }
   dirs_to_delete_at_exit->emplace_back(path);
-}
-
-// Honor $TEST_TMPDIR first, then $TMPDIR, then fall back to /tmp.
-std::string GetTestTempDir() {
-  if (auto path = getenv("TEST_TMPDIR")) return path;
-  if (auto path = getenv("TMPDIR")) return path;
-  return "/tmp";
 }
 
 static const size_t kMagicLen = 11;
