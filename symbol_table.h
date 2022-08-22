@@ -66,16 +66,18 @@ class SymbolTable {
     return func(idx) + " " + location(idx);
   }
 
- private:
+  // Defines a symbol table entry.
   struct Entry {
     std::string func;
     std::string file_line_col;
   };
 
+  // Add function name and file location to symbol table.
   void AddEntry(std::string_view func, std::string_view file_line_col) {
     entries_.push_back({std::string(func), std::string(file_line_col)});
   }
 
+ private:
   std::vector<Entry> entries_;
 };
 
