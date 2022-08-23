@@ -413,7 +413,7 @@ cc_library(
     srcs = ["test_util.cc"],
     hdrs = ["test_util.h"],
     deps = [
-        "@centipede//:logging",
+        ":logging",
     ],
 )
 
