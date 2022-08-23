@@ -417,3 +417,8 @@ cc_library(
         "@centipede//:logging",
     ],
 )
+
+sh_library(
+    name = "test_util_sh",
+    srcs = ["test_util.sh"],
+)
