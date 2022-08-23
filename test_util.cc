@@ -20,6 +20,12 @@
 
 namespace centipede {
 
+std::string GetTestTempDir() {
+  if (auto* path = std::getenv("TEST_TMPDIR"); path != nullptr) return path;
+  if (auto* path = std::getenv("TMPDIR"); path != nullptr) return path;
+  return "/tmp";
+}
+
 std::filesystem::path GetTestRunfilesDir() {
   const char* test_srcdir = std::getenv("TEST_SRCDIR");
   CHECK(test_srcdir != nullptr)

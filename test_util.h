@@ -20,6 +20,13 @@
 
 namespace centipede {
 
+// Returns a temp dir for use inside tests. The dir is chosen in the following
+// order of precedence:
+// - $TEST_TMPDIR (highest)
+// - $TMPDIR
+// - /tmp
+std::string GetTestTempDir();
+
 // Returns the root directory filepath for a test's "runfiles".
 std::filesystem::path GetTestRunfilesDir();
 
