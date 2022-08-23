@@ -19,15 +19,12 @@
 #include <algorithm>
 #include <atomic>
 #include <cctype>
-#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <filesystem>
 #include <fstream>
-#include <functional>
-#include <initializer_list>
 #include <queue>
 #include <sstream>
 #include <string>
@@ -39,7 +36,6 @@
 #include "absl/base/attributes.h"
 #include "absl/base/const_init.h"
 #include "absl/base/thread_annotations.h"
-#include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_replace.h"
 #include "absl/strings/str_split.h"
