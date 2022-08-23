@@ -399,3 +399,16 @@ cc_library(
         "shared_memory_blob_sequence.h",
     ],
 )
+
+################################################################################
+#                        General-purpose testing utilities
+################################################################################
+
+cc_library(
+    name = "test_util",
+    srcs = ["test_util.cc"],
+    hdrs = ["test_util.h"],
+    deps = [
+        "@centipede//:logging",
+    ],
+)
