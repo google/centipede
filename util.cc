@@ -61,7 +61,7 @@ std::string AsString(const ByteArray &data, size_t max_len) {
   std::ostringstream out;
   size_t len = std::min(max_len, data.size());
   for (size_t i = 0; i < len; ++i) {
-    char ch = data[i];
+    const auto ch = data[i];
     if (std::isprint(ch)) {
       out << ch;
     } else {
