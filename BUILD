@@ -342,6 +342,12 @@ cc_library(
     hdrs = ["runner_interface.h"],
 )
 
+# A fuzz target needs to link with this library in order to run with Centipede.
+# The fuzz target must provide its own main().
+#
+# NOTE: This target's own sources must never be sancov-instrumented (unlike the
+# sources of a fuzz target to which it is being linked!).
+#
 cc_library(
     name = "fuzz_target_runner_no_main",
     srcs = [
@@ -350,6 +356,7 @@ cc_library(
         "runner_sancov.cc",
     ],
     hdrs = ["runner.h"],
+    copts = ["-fsanitize-coverage=0"],
     linkopts = ["-ldl"],  # for dlsym
     deps = [
         ":byte_array_mutator",
@@ -365,9 +372,14 @@ cc_library(
 
 # A fuzz target needs to link with this library (containing main()) in order to
 # run with Centipede.
+#
+# NOTE: This target's own sources must never be sancov-instrumented (unlike the
+# sources of a fuzz target to which it is being linked!).
+#
 cc_library(
     name = "fuzz_target_runner",
     srcs = ["runner_main.cc"],
+    copts = ["-fsanitize-coverage=0"],
     visibility = ["//visibility:public"],
     deps = [
         ":fuzz_target_runner_no_main",  # buildcleaner: keep
