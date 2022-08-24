@@ -14,6 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Prints "$@" and terminates the current shell.
+function die() {
+  echo "FATAL: $*" >&2
+  # Kill our own shell or, if we're in a subshell, kill the parent (main) shell.
+  kill $$
+  # If we're in a subshell, exit it.
+  exit 1
+}
+
 # Returns the path to Centipede TEST_SRCDIR subdirectory.
 function centipede::get_centipede_test_srcdir() {
   set -u
@@ -26,9 +35,8 @@ function centipede::get_llvm_symbolizer_path() {
   local path
   path="$(which llvm-symbolizer)"
   if (( $? != 0 )); then
-    echo "FAILURE: llvm-symbolizer must be installed and findable via PATH:" \
-      "use install_dependencies_debian.sh to fix" >&2
-    exit 1
+    die "llvm-symbolizer must be installed and findable via" \
+      "PATH: use install_dependencies_debian.sh to fix"
   fi
   echo "${path}"
 }
@@ -48,7 +56,6 @@ function centipede::maybe_set_var_to_executable_path() {
     var_ref="${path}"
   fi
   if ! [[ -x "${var_ref}" ]]; then
-    echo "FAILURE: Path '${var_ref}' doesn't exist or is not executable" >&2
-    exit 1
+    die "Path '${var_ref}' doesn't exist or is not executable"
   fi
 }
