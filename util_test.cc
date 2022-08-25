@@ -61,10 +61,13 @@ TEST(Util, AsString) {
   EXPECT_EQ(AsString({'a', 'b', 'c'}, 3), "abc");
   EXPECT_EQ(AsString({'a', 'b', 'C'}, 4), "abC");
   EXPECT_EQ(AsString({'a', 'b', 'c'}, 2), "ab");
-  EXPECT_EQ(AsString({'a', 0xab, 0xcd}, 3), "a\\xAB\\xCD");
-  EXPECT_EQ(AsString({'a', 0xab, 0xcd}, 4), "a\\xAB\\xCD");
-  EXPECT_EQ(AsString({'a', 0xab, 0xcd}, 2), "a\\xAB");
-  EXPECT_EQ(AsString({'a', 0xab, 0xcd, 'z'}, 5), "a\\xAB\\xCDz");
+  // NOTE: Test both int (0xAB) and char ('\xAB') literals as ByteArray
+  // initializers: the latter used to cause compilation failures with
+  // Bazel/Clang default setup (without --cxxopt=--fno-signed-char in .bazelrc).
+  EXPECT_EQ(AsString({'a', 0xAB, 0xCD}, 3), "a\\xAB\\xCD");
+  EXPECT_EQ(AsString({'a', 0xAB, 0xCD}, 4), "a\\xAB\\xCD");
+  EXPECT_EQ(AsString({'a', '\xAB', '\xCD'}, 2), "a\\xAB");
+  EXPECT_EQ(AsString({'a', '\xAB', '\xCD', 'z'}, 5), "a\\xAB\\xCDz");
 }
 
 TEST(Centipede, ExtractHashFromArray) {
@@ -182,7 +185,7 @@ TEST(Centipede, ParseAFLDictionary) {
 
   // Hex entries and a properly escaped back slash.
   EXPECT_TRUE(ParseAFLDictionary("  \"\\xBC\\\\a\\xAB\\x00\"", dict));
-  EXPECT_EQ(dict, std::vector<ByteArray>({{0xBC, '\\', 'a', 0xAB, 0}}));
+  EXPECT_EQ(dict, std::vector<ByteArray>({{'\xBC', '\\', 'a', '\xAB', 0}}));
 
   // Special characters.
   EXPECT_TRUE(ParseAFLDictionary("\"\\r\\t\\n\\\"\"", dict));
