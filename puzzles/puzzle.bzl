@@ -14,26 +14,17 @@
 
 """BUILD rule for Centipede puzzles"""
 
+load("@centipede//testing:build_defs.bzl", "centipede_fuzz_target")
+
 def puzzle(name):
-    """Generates a sancov-instrumented cc_binary target + two sh_test targets to run it.
+    """Generates a cc_fuzz_target target instrumented with sancov and a sh script to run it.
 
     Args:
-    name: A unique name for this target
+      name: A unique name for this target
     """
 
-    native.cc_binary(
-        name = name + "_centipede",
-        copts = [
-            "-O2",
-            "-fsanitize-coverage=trace-pc-guard,pc-table,trace-cmp",
-            "-fno-builtin",
-            "-gline-tables-only",
-        ],
-        linkopts = ["-ldl -lrt -lpthread"],
-        srcs = [name + ".cc"],
-        deps = [
-            "@centipede//:centipede_runner",
-        ],
+    centipede_fuzz_target(
+        name = name,
     )
 
     # We test every puzzle with two different seeds so that the result is more
@@ -45,7 +36,7 @@ def puzzle(name):
             name = "run_" + seed + "_" + name,
             srcs = ["run_puzzle.sh"],
             data = [
-                ":" + name + "_centipede",
+                ":" + name,
                 name + ".cc",
                 "@centipede//:centipede_main",
             ],

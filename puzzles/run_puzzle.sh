@@ -29,7 +29,7 @@ readonly seed="${seed_and_puzzle_name:0:1}"
 readonly puzzle_name="${seed_and_puzzle_name:2}"
 readonly puzzle_source_name="${puzzle_name}.cc"
 readonly centipede_dir="${TEST_SRCDIR}/centipede"
-readonly puzzle_path="${centipede_dir}/puzzles/${puzzle_name}_centipede"
+readonly puzzle_path="${centipede_dir}/puzzles/${puzzle_name}"
 readonly puzzle_source_path="${centipede_dir}/puzzles/${puzzle_source_name}"
 
 readonly centipede="${centipede_dir}/centipede_main"
