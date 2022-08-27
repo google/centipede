@@ -237,18 +237,6 @@ static void SymbolizeBinary(std::string_view target_path, bool use_trace_pc) {
   EXPECT_GT(multi_edge_func_num_edges, 1);
 }
 
-// Tests GetPcTableFromBinary() and SymbolTable on test_fuzz_target.
-TEST(Coverage, GetPcTableFromBinary_And_SymbolTable_PCTable) {
-  EXPECT_NO_FATAL_FAILURE(
-      SymbolizeBinary(GetTargetPath(), /*use_trace_pc=*/false));
-}
-
-// Tests GetPcTableFromBinary() and SymbolTable on test_fuzz_target_trace_pc.
-TEST(Coverage, GetPcTableFromBinary_And_SymbolTable_TracePC) {
-  EXPECT_NO_FATAL_FAILURE(
-      SymbolizeBinary(GetTracePCTargetPath(), /*use_trace_pc=*/true));
-}
-
 // A simple CentipedeCallbacks derivative for this test.
 class TestCallbacks : public CentipedeCallbacks {
  public:
@@ -362,43 +350,6 @@ TEST(Coverage, DataFlowFeatures) {
     EXPECT_EQ(
         ExtractDomainFeatures(features[0], FeatureDomains::k8bitCounters),
         ExtractDomainFeatures(features[1], FeatureDomains::k8bitCounters));
-  }
-}
-
-// Tests feature collection for counters (--use_counter_features).
-TEST(Coverage, CounterFeatures) {
-  Environment env;
-  env.binary = GetTargetPath();
-
-  // Inputs that generate the same PC coverage but different counters.
-  std::vector<std::string> inputs = {"cnt\x01", "cnt\x02", "cnt\x04", "cnt\x08",
-                                     "cnt\x10"};
-  const size_t n = inputs.size();
-
-  // Run with use_counter_features = true.
-  env.use_counter_features = true;
-  auto features = RunInputsAndCollectCoverage(env, inputs);
-  EXPECT_EQ(features.size(), n);
-  // Counter features should be different.
-  for (size_t i = 0; i < n; ++i) {
-    for (size_t j = i + 1; j < n; ++j) {
-      EXPECT_NE(
-          ExtractDomainFeatures(features[i], FeatureDomains::k8bitCounters),
-          ExtractDomainFeatures(features[j], FeatureDomains::k8bitCounters));
-    }
-  }
-
-  // Run with use_counter_features = false.
-  env.use_counter_features = false;
-  features = RunInputsAndCollectCoverage(env, inputs);
-  EXPECT_EQ(features.size(), n);
-  // Counter features should be the same now.
-  for (size_t i = 0; i < n; ++i) {
-    for (size_t j = i + 1; j < n; ++j) {
-      EXPECT_EQ(
-          ExtractDomainFeatures(features[i], FeatureDomains::k8bitCounters),
-          ExtractDomainFeatures(features[j], FeatureDomains::k8bitCounters));
-    }
   }
 }
 

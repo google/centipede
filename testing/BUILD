@@ -24,14 +24,6 @@ exports_files(["centipede_main_test.sh"])
 #                        Fuzz targets for fuzz tests
 ################################################################################
 
-# Example of using the bazel transitions to build the fuzz target binary
-# with the custom flags required to run under Centipede.
-# re2_fuzzer is chosen as an arbitrary third_party fuzz target.
-centipede_fuzz_target(
-    name = "example_fuzz_target",
-    fuzz_target = "//third_party/re2/fuzzing:re2_fuzzer",
-)
-
 centipede_fuzz_target(
     name = "abort_fuzz_target",
 )
@@ -135,19 +127,7 @@ sh_test(
     srcs = ["centipede_main_test.sh"],
     data = [
         ":abort_fuzz_target",
-        ":example_fuzz_target",
         ":test_fuzz_target",
-        "@centipede//:centipede_main",
-        "@centipede//:test_util_sh",
-    ],
-)
-
-# Runs common Centipede scenarios in multiple threads.
-sh_test(
-    name = "centipede_threaded_test",
-    srcs = ["centipede_threaded_test.sh"],
-    data = [
-        ":example_fuzz_target",
         "@centipede//:centipede_main",
         "@centipede//:test_util_sh",
     ],
