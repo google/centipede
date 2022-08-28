@@ -23,16 +23,21 @@
 
 set -eu -o pipefail
 
+ls -la "$(dirname "$0")"
+
+source "$(dirname "$0")/../test_util.sh"
+
+readonly centipede_dir="$(centipede::get_centipede_test_srcdir)"
+readonly centipede="${centipede_dir}/centipede_main"
+
 readonly target_name="$(basename "$0")"
 readonly seed_and_puzzle_name="${target_name#run_}"
 readonly seed="${seed_and_puzzle_name:0:1}"
 readonly puzzle_name="${seed_and_puzzle_name:2}"
 readonly puzzle_source_name="${puzzle_name}.cc"
-readonly centipede_dir="${TEST_SRCDIR}/centipede"
 readonly puzzle_path="${centipede_dir}/puzzles/${puzzle_name}"
 readonly puzzle_source_path="${centipede_dir}/puzzles/${puzzle_source_name}"
 
-readonly centipede="${centipede_dir}/centipede_main"
 readonly workdir="${TEST_TMPDIR}/workdir"
 readonly log="${TEST_TMPDIR}/log"
 readonly script="${TEST_TMPDIR}/script"
@@ -45,9 +50,8 @@ echo ======== END SCRIPT
 
 ##################################### USER_FUNCTIONS
 
-# Runs Centipede with additional parameters in $@,
-# saves the result in log, cats the log.
-# Expects Centipde to exit with failure.
+# Runs Centipede with additional parameters in $@, saves the result in log, cats
+# the log. Expects Centipede to exit with failure.
 function Run() {
   echo "======== Run $*"
   rm -rf "${workdir}"

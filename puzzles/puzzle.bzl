@@ -39,5 +39,6 @@ def puzzle(name):
                 ":" + name,
                 name + ".cc",
                 "@centipede//:centipede_main",
+                "@centipede//:test_util_sh",
             ],
         )
