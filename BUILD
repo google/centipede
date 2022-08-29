@@ -15,7 +15,9 @@
 # Description:
 #   Centipede: an experimental distributed fuzzing engine.
 
-package(default_visibility = ["//visibility:public"])
+VISIBILITY = ["//visibility:public"]
+
+package(default_visibility = VISIBILITY)
 
 licenses(["notice"])
 
