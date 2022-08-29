@@ -64,6 +64,11 @@ inline uint64_t Hash64Bits(uint64_t bits) {
   return bits * kPrime;
 }
 
+// Returns `bits` rotated left by `n`.
+inline uint64_t RotateLeft(uint64_t bits, uint64_t n) {
+  return (bits << n) | (bits >> (64 - n));
+}
+
 namespace FeatureDomains {
 
 // Feature domain is a subset of 64-bit integers dedicated to a certain
@@ -283,14 +288,16 @@ class HashedRingBuffer {
   // `ring_buffer_size` must be <= kSize and must be the same for all push()
   // calls for a given object.
   // We don't enforce these constraints here to avoid overhead.
+  // The hash function used:
+  // https://en.wikipedia.org/wiki/Rolling_hash#Cyclic_polynomial
   size_t push(size_t new_item, size_t ring_buffer_size) {
     size_t new_pos = last_added_pos_ + 1;
     if (new_pos >= ring_buffer_size) new_pos = 0;
     size_t evicted_item = buffer_[new_pos];
     new_item = Hash64Bits(new_item);
     buffer_[new_pos] = new_item;
-    hash_ ^= evicted_item;
-    hash_ ^= new_item;
+    hash_ = RotateLeft(hash_, 1) ^ RotateLeft(evicted_item, ring_buffer_size) ^
+            new_item;
     last_added_pos_ = new_pos;
     return hash_;
   }

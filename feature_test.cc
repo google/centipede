@@ -14,8 +14,10 @@
 
 #include "./feature.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <numeric>
 #include <string>
 #include <thread>  // NOLINT.
 #include <utility>
@@ -249,9 +251,27 @@ TEST(Feature, HashedRingBuffer) {
     hashes16.insert(rb16.push(i, 16));
     hashes32.insert(rb32.push(i, 32));
   }
-  EXPECT_GT(hashes32.size(), 97 * kNumIter / 100);
-  EXPECT_GT(hashes16.size(), 90 * kNumIter / 100);
-  EXPECT_LT(hashes16.size(), hashes32.size());
+  LOG(INFO) << VV(hashes32.size()) << " " << VV(hashes16.size());
+  // We allow only very few collisions.
+  EXPECT_GT(hashes16.size(), kNumIter - 5);
+  EXPECT_GT(hashes32.size(), kNumIter - 5);
+
+  // Try all permutations of {0, 1, 2, ... 9}, ensure we have at least half
+  // this many different hashes.
+  std::vector<size_t> numbers(10);
+  std::iota(numbers.begin(), numbers.end(), 0);
+  hashes32.clear();
+  size_t num_permutations = 0;
+  while (std::next_permutation(numbers.begin(), numbers.end())) {
+    ++num_permutations;
+    rb32.clear();
+    for (const auto number : numbers) {
+      rb32.push(number, 32);
+    }
+    hashes32.insert(rb32.hash());
+  }
+  LOG(INFO) << VV(num_permutations) << " " << VV(hashes32.size());
+  CHECK_GT(hashes32.size(), num_permutations / 2);
 }
 
 TEST(Feature, ConcurrentBitSet) {
