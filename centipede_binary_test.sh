@@ -21,6 +21,9 @@ set -eu
 source "$(dirname "$0")/test_util.sh"
 
 centipede_test_srcdir="$(centipede::get_centipede_test_srcdir)"
+# NOTE: The `centipede` target/binary is mostly intended for command line use by
+# end-users. Other tests/targets should prefer `centipede_main` (see the
+# comments in BUILD).
 centipede_binary="${centipede_test_srcdir}/centipede"
 if ! [[ -x "${centipede_binary}" ]]; then
   die "Build target ':centipede' failed to create expected executable \
