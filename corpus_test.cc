@@ -152,14 +152,16 @@ TEST(FeatureSet, CountUnseenAndPruneFrequentFeatures_IncrementFrequencies) {
 }
 
 TEST(Corpus, PrintStats) {
+  Coverage::PCTable pc_table(100);
+  CoverageFrontier coverage_frontier(pc_table);
   FeatureSet fs(3);
   Corpus corpus;
   FeatureVec features1 = {10, 20, 30};
   FeatureVec features2 = {20, 40};
   fs.IncrementFrequencies(features1);
-  corpus.Add({1, 2, 3}, features1, fs);
+  corpus.Add({1, 2, 3}, features1, fs, coverage_frontier);
   fs.IncrementFrequencies(features2);
-  corpus.Add({4, 5}, features2, fs);
+  corpus.Add({4, 5}, features2, fs, coverage_frontier);
   std::ostringstream os;
   corpus.PrintStats(os, fs);
   EXPECT_EQ(os.str(),
@@ -170,6 +172,8 @@ TEST(Corpus, PrintStats) {
 
 TEST(Corpus, Prune) {
   // Prune will remove an input if all of its features appear at least 3 times.
+  Coverage::PCTable pc_table(100);
+  CoverageFrontier coverage_frontier(pc_table);
   FeatureSet fs(3);
   Corpus corpus;
   Rng rng(0);
@@ -177,7 +181,7 @@ TEST(Corpus, Prune) {
 
   auto Add = [&](const CorpusRecord &record) {
     fs.IncrementFrequencies(record.features);
-    corpus.Add(record.data, record.features, fs);
+    corpus.Add(record.data, record.features, fs, coverage_frontier);
   };
 
   auto VerifyActiveInputs = [&](std::vector<ByteArray> expected_inputs) {
@@ -198,7 +202,7 @@ TEST(Corpus, Prune) {
 
   // Prune. Features 20 and 40 are frequent => input {0} will be removed.
   EXPECT_EQ(corpus.NumActive(), 5);
-  EXPECT_EQ(corpus.Prune(fs, max_corpus_size, rng), 1);
+  EXPECT_EQ(corpus.Prune(fs, coverage_frontier, max_corpus_size, rng), 1);
   EXPECT_EQ(corpus.NumActive(), 4);
   EXPECT_EQ(corpus.NumTotal(), 5);
   VerifyActiveInputs({{1}, {2}, {3}, {4}});
@@ -207,23 +211,26 @@ TEST(Corpus, Prune) {
   EXPECT_EQ(corpus.NumTotal(), 6);
   // Prune. Feature 30 is now frequent => inputs {1} and {2} will be removed.
   EXPECT_EQ(corpus.NumActive(), 5);
-  EXPECT_EQ(corpus.Prune(fs, max_corpus_size, rng), 2);
+  EXPECT_EQ(corpus.Prune(fs, coverage_frontier, max_corpus_size, rng), 2);
   EXPECT_EQ(corpus.NumActive(), 3);
   VerifyActiveInputs({{3}, {4}, {5}});
 
   // Test with smaller max_corpus_size values.
-  EXPECT_EQ(corpus.Prune(fs, 3, rng), 0);
+  EXPECT_EQ(corpus.Prune(fs, coverage_frontier, 3, rng), 0);
   EXPECT_EQ(corpus.NumActive(), 3);
-  EXPECT_EQ(corpus.Prune(fs, 2, rng), 1);
+  EXPECT_EQ(corpus.Prune(fs, coverage_frontier, 2, rng), 1);
   EXPECT_EQ(corpus.NumActive(), 2);
-  EXPECT_EQ(corpus.Prune(fs, 1, rng), 1);
+  EXPECT_EQ(corpus.Prune(fs, coverage_frontier, 1, rng), 1);
   EXPECT_EQ(corpus.NumActive(), 1);
-  EXPECT_DEATH(corpus.Prune(fs, 0, rng), "max_corpus_size");  // CHECK-fail.
+  EXPECT_DEATH(corpus.Prune(fs, coverage_frontier, 0, rng),
+               "max_corpus_size");  // CHECK-fail.
   EXPECT_EQ(corpus.NumTotal(), 6);
 }
 
 // Regression test for a crash in Corpus::Prune().
 TEST(Corpus, PruneRegressionTest1) {
+  Coverage::PCTable pc_table(100);
+  CoverageFrontier coverage_frontier(pc_table);
   FeatureSet fs(2);
   Corpus corpus;
   Rng rng(0);
@@ -231,12 +238,12 @@ TEST(Corpus, PruneRegressionTest1) {
 
   auto Add = [&](const CorpusRecord &record) {
     fs.IncrementFrequencies(record.features);
-    corpus.Add(record.data, record.features, fs);
+    corpus.Add(record.data, record.features, fs, coverage_frontier);
   };
 
   Add({{1}, {10, 20}});
   Add({{2}, {10}});
-  corpus.Prune(fs, max_corpus_size, rng);
+  corpus.Prune(fs, coverage_frontier, max_corpus_size, rng);
 }
 
 TEST(WeightedDistribution, WeightedDistribution) {
@@ -352,6 +359,7 @@ TEST(CoverageFrontier, Compute) {
                              {9, Coverage::PCInfo::kFuncEntry},  // Covered.
                              {10, 0},                            // Covered.
                              {11, 0}};                           // Covered.
+  CoverageFrontier frontier(pc_table);
   FeatureVec pcs(pc_table.size());
   for (size_t i = 0; i < pc_table.size(); i++) {
     pcs[i] = FeatureDomains::k8bitCounters.ConvertToMe(
@@ -363,7 +371,7 @@ TEST(CoverageFrontier, Compute) {
 
   auto Add = [&](feature_t feature) {
     fs.IncrementFrequencies({feature});
-    corpus.Add({42}, {feature}, fs);
+    corpus.Add({42}, {feature}, fs, frontier);
   };
 
   // Add PC-based features.
@@ -376,7 +384,6 @@ TEST(CoverageFrontier, Compute) {
   }
 
   // Compute and check the frontier.
-  CoverageFrontier frontier(pc_table);
   EXPECT_EQ(frontier.Compute(corpus), 2);
   EXPECT_FALSE(frontier.PcIndexIsFrontier(0));
   EXPECT_FALSE(frontier.PcIndexIsFrontier(1));

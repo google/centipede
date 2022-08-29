@@ -84,6 +84,7 @@ Centipede::Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
       rng_(env_.seed),
       // TODO(kcc): [impl] find a better way to compute frequency_threshold.
       fs_(env_.feature_frequency_threshold),
+      coverage_frontier_(pc_table),
       pc_table_(pc_table),
       symbols_(symbols),
       function_filter_(env_.function_filter, symbols_),
@@ -297,7 +298,7 @@ bool Centipede::RunBatch(const std::vector<ByteArray> &input_vec,
       batch_gained_new_coverage = true;
       CHECK_GT(fv.size(), 0UL);
       if (function_filter_passed) {
-        corpus_.Add(input_vec[i], fv, fs_);
+        corpus_.Add(input_vec[i], fv, fs_, coverage_frontier_);
       }
       if (corpus_file) {
         CHECK_OK(corpus_file->Append(input_vec[i]));
@@ -328,7 +329,7 @@ void Centipede::LoadShard(const Environment &load_env, size_t shard_index,
       LogFeaturesAsSymbols(features);
       if (fs_.CountUnseenAndPruneFrequentFeatures(features)) {
         fs_.IncrementFrequencies(features);
-        corpus_.Add(input, features, fs_);
+        corpus_.Add(input, features, fs_, coverage_frontier_);
         added_to_corpus++;
       }
     }
@@ -452,7 +453,7 @@ void Centipede::FuzzingLoop() {
   CHECK_OK(features_file->Open(env_.MakeFeaturesPath(env_.my_shard_index)));
 
   if (corpus_.NumTotal() == 0)
-    corpus_.Add(user_callbacks_.DummyValidInput(), {}, fs_);
+    corpus_.Add(user_callbacks_.DummyValidInput(), {}, fs_, coverage_frontier_);
 
   Log("init-done:", 0);
   // Clear timer_ and num_runs_, so that the pre-init work doesn't affect them.
@@ -525,7 +526,7 @@ void Centipede::FuzzingLoop() {
     if (env_.prune_frequency &&
         corpus_.NumActive() >
             corpus_size_at_last_prune + env_.prune_frequency) {
-      corpus_.Prune(fs_, env_.max_corpus_size, rng_);
+      corpus_.Prune(fs_, coverage_frontier_, env_.max_corpus_size, rng_);
       corpus_size_at_last_prune = corpus_.NumActive();
     }
   }

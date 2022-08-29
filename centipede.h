@@ -131,6 +131,7 @@ class Centipede {
   FeatureSet fs_;
   Timer timer_;  // counts time for coverage collection rate computation
   Corpus corpus_;
+  CoverageFrontier coverage_frontier_;
   size_t num_runs_ = 0;  // counts executed inputs
 
   // Coverage-related data, initialized at startup, once per process,

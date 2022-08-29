@@ -93,7 +93,10 @@ FeatureSet::ComputeWeight(const FeatureVec &features) const {
 
 //================= Corpus
 
-size_t Corpus::Prune(const FeatureSet &fs, size_t max_corpus_size, Rng &rng) {
+size_t Corpus::Prune(const FeatureSet &fs,
+                     const CoverageFrontier &coverage_frontier,
+                     size_t max_corpus_size, Rng &rng) {
+  // TODO(kcc): use coverage_frontier.
   CHECK(max_corpus_size);
   if (records_.size() < 2UL) return 0;
   // Recompute the weights.
@@ -129,7 +132,9 @@ size_t Corpus::Prune(const FeatureSet &fs, size_t max_corpus_size, Rng &rng) {
 }
 
 void Corpus::Add(const ByteArray &data, const FeatureVec &fv,
-                 const FeatureSet &fs) {
+                 const FeatureSet &fs,
+                 const CoverageFrontier &coverage_frontier) {
+  // TODO(kcc): use coverage_frontier.
   CHECK(!data.empty());
   CHECK_EQ(records_.size(), weighted_distribution_.size());
   records_.push_back({data, fv});

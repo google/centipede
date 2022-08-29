@@ -151,6 +151,8 @@ class WeightedDistribution {
   bool cumulative_weights_valid_ = true;
 };
 
+class CoverageFrontier;  // Forward decl, used in Corpus.
+
 // Maintains the corpus of inputs.
 // Allows to prune (forget) inputs that become uninteresting.
 class Corpus {
@@ -158,7 +160,8 @@ class Corpus {
   // Adds a corpus element, consisting of 'data' (the input bytes, non-empty)
   // and 'fv' (the features associated with this input).
   // `fs` is used to compute weights of `fv`.
-  void Add(const ByteArray &data, const FeatureVec &fv, const FeatureSet &fs);
+  void Add(const ByteArray &data, const FeatureVec &fv, const FeatureSet &fs,
+           const CoverageFrontier &coverate_frontier);
   // Returns the total number of inputs added.
   size_t NumTotal() const { return num_pruned_ + NumActive(); }
   // Return the number of currently active inputs, i.e. inputs that we want to
@@ -185,7 +188,8 @@ class Corpus {
   // Also randomly removes elements to reduce the size to <= `max_corpus_size`.
   // `max_corpus_size` should be positive.
   // Returns the number of removed elements.
-  size_t Prune(const FeatureSet &fs, size_t max_corpus_size, Rng &rng);
+  size_t Prune(const FeatureSet &fs, const CoverageFrontier &coverage_frontier,
+               size_t max_corpus_size, Rng &rng);
   // Prints corpus stats in JSON format to `out` using `fs` for frequencies.
   void PrintStats(std::ostream &out, const FeatureSet &fs);
 
