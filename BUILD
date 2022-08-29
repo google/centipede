@@ -380,7 +380,6 @@ cc_library(
     name = "fuzz_target_runner",
     srcs = ["runner_main.cc"],
     copts = ["-fsanitize-coverage=0"],
-    visibility = ["//visibility:public"],
     deps = [
         ":fuzz_target_runner_no_main",  # buildcleaner: keep
         ":runner_interface",
