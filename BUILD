@@ -27,6 +27,8 @@ exports_files([
 #                                  Binaries
 ################################################################################
 
+# The "master" rule that builds the main Centipede executable named
+# `centipede_main`. Dependent rules must use this one in their `deps` attribute.
 cc_binary(
     name = "centipede_main",
     srcs = ["centipede_main.cc"],
@@ -38,9 +40,17 @@ cc_binary(
     ],
 )
 
-alias(
+# An "alias" rule that copies the `centipede_main` executable to `centipede`.
+# End-users may use this one to build a more conveniently named executable.
+genrule(
     name = "centipede",
-    actual = ":centipede_main",
+    srcs = [":centipede_main"],
+    outs = ["centipede"],
+    # NOTE: If would seem natural to `mv` instead, but Bazel/Bazel both end up
+    # still copying the file, not moving it.
+    cmd = "cp $< $@",
+    executable = True,
+    output_to_bindir = True,
 )
 
 ################################################################################
@@ -534,5 +544,20 @@ cc_test(
         "@centipede//:logging",
         "@centipede//:util",
         "@com_google_googletest//:gtest_main",
+    ],
+)
+
+################################################################################
+#                               Other tests
+################################################################################
+
+# Verify that the `:centipede` target indeed creates a binary with the
+# expected name.
+sh_test(
+    name = "centipede_binary_test",
+    srcs = ["centipede_binary_test.sh"],
+    data = [
+        ":centipede",
+        ":test_util_sh",
     ],
 )
