@@ -38,6 +38,7 @@ curl -fsSL https://bazel.build/bazel-release.pub.gpg \
   | gpg --dearmor > /etc/apt/trusted.gpg.d/bazel.gpg
 echo "deb [arch=amd64] https://storage.googleapis.com/bazel-apt stable jdk1.8" \
   > /etc/apt/sources.list.d/bazel.list
+apt update
 
 # Install LLVM, which provides llvm-symbolizer required for running Centipede in
 # some modes.
