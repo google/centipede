@@ -53,7 +53,7 @@ struct Environment {
   size_t max_corpus_size;
   int crossover_level;
   bool use_pc_features;
-  int path_level;
+  size_t path_level;
   bool use_cmp_features;
   bool use_dataflow_features;
   bool use_counter_features;
@@ -70,9 +70,12 @@ struct Environment {
   std::vector<std::string> dictionary;
   std::string function_filter;
   std::string for_each_blob;
+  std::string experiment;
   bool exit_on_crash;
   size_t max_num_crash_reports;
   size_t shmem_size_mb;
+
+  std::string experiment_name;  // Set by UpdateForExperiment.
 
   // Set to zero to reduce logging in tests.
   size_t log_level = 1;
@@ -112,6 +115,34 @@ struct Environment {
   bool GeneratingCorpusStatsInThisShard() const {
     return generate_corpus_stats && my_shard_index == 0;
   }
+
+  // Sets flag 'name' to `value`. CHECK-fails on invalid name/value combination.
+  void SetFlag(std::string_view name, std::string_view value);
+
+  // Updates `this` according to the `--experiment` flag.
+  // The `--experiment` flag, if not empty, has this form:
+  //   foo=1,2,3:bar=10,20
+  // where foo and bar are some of the flag names supported for experimentation,
+  // see `SetFlag()`.
+  // `--experiment` defines the flag values to be set differently in different
+  // shards. E.g. in this case,
+  //   shard 0 will have {foo=1,bar=10},
+  //   shard 1 will have {foo=1,bar=20},
+  //   ...
+  //   shard 3 will have {foo=2,bar=10},
+  //   ...
+  //   shard 5 will have {foo=2,bar=30},
+  // and so on.
+  //
+  // CHECK-fails if the `--experiment` flag is not well-formed,
+  // or if num_threads is not a multiple of the number of flag combinations
+  // (which is 6 in this example).
+  //
+  // Sets load_other_shard_frequency=0 (experiments should be indepdentent).
+  //
+  // Sets this->experiment_name to a string like "E01",
+  // which means "value #0 is used for foo and value #1 is used for bar".
+  void UpdateForExperiment();
 };
 
 }  // namespace centipede

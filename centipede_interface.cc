@@ -131,6 +131,7 @@ int CentipedeMain(const Environment &env,
     Environment my_env = env;
     my_env.my_shard_index = my_shard_index;
     my_env.seed = GetRandomSeed(env.seed);
+    my_env.UpdateForExperiment();
     auto user_callbacks = callbacks_factory.create(my_env);
     Centipede centipede(my_env, *user_callbacks, pc_table, symbols,
                         coverage_logger);

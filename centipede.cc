@@ -175,7 +175,7 @@ void Centipede::Log(std::string_view log_type, size_t min_log_level) {
           ? static_cast<double>(num_runs_) / seconds_since_beginning
           : 0;
   auto [max, avg] = corpus_.MaxAndAvgSize();
-  LOG(INFO) << "[" << num_runs_ << "]"
+  LOG(INFO) << env_.experiment_name << "[" << num_runs_ << "]"
             << " " << log_type << ":"
             << " ft: " << fs_.size() << " cov: " << fs_.ToCoveragePCs().size()
             << " cnt: " << fs_.CountFeatures(FeatureDomains::k8bitCounters)

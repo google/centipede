@@ -14,6 +14,8 @@
 
 #include "./environment.h"
 
+#include <algorithm>
+#include <charconv>
 #include <cstddef>
 #include <filesystem>
 #include <limits>
@@ -130,7 +132,7 @@ ABSL_FLAG(bool, use_pc_features, true,
 ABSL_FLAG(bool, use_cmp_features, true,
           "When available from instrumentation, use features derived from "
           "instrumentation of CMP instructions");
-ABSL_FLAG(int, path_level, 0,  // Not ready for wide usage.
+ABSL_FLAG(size_t, path_level, 0,  // Not ready for wide usage.
           "When available from instrumentation, use features derived from "
           "bounded execution paths. Be careful, may cause exponential feature "
           "explosion. 0 means no path features. "
@@ -198,6 +200,18 @@ ABSL_FLAG(std::string, for_each_blob, "",
           "Example: "
           "  centipede --for_each_blob='ls -l  %P && echo %H' corpus.0");
 
+ABSL_FLAG(std::string, experiment, "",
+          "A colon-separated list of values, each of which is a flag"
+          " followed by = and a comma-separated list of values."
+          " Example: 'foo=1,2,3:bar=10,20'. "
+          " When non-empty, this flag is used to run an A/B[/C/D...] "
+          " experiment: different threads will set different values of 'foo'"
+          " and 'bar' and will run independent fuzzing sessions. "
+          " If more than one flag is given, all flag combinations are tested. "
+          " In example above: '--foo=1 --bar=10' ... '--foo=3 --bar=20'. "
+          " The number of threads should be multiple of the number of flag"
+          " combinations");
+
 ABSL_FLAG(std::string, dictionary, "",
           "A comma-separated list of paths to dictionary files. "
           "The dictionary file is either in AFL/libFuzzer plain text format or "
@@ -215,7 +229,7 @@ ABSL_FLAG(size_t, shmem_size_mb, 1024,
 
 namespace centipede {
 
-Environment::Environment(int argc, char** argv)
+Environment::Environment(int argc, char **argv)
     : binary(absl::GetFlag(FLAGS_binary)),
       coverage_binary(
           absl::GetFlag(FLAGS_coverage_binary).empty()
@@ -266,6 +280,7 @@ Environment::Environment(int argc, char** argv)
                                 absl::SkipEmpty{})),
       function_filter(absl::GetFlag(FLAGS_function_filter)),
       for_each_blob(absl::GetFlag(FLAGS_for_each_blob)),
+      experiment(absl::GetFlag(FLAGS_experiment)),
       exit_on_crash(absl::GetFlag(FLAGS_exit_on_crash)),
       max_num_crash_reports(absl::GetFlag(FLAGS_num_crash_reports)),
       shmem_size_mb(absl::GetFlag(FLAGS_shmem_size_mb)),
@@ -318,6 +333,85 @@ std::string Environment::MakeCoverageReportPath() const {
 std::string Environment::MakeCorpusStatsPath() const {
   return std::filesystem::path(workdir).append(
       absl::StrCat("corpus-stats-", binary_name, ".", my_shard_index, ".json"));
+}
+
+// Returns true if `value` is one of "1", "true".
+// Returns true if `value` is one of "0", "false".
+// CHECK-fails otherwise.
+static bool GetBoolFlag(std::string_view value) {
+  if (value == "0" ||value == "false") return false;
+  CHECK(value == "1" || value == "true") << value;
+  return true;
+}
+
+// Returns `value` as a size_t, CHECK-fails on parse error.
+static size_t GetIntFlag(std::string_view value) {
+  size_t result{};
+  CHECK(std::from_chars(value.begin(), value.end(), result).ec == std::errc())
+      << value;
+  return result;
+}
+
+void Environment::SetFlag(std::string_view name, std::string_view value) {
+  // TODO(kcc): support more flags, as needed.
+  if (name == "use_cmp_features")
+    use_cmp_features = GetBoolFlag(value);
+  else if (name == "use_coverage_frontier")
+    use_coverage_frontier = GetBoolFlag(value);
+  else if (name == "path_level")
+    path_level = GetIntFlag(value);
+  else
+    CHECK(false) << "Unknown flag for experiment: " << name << "=" << value;
+}
+
+
+void Environment::UpdateForExperiment() {
+  if (experiment.empty()) return;
+
+  // Parse the --experiments flag.
+  struct Experiment {
+    std::string flag_name;
+    std::vector<std::string> flag_values;
+  };
+  std::vector<Experiment> experiments;
+  for (auto flag : absl::StrSplit(this->experiment, ':', absl::SkipEmpty())) {
+    std::vector<std::string> flag_and_value = absl::StrSplit(flag, '=');
+    CHECK_EQ(flag_and_value.size(), 2) << flag;
+    experiments.emplace_back(
+        Experiment{flag_and_value[0], absl::StrSplit(flag_and_value[1], ',')});
+  }
+
+  // Count the number of flag combinations.
+  size_t num_combinations = 1;
+  for (const auto &experiment : experiments) {
+    CHECK_NE(experiment.flag_values.size(), 0) << experiment.flag_name;
+    num_combinations *= experiment.flag_values.size();
+  }
+  CHECK_GT(num_combinations, 0);
+  CHECK_EQ(num_threads % num_combinations, 0)
+      << VV(num_threads) << VV(num_combinations);
+
+  // Update the flags for the current shard and compute experiment_name.
+  // TODO(kcc): add and populate a field "experiment_values", like foo=1:bar=20.
+  CHECK_LT(my_shard_index, num_threads);
+  size_t my_combination_num = my_shard_index % num_combinations;
+  experiment_name.clear();
+  // Reverse the flags.
+  // This way, the flag combinations will go in natural order.
+  // E.g. for --experiment='foo=1,2,3:bar=10,20' the order of combinations is
+  //   foo=1 bar=10
+  //   foo=1 bar=20
+  //   foo=2 bar=10 ...
+  // Alternative would be to iterate in reverse order with rbegin()/rend().
+  std::reverse(experiments.begin(), experiments.end());
+  for (const auto &experiment : experiments) {
+    size_t idx = my_combination_num % experiment.flag_values.size();
+    SetFlag(experiment.flag_name, experiment.flag_values[idx]);
+    my_combination_num /= experiment.flag_values.size();
+    experiment_name = std::to_string(idx) + experiment_name;
+  }
+  experiment_name = "E" + experiment_name;
+  load_other_shard_frequency = 0;  // The experiments should be independent.
 }
 
 }  // namespace centipede

@@ -450,6 +450,15 @@ sh_library(
 ################################################################################
 
 cc_test(
+    name = "environment_test",
+    srcs = ["environment_test.cc"],
+    deps = [
+        ":environment",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "util_test",
     srcs = ["util_test.cc"],
     deps = [
