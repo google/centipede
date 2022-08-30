@@ -93,6 +93,21 @@ FeatureSet::ComputeWeight(const FeatureVec &features) const {
 
 //================= Corpus
 
+// Returns the weigth of `fv` computed using `fs` and `coverage_frontier`.
+static size_t ComputeWeight(const FeatureVec &fv, const FeatureSet &fs,
+                            const CoverageFrontier &coverage_frontier) {
+  size_t weight = fs.ComputeWeight(fv);
+  size_t num_features_in_frontier = 0;
+  for (const auto feature : fv) {
+    if (!FeatureDomains::k8bitCounters.Contains(feature)) continue;
+    const auto pc_index = Convert8bitCounterFeatureToPcIndex(feature);
+    if (coverage_frontier.PcIndexIsFrontier(pc_index)) {
+      ++num_features_in_frontier;
+    }
+  }
+  return weight * (num_features_in_frontier + 1);  // Multiply by at least 1.
+}
+
 size_t Corpus::Prune(const FeatureSet &fs,
                      const CoverageFrontier &coverage_frontier,
                      size_t max_corpus_size, Rng &rng) {
@@ -103,7 +118,8 @@ size_t Corpus::Prune(const FeatureSet &fs,
   size_t num_zero_weights = 0;
   for (size_t i = 0, n = records_.size(); i < n; ++i) {
     fs.CountUnseenAndPruneFrequentFeatures(records_[i].features);
-    auto new_weight = fs.ComputeWeight(records_[i].features);
+    auto new_weight =
+        ComputeWeight(records_[i].features, fs, coverage_frontier);
     weighted_distribution_.ChangeWeight(i, new_weight);
     num_zero_weights += new_weight == 0;
   }
@@ -138,7 +154,7 @@ void Corpus::Add(const ByteArray &data, const FeatureVec &fv,
   CHECK(!data.empty());
   CHECK_EQ(records_.size(), weighted_distribution_.size());
   records_.push_back({data, fv});
-  weighted_distribution_.AddWeight(fs.ComputeWeight(fv));
+  weighted_distribution_.AddWeight(ComputeWeight(fv, fs, coverage_frontier));
 }
 
 const ByteArray &Corpus::WeightedRandom(size_t random) const {
@@ -247,7 +263,7 @@ size_t CoverageFrontier::Compute(const Corpus &corpus) {
 
   // Iterate all functions, set frontier_[] depending on whether the function
   // is partially covered or not.
-  size_t num_functions_in_frontier = 0;
+  num_functions_in_frontier_ = 0;
   IteratePcTableFunctions(pc_table_, [&](size_t beg, size_t end) {
     auto frontier_begin = frontier_.begin() + beg;
     auto frontier_end = frontier_.begin() + end;
@@ -261,9 +277,9 @@ size_t CoverageFrontier::Compute(const Corpus &corpus) {
     }
     // This function is in the frontier.
     std::fill(frontier_begin, frontier_end, true);
-    ++num_functions_in_frontier;
+    ++num_functions_in_frontier_;
   });
-  return num_functions_in_frontier;
+  return num_functions_in_frontier_;
 }
 
 }  // namespace centipede

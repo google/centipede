@@ -226,13 +226,25 @@ class CoverageFrontier {
   // Returns the number of functions in the frontier.
   size_t Compute(const Corpus &corpus);
 
+  // Returns the number of functions in the frontier.
+  size_t NumFunctionsInFrontier() const { return num_functions_in_frontier_; }
+
   // Returns true iff `idx` belongs to the frontier.
-  bool PcIndexIsFrontier(size_t idx) const { return frontier_.at(idx); }
+  bool PcIndexIsFrontier(size_t idx) const {
+    return idx < MaxPcIndex() && frontier_[idx];
+  }
+
+  // Returns the size of the pc_table used to create `this`.
+  size_t MaxPcIndex() const { return pc_table_.size(); }
 
  private:
   const Coverage::PCTable pc_table_;
+
   // frontier_[idx] is true iff pc_table_[i] is part of the coverage frontier.
   std::vector<bool> frontier_;
+
+  // The number of functions in the frontier.
+  size_t num_functions_in_frontier_ = 0;
 };
 
 }  // namespace centipede

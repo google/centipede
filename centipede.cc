@@ -184,6 +184,7 @@ void Centipede::Log(std::string_view log_type, size_t min_log_level) {
             << " path: " << fs_.CountFeatures(FeatureDomains::kBoundedPath)
             << " pair: " << fs_.CountFeatures(FeatureDomains::kPCPair)
             << " corp: " << corpus_.NumActive() << "/" << corpus_.NumTotal()
+            << " fr: " << coverage_frontier_.NumFunctionsInFrontier()
             << " max/avg " << max << " " << avg << " "
             << corpus_.MemoryUsageString() << " exec/s: " << exec_speed
             << " mb: " << (MemoryUsage() >> 20);
@@ -526,6 +527,7 @@ void Centipede::FuzzingLoop() {
     if (env_.prune_frequency &&
         corpus_.NumActive() >
             corpus_size_at_last_prune + env_.prune_frequency) {
+      if (env_.use_coverage_frontier) coverage_frontier_.Compute(corpus_);
       corpus_.Prune(fs_, coverage_frontier_, env_.max_corpus_size, rng_);
       corpus_size_at_last_prune = corpus_.NumActive();
     }

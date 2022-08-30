@@ -385,6 +385,7 @@ TEST(CoverageFrontier, Compute) {
 
   // Compute and check the frontier.
   EXPECT_EQ(frontier.Compute(corpus), 2);
+  EXPECT_EQ(frontier.NumFunctionsInFrontier(), 2);
   EXPECT_FALSE(frontier.PcIndexIsFrontier(0));
   EXPECT_FALSE(frontier.PcIndexIsFrontier(1));
   EXPECT_TRUE(frontier.PcIndexIsFrontier(2));

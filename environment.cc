@@ -114,6 +114,10 @@ ABSL_FLAG(bool, use_corpus_weights, true,
           "If true, use weighted distribution when"
           " choosing the corpus element to mutate."
           " This flag is mostly for Centipede developers.");
+ABSL_FLAG(bool, use_coverage_frontier, false,
+          "If true, use coverage frontier when"
+          " choosing the corpus element to mutate."
+          " This flag is mostly for Centipede developers.");
 ABSL_FLAG(size_t, max_corpus_size, 100000,
           "Indicates the number of inputs in the in-memory corpus after which"
           "more agressive pruning will be applied.");
@@ -237,6 +241,7 @@ Environment::Environment(int argc, char** argv)
       fork_server(absl::GetFlag(FLAGS_fork_server)),
       full_sync(absl::GetFlag(FLAGS_full_sync)),
       use_corpus_weights(absl::GetFlag(FLAGS_use_corpus_weights)),
+      use_coverage_frontier(absl::GetFlag(FLAGS_use_coverage_frontier)),
       max_corpus_size(absl::GetFlag(FLAGS_max_corpus_size)),
       crossover_level(absl::GetFlag(FLAGS_crossover_level)),
       use_pc_features(absl::GetFlag(FLAGS_use_pc_features)),
