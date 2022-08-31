@@ -129,13 +129,14 @@ Coverage::PCTable Coverage::GetPcTableFromBinaryWithPcTable(
               << " with dump_pc_table failed: " << system_exit_code;
     return PCTable();
   }
-  ByteArray pc_table_bytes;
-  ReadFromLocalFile(tmp_path, pc_table_bytes);
+  ByteArray pc_infos_as_bytes;
+  ReadFromLocalFile(tmp_path, pc_infos_as_bytes);
   std::filesystem::remove(tmp_path);
-  CHECK_EQ(pc_table_bytes.size() % sizeof(PCInfo), 0);
-  size_t pc_table_size = pc_table_bytes.size() / sizeof(PCInfo);
-  PCTable pc_table(pc_table_size);
-  memcpy(pc_table.data(), pc_table_bytes.data(), pc_table_bytes.size());
+  CHECK_EQ(pc_infos_as_bytes.size() % sizeof(PCInfo), 0);
+  size_t pc_table_size = pc_infos_as_bytes.size() / sizeof(PCInfo);
+  const auto* pc_infos = reinterpret_cast<PCInfo*>(pc_infos_as_bytes.data());
+  PCTable pc_table{pc_infos, pc_infos + pc_table_size};
+  CHECK_EQ(pc_table.size(), pc_table_size);
   return pc_table;
 }
 
