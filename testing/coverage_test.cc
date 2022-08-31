@@ -167,11 +167,6 @@ static std::string GetTargetPath() {
   return GetDataDependencyFilepath("testing/test_fuzz_target");
 }
 
-// Returns path to test_fuzz_target_trace_pc.
-static std::string GetTracePCTargetPath() {
-  return GetDataDependencyFilepath("testing/test_fuzz_target_trace_pc");
-}
-
 // Returns path to threaded_fuzz_target.
 static std::string GetThreadedTargetPath() {
   return GetDataDependencyFilepath("testing/threaded_fuzz_target");
@@ -182,59 +177,6 @@ static std::string GetLLVMSymbolizerPath() {
   CHECK_EQ(system("which llvm-symbolizer"), EXIT_SUCCESS)
       << "llvm_symbolizer has to be installed and findable via PATH";
   return "llvm-symbolizer";
-}
-
-static void SymbolizeBinary(std::string_view target_path, bool use_trace_pc) {
-  std::string tmp_path1 = GetTempFilePath(1);
-  std::string tmp_path2 = GetTempFilePath(2);
-
-  // Load the pc table.
-  auto pc_table =
-      use_trace_pc
-          ? Coverage::GetPcTableFromBinaryWithTracePC(target_path, tmp_path1)
-          : Coverage::GetPcTableFromBinaryWithPcTable(target_path, tmp_path1);
-  EXPECT_EQ(fopen(tmp_path1.c_str(), "r"), nullptr);  // tmp_path1 was deleted.
-  LOG(INFO) << VV(pc_table.size());
-  // Check that it's not empty.
-  EXPECT_NE(pc_table.size(), 0);
-  // Check that the first PCInfo corresponds to a kFuncEntry.
-  EXPECT_TRUE(pc_table[0].has_flag(Coverage::PCInfo::kFuncEntry));
-
-  // Test the symbols.
-  SymbolTable symbols;
-  symbols.GetSymbolsFromBinary(pc_table, target_path, GetLLVMSymbolizerPath(),
-                               tmp_path1, tmp_path2);
-  EXPECT_EQ(fopen(tmp_path1.c_str(), "r"), nullptr);  // tmp_path1 was deleted.
-  EXPECT_EQ(fopen(tmp_path2.c_str(), "r"), nullptr);  // tmp_path2 was deleted.
-  EXPECT_EQ(symbols.size(), pc_table.size());
-
-  bool has_llvm_fuzzer_test_one_input = false;
-  size_t single_edge_func_num_edges = 0;
-  size_t multi_edge_func_num_edges = 0;
-  // Iterate all symbols, verify that we:
-  //  * Don't have main (coverage instrumentation is disabled for main).
-  //  * Have LLVMFuzzerTestOneInput with the correct location.
-  //  * Have one edge for SingleEdgeFunc.
-  //  * Have several edges for MultiEdgeFunc.
-  for (size_t i = 0; i < symbols.size(); i++) {
-    bool is_func_entry = pc_table[i].has_flag(Coverage::PCInfo::kFuncEntry);
-    if (is_func_entry) {
-      LOG(INFO) << symbols.full_description(i);
-    }
-    single_edge_func_num_edges += symbols.func(i) == "SingleEdgeFunc";
-    multi_edge_func_num_edges += symbols.func(i) == "MultiEdgeFunc";
-    EXPECT_NE(symbols.func(i), "main");
-    if (is_func_entry && symbols.func(i) == "LLVMFuzzerTestOneInput") {
-      // This is a function entry block for LLVMFuzzerTestOneInput.
-      has_llvm_fuzzer_test_one_input = true;
-      EXPECT_THAT(symbols.location(i),
-                  testing::StartsWith(
-                      "third_party/centipede/testing/test_fuzz_target.cc:53"));
-    }
-  }
-  EXPECT_TRUE(has_llvm_fuzzer_test_one_input);
-  EXPECT_EQ(single_edge_func_num_edges, 1);
-  EXPECT_GT(multi_edge_func_num_edges, 1);
 }
 
 // A simple CentipedeCallbacks derivative for this test.
