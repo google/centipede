@@ -360,6 +360,8 @@ void Environment::SetFlag(std::string_view name, std::string_view value) {
     use_coverage_frontier = GetBoolFlag(value);
   else if (name == "path_level")
     path_level = GetIntFlag(value);
+  else if (name == "max_corpus_size")
+    max_corpus_size = GetIntFlag(value);
   else
     CHECK(false) << "Unknown flag for experiment: " << name << "=" << value;
 }
