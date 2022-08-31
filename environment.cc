@@ -339,7 +339,7 @@ std::string Environment::MakeCorpusStatsPath() const {
 // Returns true if `value` is one of "0", "false".
 // CHECK-fails otherwise.
 static bool GetBoolFlag(std::string_view value) {
-  if (value == "0" ||value == "false") return false;
+  if (value == "0" || value == "false") return false;
   CHECK(value == "1" || value == "true") << value;
   return true;
 }
@@ -365,7 +365,6 @@ void Environment::SetFlag(std::string_view name, std::string_view value) {
   else
     CHECK(false) << "Unknown flag for experiment: " << name << "=" << value;
 }
-
 
 void Environment::UpdateForExperiment() {
   if (experiment.empty()) return;

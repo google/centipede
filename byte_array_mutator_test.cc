@@ -71,29 +71,53 @@ void TestMutatorFn(ByteArrayMutator::Fn fn, const ByteArray &seed,
 
 TEST(ByteArrayMutator, ChangeByte) {
   TestMutatorFn(&ByteArrayMutator::ChangeByte, {1, 2, 3},
-                {{1, 2, 4}, {42, 2, 3}, {1, 66, 3}},  // expected_mutants
-                {{9, 9, 3}, {1, 8, 8}, {7, 2, 7}}     // unexpected_mutants
-  );
+                /*expected_mutants=*/
+                {
+                    {1, 2, 4},
+                    {42, 2, 3},
+                    {1, 66, 3},
+                },
+                /*unexpected_mutants=*/
+                {
+                    {9, 9, 3},
+                    {1, 8, 8},
+                    {7, 2, 7},
+                });
 }
 
 TEST(ByteArrayMutator, FlipBit) {
   TestMutatorFn(&ByteArrayMutator::FlipBit, {0, 7, 10},
-                {{1, 7, 10}, {0, 6, 10}, {0, 7, 11}},  // expected_mutants
-                {{1, 6, 10}, {0, 6, 11}}               // unexpected_mutants
-  );
+                /*expected_mutants=*/
+                {
+                    {1, 7, 10},
+                    {0, 6, 10},
+                    {0, 7, 11},
+                },
+                /*unexpected_mutants=*/
+                {
+                    {1, 6, 10},
+                    {0, 6, 11},
+                });
 }
 
 TEST(ByteArrayMutator, SwapBytes) {
   TestMutatorFn(&ByteArrayMutator::SwapBytes, {0, 1, 2},
-                {{0, 2, 1}, {1, 0, 2}, {2, 1, 0}},  // expected_mutants
-                {{2, 0, 1}}                         // unexpected_mutants
-  );
+                /*expected_mutants=*/
+                {
+                    {0, 2, 1},
+                    {1, 0, 2},
+                    {2, 1, 0},
+                },
+                /*unexpected_mutants=*/
+                {
+                    {2, 0, 1},
+                });
 }
 
 TEST(ByteArrayMutator, InsertBytes) {
   TestMutatorFn(&ByteArrayMutator::InsertBytes, {0, 1, 2},
+                /*expected_mutants=*/
                 {
-                    // expected_mutants
                     {0, 1, 2, 3},
                     {0, 3, 1, 2},
                     {3, 0, 1, 2},
@@ -101,16 +125,20 @@ TEST(ByteArrayMutator, InsertBytes) {
                     {0, 3, 4, 1, 2},
                     {3, 4, 0, 1, 2},
                 },
-                // unexpected_mutants
-                {{0, 1}, {0, 1, 2}, {0, 3, 1, 4, 2}});
+                /*unexpected_mutants=*/
+                {
+                    {0, 1},
+                    {0, 1, 2},
+                    {0, 3, 1, 4, 2},
+                });
 }
 
 // Currently, same as for InsertBytes. Will change in future as we add more
 // mutators.
 TEST(ByteArrayMutator, MutateIncreaseSize) {
   TestMutatorFn(&ByteArrayMutator::MutateIncreaseSize, {0, 1, 2},
+                /*expected_mutants=*/
                 {
-                    // expected_mutants
                     {0, 1, 2, 3},
                     {0, 3, 1, 2},
                     {3, 0, 1, 2},
@@ -118,13 +146,16 @@ TEST(ByteArrayMutator, MutateIncreaseSize) {
                     {0, 3, 4, 1, 2},
                     {3, 4, 0, 1, 2},
                 },
-                // unexpected_mutants
-                {{0, 1}, {0, 3, 1, 4, 2}});
+                /*unexpected_mutants=*/
+                {
+                    {0, 1},
+                    {0, 3, 1, 4, 2},
+                });
 }
 
 TEST(ByteArrayMutator, EraseBytes) {
   TestMutatorFn(&ByteArrayMutator::EraseBytes, {0, 1, 2, 3},
-                // expected_mutants
+                /*expected_mutants=*/
                 {
                     {0, 1, 2},
                     {0, 1, 3},
@@ -134,14 +165,18 @@ TEST(ByteArrayMutator, EraseBytes) {
                     {0, 3},
                     {2, 3},
                 },
-                // unexpected_mutants
-                {{0}, {1}, {2}});
+                /*unexpected_mutants=*/
+                {
+                    {0},
+                    {1},
+                    {2},
+                });
 }
 
 // Currently, same as EraseBytes. Will change in future as we add more mutators.
 TEST(ByteArrayMutator, MutateDecreaseSize) {
   TestMutatorFn(&ByteArrayMutator::MutateDecreaseSize, {0, 1, 2, 3},
-                // expected_mutants
+                /*expected_mutants=*/
                 {
                     {0, 1, 2},
                     {0, 1, 3},
@@ -151,13 +186,16 @@ TEST(ByteArrayMutator, MutateDecreaseSize) {
                     {0, 3},
                     {2, 3},
                 },
-                // unexpected_mutants
-                {{0}, {1}, {2}});
+                /*unexpected_mutants=*/
+                {
+                    {0},
+                    {1},
+                    {2},
+                });
 }
 
-// Tests that MutateSameSize will eventually produce
-// all possible mutants of size 1 and 2.
-// Also tests some of the 3-byte mutants.
+// Tests that MutateSameSize will eventually produce all possible mutants of
+// size 1 and 2. Also tests some of the 3-byte mutants.
 TEST(ByteArrayMutator, MutateSameSize) {
   ByteArrayMutator mutator(1);
   for (size_t size = 1; size <= 2; size++) {
@@ -173,61 +211,101 @@ TEST(ByteArrayMutator, MutateSameSize) {
     EXPECT_EQ(expected_set_size, set.size());
   }
 
-  // One step of MutateSameSize may generate any mutant
-  // that can be generated by one step of its submutants.
-  // No mutant of other length may appear.
-  std::vector<ByteArray> unexpected_mutants = {{1, 2}, {1, 2, 3, 4}};
+  // One step of MutateSameSize may generate any mutant that can be generated by
+  // one step of its submutants. No mutant of other length may appear.
+  const std::vector<ByteArray> kUnexpectedMutants = {
+      {1, 2},
+      {1, 2, 3, 4},
+  };
   TestMutatorFn(&ByteArrayMutator::MutateSameSize, {1, 2, 3},
-                {{1, 2, 4}, {42, 2, 3}, {1, 66, 3}},  // expected_mutants
-                unexpected_mutants);
+                /*expected_mutants=*/
+                {
+                    {1, 2, 4},
+                    {42, 2, 3},
+                    {1, 66, 3},
+                },
+                kUnexpectedMutants);
   TestMutatorFn(&ByteArrayMutator::MutateSameSize, {0, 7, 10},
-                {{1, 7, 10}, {0, 6, 10}, {0, 7, 11}},  // expected_mutants
-                unexpected_mutants);
+                /*expected_mutants=*/
+                {
+                    {1, 7, 10},
+                    {0, 6, 10},
+                    {0, 7, 11},
+                },
+                kUnexpectedMutants);
   TestMutatorFn(&ByteArrayMutator::MutateSameSize, {0, 1, 2},
-                {{0, 2, 1}, {1, 0, 2}, {2, 1, 0}},  // expected_mutants
-                unexpected_mutants);
+                /*expected_mutants=*/
+                {
+                    {0, 2, 1},
+                    {1, 0, 2},
+                    {2, 1, 0},
+                },
+                kUnexpectedMutants);
 }
 
 TEST(ByteArrayMutator, Mutate) {
   TestMutatorFn(&ByteArrayMutator::Mutate, {1, 2, 3},
-                // expected_mutants
-                {{1, 2, 4}, {1, 2}, {1, 2, 3, 4}},
-                // unexpected_mutants
-                {{/*empty array*/}});
+                /*expected_mutants=*/
+                {
+                    {1, 2, 4},
+                    {1, 2},
+                    {1, 2, 3, 4},
+                },
+                /*unexpected_mutants=*/
+                {
+                    {},
+                });
 }
 
 TEST(ByteArrayMutator, OverwriteFromDictionary) {
-  TestMutatorFn(
-      &ByteArrayMutator::OverwriteFromDictionary, {1, 2, 3, 4, 5},
-      // expected_mutants
-      {{1, 2, 7, 8, 9},
-       {1, 7, 8, 9, 5},
-       {7, 8, 9, 4, 5},
-       {1, 2, 3, 0, 6},
-       {1, 2, 0, 6, 5},
-       {1, 0, 6, 4, 5},
-       {0, 6, 3, 4, 5}},
-      // unexpected_mutants
-      {{1, 2, 3, 7, 8}, {8, 9, 3, 4, 5}, {6, 2, 3, 4, 5}, {1, 2, 3, 4, 0}},
-      // dictionary
-      {{7, 8, 9}, {0, 6}});
+  TestMutatorFn(&ByteArrayMutator::OverwriteFromDictionary, {1, 2, 3, 4, 5},
+                /*expected_mutants=*/
+                {
+                    {1, 2, 7, 8, 9},
+                    {1, 7, 8, 9, 5},
+                    {7, 8, 9, 4, 5},
+                    {1, 2, 3, 0, 6},
+                    {1, 2, 0, 6, 5},
+                    {1, 0, 6, 4, 5},
+                    {0, 6, 3, 4, 5},
+                },
+                /*unexpected_mutants=*/
+                {
+                    {1, 2, 3, 7, 8},
+                    {8, 9, 3, 4, 5},
+                    {6, 2, 3, 4, 5},
+                    {1, 2, 3, 4, 0},
+                },
+                /*dictionary=*/
+                {
+                    {7, 8, 9},
+                    {0, 6},
+                });
 }
 
 TEST(ByteArrayMutator, InsertFromDictionary) {
   TestMutatorFn(&ByteArrayMutator::InsertFromDictionary, {1, 2, 3},
-                // expected_mutants
-                {{1, 2, 3, 4, 5},
-                 {1, 2, 4, 5, 3},
-                 {1, 4, 5, 2, 3},
-                 {4, 5, 1, 2, 3},
-                 {1, 2, 3, 6, 7, 8},
-                 {1, 2, 6, 7, 8, 3},
-                 {1, 6, 7, 8, 2, 3},
-                 {6, 7, 8, 1, 2, 3}},
-                // unexpected_mutants
-                {{1, 2, 3, 7, 8}, {7, 8, 1, 2, 3}},
-                // dictionary
-                {{4, 5}, {6, 7, 8}});
+                /*expected_mutants=*/
+                {
+                    {1, 2, 3, 4, 5},
+                    {1, 2, 4, 5, 3},
+                    {1, 4, 5, 2, 3},
+                    {4, 5, 1, 2, 3},
+                    {1, 2, 3, 6, 7, 8},
+                    {1, 2, 6, 7, 8, 3},
+                    {1, 6, 7, 8, 2, 3},
+                    {6, 7, 8, 1, 2, 3},
+                },
+                /*unexpected_mutants=*/
+                {
+                    {1, 2, 3, 7, 8},
+                    {7, 8, 1, 2, 3},
+                },
+                /*dictionary=*/
+                {
+                    {4, 5},
+                    {6, 7, 8},
+                });
 }
 
 // Tests CrossOver* mutations.
@@ -254,17 +332,20 @@ void TestCrossOver(void (ByteArrayMutator::*fn)(ByteArray &, const ByteArray &),
 
 TEST(ByteArrayMutator, CrossOverInsert) {
   TestCrossOver(&ByteArrayMutator::CrossOverInsert, {1}, {2},
+                /*all_possible_mutants=*/
                 {
                     {1, 2},
                     {2, 1},
                 });
   TestCrossOver(&ByteArrayMutator::CrossOverInsert, {1, 2}, {3},
+                /*all_possible_mutants=*/
                 {
                     {1, 2, 3},
                     {1, 3, 2},
                     {3, 1, 2},
                 });
   TestCrossOver(&ByteArrayMutator::CrossOverInsert, {1}, {2, 3},
+                /*all_possible_mutants=*/
                 {
                     {1, 2, 3},
                     {2, 3, 1},
@@ -274,6 +355,7 @@ TEST(ByteArrayMutator, CrossOverInsert) {
                     {1, 3},
                 });
   TestCrossOver(&ByteArrayMutator::CrossOverInsert, {1, 2}, {3, 4},
+                /*all_possible_mutants=*/
                 {
                     {1, 2, 3, 4},
                     {1, 3, 4, 2},
@@ -289,20 +371,24 @@ TEST(ByteArrayMutator, CrossOverInsert) {
 
 TEST(ByteArrayMutator, CrossOverOverwrite) {
   TestCrossOver(&ByteArrayMutator::CrossOverOverwrite, {1}, {2},
+                /*all_possible_mutants=*/
                 {
                     {2},
                 });
   TestCrossOver(&ByteArrayMutator::CrossOverOverwrite, {1, 2}, {3},
+                /*all_possible_mutants=*/
                 {
                     {1, 3},
                     {3, 2},
                 });
   TestCrossOver(&ByteArrayMutator::CrossOverOverwrite, {1}, {2, 3},
+                /*all_possible_mutants=*/
                 {
                     {2},
                     {3},
                 });
   TestCrossOver(&ByteArrayMutator::CrossOverOverwrite, {1, 2}, {3, 4},
+                /*all_possible_mutants=*/
                 {
                     {1, 3},
                     {3, 2},
@@ -311,6 +397,7 @@ TEST(ByteArrayMutator, CrossOverOverwrite) {
                 });
   TestCrossOver(&ByteArrayMutator::CrossOverOverwrite, {1, 2, 3, 4, 5, 6},
                 {7, 8},
+                /*all_possible_mutants=*/
                 {
                     // overwrite with {7}
                     {7, 2, 3, 4, 5, 6},
@@ -340,6 +427,7 @@ TEST(ByteArrayMutator, CrossOver) {
   // Here just test one set of inputs to ensure CrossOver calls the other
   // two functions correctly.
   TestCrossOver(&ByteArrayMutator::CrossOver, {1, 2}, {3, 4},
+                /*all_possible_mutants=*/
                 {
                     // CrossOverInsert
                     {1, 2, 3, 4},
