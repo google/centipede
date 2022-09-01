@@ -170,10 +170,11 @@ void Centipede::Log(std::string_view log_type, size_t min_log_level) {
     return;
   }
   const size_t seconds_since_beginning = timer_.seconds_since_beginning();
-  const double exec_speed =
+  double exec_speed =
       seconds_since_beginning
           ? static_cast<double>(num_runs_) / seconds_since_beginning
           : 0;
+  if (exec_speed > 1.) exec_speed = std::floor(exec_speed);
   auto [max, avg] = corpus_.MaxAndAvgSize();
   LOG(INFO) << env_.experiment_name << "[" << num_runs_ << "]"
             << " " << log_type << ":"
