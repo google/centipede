@@ -462,10 +462,10 @@ cc_test(
     name = "util_test",
     srcs = ["util_test.cc"],
     deps = [
-        "@centipede//:defs",
-        "@centipede//:feature",
-        "@centipede//:logging",
-        "@centipede//:util",
+        ":defs",
+        ":feature",
+        ":logging",
+        ":util",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_googletest//:gtest_main",
     ],
@@ -475,9 +475,9 @@ cc_test(
     name = "blob_file_test",
     srcs = ["blob_file_test.cc"],
     deps = [
+        ":blob_file",
         ":test_util",
-        "@centipede//:blob_file",
-        "@centipede//:util",
+        ":util",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
@@ -488,7 +488,7 @@ cc_test(
     name = "shared_memory_blob_sequence_test",
     srcs = ["shared_memory_blob_sequence_test.cc"],
     deps = [
-        "@centipede//:shared_memory_blob_sequence",
+        ":shared_memory_blob_sequence",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -497,9 +497,9 @@ cc_test(
     name = "execution_result_test",
     srcs = ["execution_result_test.cc"],
     deps = [
-        "@centipede//:execution_result",
-        "@centipede//:feature",
-        "@centipede//:shared_memory_blob_sequence",
+        ":execution_result",
+        ":feature",
+        ":shared_memory_blob_sequence",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -508,8 +508,8 @@ cc_test(
     name = "byte_array_mutator_test",
     srcs = ["byte_array_mutator_test.cc"],
     deps = [
-        "@centipede//:byte_array_mutator",
-        "@centipede//:defs",
+        ":byte_array_mutator",
+        ":defs",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_googletest//:gtest_main",
     ],
@@ -519,8 +519,8 @@ cc_test(
     name = "feature_test",
     srcs = ["feature_test.cc"],
     deps = [
-        "@centipede//:feature",
-        "@centipede//:logging",
+        ":feature",
+        ":logging",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_googletest//:gtest_main",
     ],
@@ -530,11 +530,11 @@ cc_test(
     name = "corpus_test",
     srcs = ["corpus_test.cc"],
     deps = [
-        "@centipede//:corpus",
-        "@centipede//:coverage",
-        "@centipede//:defs",
-        "@centipede//:feature",
-        "@centipede//:util",
+        ":corpus",
+        ":coverage",
+        ":defs",
+        ":feature",
+        ":util",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -542,7 +542,7 @@ cc_test(
 cc_binary(
     name = "command_test_helper",
     srcs = ["command_test_helper.cc"],
-    deps = ["@centipede//:runner_fork_server"],
+    deps = [":runner_fork_server"],
 )
 
 cc_test(
@@ -550,10 +550,10 @@ cc_test(
     srcs = ["command_test.cc"],
     data = [":command_test_helper"],
     deps = [
+        ":command",
+        ":logging",
         ":test_util",
-        "@centipede//:command",
-        "@centipede//:logging",
-        "@centipede//:util",
+        ":util",
         "@com_google_googletest//:gtest_main",
     ],
 )
