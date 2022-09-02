@@ -30,12 +30,16 @@ namespace {
 
 TEST(Command, ToString) {
   EXPECT_EQ(Command("x").ToString(), "x");
-  EXPECT_EQ(Command("path", {"arg1", "arg2"}).ToString(), "path arg1 arg2");
-  EXPECT_EQ(Command("x", {}, {"K1=V1", "K2=V2"}).ToString(), "K1=V1 K2=V2 x");
-  EXPECT_EQ(Command("x", {}, {}, "out").ToString(), "x > out");
-  EXPECT_EQ(Command("x", {}, {}, "", "err").ToString(), "x 2> err");
-  EXPECT_EQ(Command("x", {}, {}, "out", "err").ToString(), "x > out 2> err");
-  EXPECT_EQ(Command("x", {}, {}, "out", "out").ToString(), "x > out 2>&1");
+  EXPECT_EQ(Command("path", {"arg1", "arg2"}).ToString(),
+            "path \\\narg1 \\\narg2");
+  EXPECT_EQ(Command("x", {}, {"K1=V1", "K2=V2"}).ToString(),
+            "K1=V1 \\\nK2=V2 \\\nx");
+  EXPECT_EQ(Command("x", {}, {}, "out").ToString(), "x \\\n> out");
+  EXPECT_EQ(Command("x", {}, {}, "", "err").ToString(), "x \\\n2> err");
+  EXPECT_EQ(Command("x", {}, {}, "out", "err").ToString(),
+            "x \\\n> out \\\n2> err");
+  EXPECT_EQ(Command("x", {}, {}, "out", "out").ToString(),
+            "x \\\n> out \\\n2>&1");
 }
 
 TEST(Command, Execute) {
@@ -50,7 +54,7 @@ TEST(Command, Execute) {
   EXPECT_FALSE(EarlyExitRequested());
 
   // Test for interrupt handling.
-  const auto self_sigint_lambda = [](){
+  const auto self_sigint_lambda = []() {
     Command self_sigint("bash -c 'kill -SIGINT $$'");
     self_sigint.Execute();
     if (EarlyExitRequested()) {
@@ -65,8 +69,7 @@ TEST(Command, ForkServer) {
   Command bad_command("/dev/null");
   // TODO(kcc): [impl] currently a bad command will hang. Make it return false.
 
-  const std::string helper =
-      GetDataDependencyFilepath("command_test_helper");
+  const std::string helper = GetDataDependencyFilepath("command_test_helper");
 
   {
     Command ret0(helper);

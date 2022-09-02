@@ -22,25 +22,26 @@
 #include <unistd.h>
 
 #include <filesystem>
-#include <sstream>
 #include <string>
 #include <string_view>
 
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_join.h"
 #include "./logging.h"
 #include "./util.h"
 
 namespace centipede {
 
 // See the definition of --fork_server flag.
+inline constexpr std::string_view kCommandLineSeparator(" \\\n");
 inline constexpr std::string_view kNoForkServerRequestPrefix("%f");
 
 std::string Command::ToString() const {
-  std::stringstream ss;
+  std::vector<std::string> ss;
   // env.
   for (auto &env : env_) {
-    ss << env << " ";
+    ss.emplace_back(env);
   }
   // path.
   std::string path = path_;
@@ -48,35 +49,33 @@ std::string Command::ToString() const {
   if (absl::StartsWith(path, kNoForkServerRequestPrefix)) {
     path = path.substr(kNoForkServerRequestPrefix.size());
   }
-  ss << path << " ";
+  ss.emplace_back(path);
   // args.
   for (auto &arg : args_) {
-    ss << arg << " ";
+    ss.emplace_back(arg);
   }
   // out/err.
   if (!out_.empty()) {
-    ss << "> " << out_ << " ";
+    ss.emplace_back(absl::StrCat("> ", out_));
   }
   if (!err_.empty()) {
     if (out_ != err_) {
-      ss << "2> " << err_ << " ";
+      ss.emplace_back(absl::StrCat("2> ", err_));
     } else {
-      ss << "2>&1 ";
+      ss.emplace_back("2>&1");
     }
   }
   // Trim trailing space and return.
-  auto result = ss.str();
-  result.erase(result.find_last_not_of(' ') + 1);
-  return result;
+  return absl::StrJoin(ss, kCommandLineSeparator);
 }
 
 bool Command::StartForkServer(std::string_view temp_dir_path,
                               std::string_view prefix) {
   if (absl::StartsWith(path_, kNoForkServerRequestPrefix)) {
-    LOG(INFO) << "fork server disabled for " << path();
+    LOG(INFO) << "Fork server disabled for " << path();
     return false;
   }
-  LOG(INFO) << "starting the fork server for " << path();
+  LOG(INFO) << "Starting fork server for " << path();
 
   fifo_path_[0] = std::filesystem::path(temp_dir_path)
                       .append(absl::StrCat(prefix, "_FIFO0"));
@@ -87,19 +86,19 @@ bool Command::StartForkServer(std::string_view temp_dir_path,
     CHECK_EQ(mkfifo(fifo_path_[i].c_str(), 0600), 0)
         << VV(errno) << VV(fifo_path_[i]);
   }
-  std::stringstream ss;
-  auto command =
-      absl::StrCat("CENTIPEDE_FORK_SERVER_FIFO0=", fifo_path_[0], " ",
-                   "CENTIPEDE_FORK_SERVER_FIFO1=", fifo_path_[1], " ",
-                   full_command_string_, " &");
-  LOG(INFO) << "the fork server command: " << command;
+  const std::string command = absl::StrCat(
+      "CENTIPEDE_FORK_SERVER_FIFO0=", fifo_path_[0], kCommandLineSeparator,
+      "CENTIPEDE_FORK_SERVER_FIFO1=", fifo_path_[1], kCommandLineSeparator,
+      full_command_string_, " &");
+  LOG(INFO) << "Fork server command:\n" << command;
   int ret = system(command.c_str());
-  CHECK_EQ(ret, 0) << "command failed: " << command;
+  CHECK_EQ(ret, 0) << "Failed to start fork server using command:\n" << command;
 
   pipe_[0] = open(fifo_path_[0].c_str(), O_WRONLY);
   pipe_[1] = open(fifo_path_[1].c_str(), O_RDONLY);
   if (pipe_[0] < 0 || pipe_[1] < 0) {
-    LOG(INFO) << "failed to start the fork server; will proceed without it";
+    LOG(INFO) << "Failed to establish communication with fork server; will "
+                 "proceed without it";
     return false;
   }
   return true;
