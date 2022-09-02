@@ -36,14 +36,14 @@ centipede::maybe_set_var_to_executable_path \
 # Shorthand for centipede --binary=test_fuzz_target
 test_fuzz() {
   set -x
-  "${CENTIPEDE_BINARY}" --binary="${TEST_TARGET_BINARY}" "$@"
+  "${CENTIPEDE_BINARY}" --binary="${TEST_TARGET_BINARY}" "$@" 2>&1
   set +x
 }
 
 # Shorthand for centipede --binary=abort_fuzz_target
 abort_test_fuzz() {
   set -x
-  "${CENTIPEDE_BINARY}" --binary="${ABORT_TEST_TARGET_BINARY}" "$@"
+  "${CENTIPEDE_BINARY}" --binary="${ABORT_TEST_TARGET_BINARY}" "$@" 2>&1
   set +x
 }
 
@@ -89,7 +89,7 @@ test_crashing_target() {
 
   # Run fuzzing with num_runs=0, i.e. only run the inputs from the corpus.
   # Expecting a crash to be observed and reported.
-  abort_test_fuzz --workdir="${WD}" --num_runs=0 2>&1 | tee "${LOG}"
+  abort_test_fuzz --workdir="${WD}" --num_runs=0 | tee "${LOG}"
   assert_regex_in_file "2 inputs to rerun" "${LOG}"
   assert_regex_in_file "Batch execution failed; exit code:" "${LOG}"
 
@@ -108,16 +108,16 @@ test_dictionary() {
   ensure_empty_dir "${TMPCORPUS}"
 
   echo "============ ${FUNC}: testing non-existing dictionary file"
-  test_fuzz  --workdir="${WD}" --num_runs=0 --dictionary=/dev/null 2>&1 |\
-    grep "empty or corrupt dictionary file: /dev/null"
+  test_fuzz  --workdir="${WD}" --num_runs=0 --dictionary=/dev/null | tee "${LOG}"
+  assert_regex_in_file "empty or corrupt dictionary file: /dev/null" "${LOG}"
 
   echo "============ ${FUNC}: testing plain text dictionary file"
   echo '"blah"' > "${DICT}"
   echo '"boo"' >> "${DICT}"
   echo '"bazz"' >> "${DICT}"
   cat "${DICT}"
-  test_fuzz  --workdir="${WD}" --num_runs=0 --dictionary="${DICT}" 2>&1 |\
-    grep "loaded 3 dictionary entries from AFL/libFuzzer dictionary ${DICT}"
+  test_fuzz  --workdir="${WD}" --num_runs=0 --dictionary="${DICT}" | tee "${LOG}"
+  assert_regex_in_file "loaded 3 dictionary entries from AFL/libFuzzer dictionary ${DICT}" "${LOG}"
 
   echo "============ ${FUNC}: creating a binary dictionary file with 2 entries"
   echo "foo" > "${TMPCORPUS}"/foo
@@ -128,8 +128,8 @@ test_dictionary() {
 
   echo "============ ${FUNC}: testing binary dictionary file"
   ensure_empty_dir "${WD}"
-  test_fuzz  --workdir="${WD}" --num_runs=0 --dictionary="${DICT}" 2>&1 |\
-    grep "loaded 2 dictionary entries from ${DICT}"
+  test_fuzz  --workdir="${WD}" --num_runs=0 --dictionary="${DICT}" | tee "${LOG}"
+  assert_regex_in_file "loaded 2 dictionary entries from ${DICT}" "${LOG}"
 }
 
 # Creates workdir ($1) and tests --for_each_blob.
@@ -146,7 +146,7 @@ test_for_each_blob() {
 
   test_fuzz  --workdir="${WD}" --export_corpus_from_local_dir "${TMPCORPUS}"
   echo "============ ${FUNC}: test for_each_blob"
-  test_fuzz --for_each_blob="cat %P"  "${WD}"/corpus.0 > "${LOG}" 2>&1
+  test_fuzz --for_each_blob="cat %P"  "${WD}"/corpus.0 | tee "${LOG}"
   assert_regex_in_file "Running 'cat %P' on ${WD}/corpus.0" "${LOG}"
   assert_regex_in_file FoO "${LOG}"
   assert_regex_in_file bAr "${LOG}"
@@ -161,12 +161,12 @@ test_pcpair_features() {
 
   echo "============ ${FUNC}: fuzz with --use_pcpair_features=1"
   test_fuzz --workdir="${WD}" --use_pcpair_features=1  --num_runs=10000 \
-    --symbolizer_path="${LLVM_SYMBOLIZER}" > "${LOG}" 2>&1
+    --symbolizer_path="${LLVM_SYMBOLIZER}" | tee "${LOG}"
   assert_regex_in_file "end-fuzz.*pair: [^0]" "${LOG}"  # check the output
 
   echo "============ ${FUNC}: fuzz with --use_pcpair_features=1 w/o symbolizer"
   test_fuzz --workdir="${WD}" --use_pcpair_features=1  --num_runs=10000 \
-   --symbolizer_path=/dev/null  > "${LOG}" 2>&1
+    --symbolizer_path=/dev/null  | tee "${LOG}"
   assert_regex_in_file "end-fuzz.*pair: [^0]" "${LOG}"  # check the output
 }
 
