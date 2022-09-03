@@ -69,6 +69,10 @@ cc_library(
 cc_library(
     name = "logging",
     hdrs = ["logging.h"],
+    deps = [
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:check",
+    ],
 )
 
 # simple definitions only, no code, no deps.
