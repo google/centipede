@@ -40,6 +40,7 @@ inline constexpr std::string_view kNoForkServerRequestPrefix("%f");
 std::string Command::ToString() const {
   std::vector<std::string> ss;
   // env.
+  ss.reserve(env_.size());
   for (auto &env : env_) {
     ss.emplace_back(env);
   }
