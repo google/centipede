@@ -41,12 +41,6 @@ class ByteArrayMutator {
   // Adds `dict_entries` to an internal dictionary.
   void AddToDictionary(const std::vector<ByteArray> &dict_entries);
 
-  // Opens the Centipede corpus file from `path` and adds its entries
-  // to the dictionary.
-  // Returns the number of entries added.
-  // Does nothing and returns 0 if `path` is empty.
-  size_t LoadDictionaryFromCorpusFile(std::string_view path);
-
   // Takes non-empty `inputs`, produces `num_mutants` mutations in `mutants`.
   // Old contents of `mutants` are discarded.
   // `crossover_level` should be in [0,100].
