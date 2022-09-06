@@ -338,7 +338,6 @@ cc_library(
         ":environment",
         ":execution_result",
         ":logging",
-        ":util",
     ],
 )
 
@@ -471,7 +470,6 @@ cc_test(
     srcs = ["util_test.cc"],
     deps = [
         ":defs",
-        ":feature",
         ":logging",
         ":util",
         "@com_google_absl//absl/container:flat_hash_map",

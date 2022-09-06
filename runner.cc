@@ -36,9 +36,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <algorithm>
-#include <atomic>
-#include <cstdint>
 #include <vector>
 
 #include "./byte_array_mutator.h"
@@ -176,17 +173,17 @@ extern "C" size_t LLVMFuzzerMutate(uint8_t *data, size_t size,
 // An arbitrary large size for input data.
 static const size_t kMaxDataSize = 1 << 20;
 // Input data.
-// Every input is stored in `input_data` and then passed to the target.
-// We allocate `input_data` from heap at startup to avoid malloc in a loop.
+// Every input is stored in `g_input_data` and then passed to the target.
+// We allocate `g_input_data` from heap at startup to avoid malloc in a loop.
 // We don't make it a global because it will make data flow instrumentation
 // treat every input byte touched as a separate feature, which will cause
 // arbitrary growth of input size.
-static uint8_t *input_data = (uint8_t *)malloc(kMaxDataSize);
+static uint8_t *g_input_data = (uint8_t *)malloc(kMaxDataSize);
 
 // An arbitrary large size.
 static const size_t kMaxFeatures = 1 << 20;
 // FeatureArray used to accumulate features from all sources.
-static centipede::FeatureArray<kMaxFeatures> features;
+static centipede::FeatureArray<kMaxFeatures> g_features;
 
 static void PrintErrorAndExitIf(bool condition, const char *error) {
   if (!condition) return;
@@ -220,17 +217,17 @@ PrepareCoverage() {
   }
 }
 
-// Post-processes all coverage data, puts it all into `features`.
+// Post-processes all coverage data, puts it all into `g_features`.
 // `target_return_value` is the value returned by LLVMFuzzerTestOneInput.
 //
-// If `target_return_value == -1`, sets `features` to empty.  This way,
+// If `target_return_value == -1`, sets `g_features` to empty.  This way,
 // the engine will reject any input that causes the target to return -1.
 // LibFuzzer supports this return value as of 2022-07:
 // https://llvm.org/docs/LibFuzzer.html#rejecting-unwanted-inputs
 __attribute__((noinline))  // so that we see it in profile.
 static void
 PostProcessCoverage(int target_return_value) {
-  features.clear();
+  g_features.clear();
 
   if (target_return_value == -1) return;
 
@@ -239,7 +236,7 @@ PostProcessCoverage(int target_return_value) {
     centipede::ForEachNonZeroByte(
         state.counter_array.data(), state.counter_array.size(),
         [](size_t idx, uint8_t value) {
-          features.push_back(
+          g_features.push_back(
               centipede::FeatureDomains::k8bitCounters.ConvertToMe(
                   centipede::Convert8bitCounterToNumber(idx, value)));
         });
@@ -248,21 +245,22 @@ PostProcessCoverage(int target_return_value) {
   // Convert data flow bit set to features.
   if (state.run_time_flags.use_dataflow_features) {
     state.data_flow_feature_set.ForEachNonZeroBit([](size_t idx) {
-      features.push_back(centipede::FeatureDomains::kDataFlow.ConvertToMe(idx));
+      g_features.push_back(
+          centipede::FeatureDomains::kDataFlow.ConvertToMe(idx));
     });
   }
 
   // Convert cmp bit set to features.
   if (state.run_time_flags.use_cmp_features) {
     state.cmp_feature_set.ForEachNonZeroBit([](size_t idx) {
-      features.push_back(centipede::FeatureDomains::kCMP.ConvertToMe(idx));
+      g_features.push_back(centipede::FeatureDomains::kCMP.ConvertToMe(idx));
     });
   }
 
   // Convert path bit set to features.
   if (state.run_time_flags.path_level) {
     state.path_feature_set.ForEachNonZeroBit([](size_t idx) {
-      features.push_back(
+      g_features.push_back(
           centipede::FeatureDomains::kBoundedPath.ConvertToMe(idx));
     });
   }
@@ -271,7 +269,7 @@ PostProcessCoverage(int target_return_value) {
   if (state.run_time_flags.use_pc_features &&
       !state.run_time_flags.use_counter_features) {
     state.pc_feature_set.ForEachNonZeroBit([](size_t idx) {
-      features.push_back(centipede::FeatureDomains::k8bitCounters.ConvertToMe(
+      g_features.push_back(centipede::FeatureDomains::k8bitCounters.ConvertToMe(
           centipede::Convert8bitCounterToNumber(idx, 1)));
     });
   }
@@ -308,10 +306,10 @@ ReadOneInputExecuteItAndDumpCoverage(
   // Read the input.
   FILE *input_file = fopen(input_path, "r");
   PrintErrorAndExitIf(!input_file, "can't open the input file");
-  auto num_bytes_read = fread(input_data, 1, kMaxDataSize, input_file);
+  auto num_bytes_read = fread(g_input_data, 1, kMaxDataSize, input_file);
   fclose(input_file);
 
-  RunOneInput(input_data, num_bytes_read, test_one_input_cb);
+  RunOneInput(g_input_data, num_bytes_read, test_one_input_cb);
 
   // Dump features to a file.
   char features_file_path[PATH_MAX];
@@ -319,7 +317,7 @@ ReadOneInputExecuteItAndDumpCoverage(
            input_path);
   FILE *features_file = fopen(features_file_path, "w");
   PrintErrorAndExitIf(!features_file, "can't open coverage file");
-  WriteFeaturesToFile(features_file, features.data(), features.size());
+  WriteFeaturesToFile(features_file, g_features.data(), g_features.size());
   fclose(features_file);
 }
 
@@ -345,16 +343,16 @@ static int ExecuteInputsFromShmem(
     // TODO(kcc): [impl] handle sizes larger than kMaxDataSize.
     size_t size = std::min(kMaxDataSize, blob.size);
     // Copy from blob to data so that to not pass the shared memory further.
-    memcpy(input_data, blob.data, size);
+    memcpy(g_input_data, blob.data, size);
 
     // Starting execution of one more input.
     if (!centipede::BatchResult::WriteInputBegin(feature_blobseq)) break;
 
-    RunOneInput(input_data, size, test_one_input_cb);
+    RunOneInput(g_input_data, size, test_one_input_cb);
 
     // Copy features to shared memory.
     if (!centipede::BatchResult::WriteOneFeatureVec(
-            features.data(), features.size(), feature_blobseq)) {
+            g_features.data(), g_features.size(), feature_blobseq)) {
       break;
     }
     // Write the stats.
@@ -409,7 +407,7 @@ static void DumpPcTable(const char *output_path) {
   const size_t data_size_in_words = state.pcs_end - state.pcs_beg;
   const size_t data_size_in_bytes = data_size_in_words * sizeof(*state.pcs_beg);
   PrintErrorAndExitIf((data_size_in_words % 2) != 0, "bad data_size_in_words");
-  uintptr_t *data_copy = new uintptr_t[data_size_in_words];
+  auto *data_copy = new uintptr_t[data_size_in_words];
   for (size_t i = 0; i < data_size_in_words; i += 2) {
     // data_copy is an array of pairs. First element is the pc, which we need to
     // modify. The second element is the pc flags, we just copy it.
@@ -469,8 +467,8 @@ static int MutateInputsFromShmem(
     inputs.emplace_back(blob.data, blob.data + blob.size);
   }
 
-  // Use `input_data` as a scratch to produce mutants.
-  uint8_t *mutant = input_data;
+  // Use `g_input_data` as a scratch to produce mutants.
+  uint8_t *mutant = g_input_data;
   constexpr size_t kMaxMutantSize = kMaxDataSize;
   constexpr size_t kAverageMutationAttempts = 2;
 
@@ -628,7 +626,7 @@ extern "C" int CentipedeRunnerMain(
     return EXIT_FAILURE;
   }
 
-  // By default, run every iput file one-by-one.
+  // By default, run every input file one-by-one.
   for (int i = 1; i < argc; i++) {
     centipede::ReadOneInputExecuteItAndDumpCoverage(argv[i], test_one_input_cb);
   }

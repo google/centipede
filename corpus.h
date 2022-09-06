@@ -161,7 +161,7 @@ class Corpus {
   // and 'fv' (the features associated with this input).
   // `fs` is used to compute weights of `fv`.
   void Add(const ByteArray &data, const FeatureVec &fv, const FeatureSet &fs,
-           const CoverageFrontier &coverate_frontier);
+           const CoverageFrontier &coverage_frontier);
   // Returns the total number of inputs added.
   size_t NumTotal() const { return num_pruned_ + NumActive(); }
   // Return the number of currently active inputs, i.e. inputs that we want to

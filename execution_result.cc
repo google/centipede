@@ -14,10 +14,8 @@
 
 #include "./execution_result.h"
 
-#include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <vector>
 
 #include "./shared_memory_blob_sequence.h"
 

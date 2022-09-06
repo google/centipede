@@ -27,7 +27,7 @@ namespace centipede {
 // Users or tests can override any of the non-const fields after the object
 // is constructed, but before it is passed to CentipedeMain.
 struct Environment {
-  Environment(int argc = 0, char** argv = nullptr);
+  explicit Environment(int argc = 0, char** argv = nullptr);
 
   std::string binary;
   std::string coverage_binary;
@@ -138,7 +138,7 @@ struct Environment {
   // or if num_threads is not a multiple of the number of flag combinations
   // (which is 6 in this example).
   //
-  // Sets load_other_shard_frequency=0 (experiments should be indepdentent).
+  // Sets load_other_shard_frequency=0 (experiments should be independent).
   //
   // Sets this->experiment_name to a string like "E01",
   // which means "value #0 is used for foo and value #1 is used for bar".

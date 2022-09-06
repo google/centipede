@@ -73,8 +73,7 @@ void ReadShard(std::string_view corpus_path, std::string_view features_path,
     callback(ByteArray(blob.begin(), blob.end()), hash_to_features[Hash(blob)]);
   }
 }
-}  // namespace centipede
 
-// namespace centipede
+}  // namespace centipede
 
 #endif  // THIRD_PARTY_CENTIPEDE_SHARD_READER_H_

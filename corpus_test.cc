@@ -17,7 +17,6 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
-#include <sstream>
 #include <vector>
 
 #include "googletest/include/gtest/gtest.h"
@@ -78,12 +77,12 @@ TEST(FeatureSet, CountUnseenAndPruneFrequentFeatures_IncrementFrequencies) {
   size_t frequency_threshold = 3;
   FeatureSet feature_set(frequency_threshold);
   FeatureVec features;
-  // Short hand for CountUnseenAndPruneFrequentFeatures.
+  // Shorthand for CountUnseenAndPruneFrequentFeatures.
   auto CountUnseenAndPrune = [&]() -> size_t {
     return feature_set.CountUnseenAndPruneFrequentFeatures(features);
   };
-  // Short hand for IncrementFrequencies.
-  auto Increment = [&](const FeatureVec features) {
+  // Shorthand for IncrementFrequencies.
+  auto Increment = [&](const FeatureVec& features) {
     feature_set.IncrementFrequencies(features);
   };
 

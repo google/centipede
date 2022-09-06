@@ -49,7 +49,7 @@ namespace centipede {
 
 size_t GetRandomSeed(size_t seed) {
   if (seed != 0) return seed;
-  return time(0) + getpid() +
+  return time(nullptr) + getpid() +
          std::hash<std::thread::id>{}(std::this_thread::get_id());
 }
 
@@ -72,7 +72,7 @@ void ReadFromLocalFile(std::string_view file_path, Container &data) {
   std::ifstream f(std::string{file_path});
   if (!f) return;
   f.seekg(0, std::ios_base::end);
-  size_t size = f.tellg();
+  auto size = f.tellg();
   f.seekg(0, std::ios_base::beg);
   CHECK_EQ(size % sizeof(data[0]), 0);
   data.resize(size / sizeof(data[0]));
@@ -99,7 +99,8 @@ void WriteToLocalFile(std::string_view file_path,
                       absl::Span<const uint8_t> data) {
   std::ofstream f(std::string{file_path.data()});
   CHECK(f) << "Failed to open local file: " << file_path;
-  f.write(reinterpret_cast<const char *>(data.data()), data.size());
+  f.write(reinterpret_cast<const char *>(data.data()),
+          static_cast<long>(data.size()));
   CHECK(f) << "Failed to write to local file: " << file_path;
   f.close();
 }
@@ -135,7 +136,7 @@ std::string HashOfFileContents(std::string_view file_path) {
 int64_t MemoryUsage() {
   // Read VmRSS from statm. Not the most accurate, but (probably?) good enough.
   std::ifstream f(std::string{"/proc/self/statm"});
-  size_t value;
+  int64_t value;
   f >> value;  // skip the first value.
   f >> value;
   return value * getpagesize();  // value is in pages.
@@ -172,7 +173,7 @@ static void RemoveDirsAtExit() {
 }
 
 void CreateLocalDirRemovedAtExit(std::string_view path) {
-  // Safe-guard against removing dirs not created by TemporaryLocalDirPath().
+  // Safeguard against removing dirs not created by TemporaryLocalDirPath().
   CHECK_NE(path.find("/centipede-"), std::string::npos);
   // Create the dir.
   std::filesystem::remove_all(path);
@@ -223,7 +224,7 @@ ByteArray PackBytesForAppendFile(const ByteArray &data) {
 void UnpackBytesFromAppendFile(const ByteArray &packed_data,
                                std::vector<ByteArray> *unpacked,
                                std::vector<std::string> *hashes) {
-  ByteArray::const_iterator pos = packed_data.begin();
+  auto pos = packed_data.cbegin();
   while (true) {
     pos = std::search(pos, packed_data.end(), &kPackBegMagic[0],
                       &kPackBegMagic[kMagicLen]);
@@ -232,15 +233,15 @@ void UnpackBytesFromAppendFile(const ByteArray &packed_data,
     if (packed_data.end() - pos < kHashLen) return;
     std::string hash(pos, pos + kHashLen);
     pos += kHashLen;
-    size_t size;
+    size_t size = 0;
     if (packed_data.end() - pos < sizeof(size)) return;
     memcpy(&size, &*pos, sizeof(size));
     pos += sizeof(size);
     if (packed_data.end() - pos < size) return;
-    ByteArray ba(pos, pos + size);
-    pos += size;
+    ByteArray ba(pos, pos + static_cast<long>(size));
+    pos += static_cast<long>(size);
     if (packed_data.end() - pos < kMagicLen) return;
-    if (memcmp(&*pos, kPackEndMagic, kMagicLen)) continue;
+    if (memcmp(&*pos, kPackEndMagic, kMagicLen) != 0) continue;
     pos += kMagicLen;
     if (hash != Hash(ba)) continue;
     if (unpacked) unpacked->push_back(std::move(ba));
@@ -279,15 +280,15 @@ ByteArray PackFeaturesAndHash(const ByteArray &data,
 static std::vector<std::pair<std::string, std::string>>
 AFLDictionaryStringReplacements() {
   std::vector<std::pair<std::string, std::string>> replacements;
-  replacements.push_back({"\\\\", "\\"});
-  replacements.push_back({"\\r", "\r"});
-  replacements.push_back({"\\n", "\n"});
-  replacements.push_back({"\\t", "\t"});
-  replacements.push_back({"\\\"", "\""});
+  replacements.emplace_back("\\\\", "\\");
+  replacements.emplace_back("\\r", "\r");
+  replacements.emplace_back("\\n", "\n");
+  replacements.emplace_back("\\t", "\t");
+  replacements.emplace_back("\\\"", "\"");
   // Hex string replacements, lower and upper case.
   for (int i = 0; i < 256; i++) {
-    replacements.push_back({absl::StrFormat("\\x%02x", i), std::string(1, i)});
-    replacements.push_back({absl::StrFormat("\\x%02X", i), std::string(1, i)});
+    replacements.emplace_back(absl::StrFormat("\\x%02x", i), std::string(1, i));
+    replacements.emplace_back(absl::StrFormat("\\x%02X", i), std::string(1, i));
   }
   return replacements;
 }

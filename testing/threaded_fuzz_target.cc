@@ -24,13 +24,16 @@ namespace {
 
 // Starts and joins a thread, returns true.
 bool CreateAndJoinAThread() {
-  std::thread t([]() { std::cerr << __func__ << " " << std::endl; });
+  const auto *parent_func = __func__;
+  std::thread t([parent_func]() {
+    std::cerr << parent_func << "::" << __func__ << " " << std::endl;
+  });
   t.join();
   return true;
 }
 
-bool start_and_join_two_threads_before_main[2] = {CreateAndJoinAThread(),
-                                                  CreateAndJoinAThread()};
+[[maybe_unused]] bool start_and_join_two_threads_before_main[2] = {
+    CreateAndJoinAThread(), CreateAndJoinAThread()};
 
 void BackgroundThread() {
   std::cerr << __func__ << " " << std::endl;
@@ -50,7 +53,7 @@ volatile int sink;
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
   // Create the Background Thread on first entry.
-  [[maybe_unused]] static std::thread *background_thread =
+  [[maybe_unused]] static auto *background_thread =
       new std::thread(BackgroundThread);
 
   if (overlapping_thread) {

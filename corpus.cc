@@ -14,15 +14,12 @@
 
 #include "./corpus.h"
 
-#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <ostream>
 #include <string>
-#include <utility>
 #include <vector>
 
-#include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_cat.h"
 #include "./coverage.h"
 #include "./defs.h"
@@ -34,7 +31,7 @@ namespace centipede {
 
 // TODO(kcc): [impl] add tests.
 Coverage::PCIndexVec FeatureSet::ToCoveragePCs() const {
-  return Coverage::PCIndexVec(pc_index_set_.begin(), pc_index_set_.end());
+  return {pc_index_set_.begin(), pc_index_set_.end()};
 }
 
 size_t FeatureSet::CountFeatures(FeatureDomains::Domain domain) {
@@ -97,7 +94,7 @@ FeatureSet::ComputeWeight(const FeatureVec &features) const {
 
 //================= Corpus
 
-// Returns the weigth of `fv` computed using `fs` and `coverage_frontier`.
+// Returns the weight of `fv` computed using `fs` and `coverage_frontier`.
 static size_t ComputeWeight(const FeatureVec &fv, const FeatureSet &fs,
                             const CoverageFrontier &coverage_frontier) {
   size_t weight = fs.ComputeWeight(fv);
@@ -171,7 +168,7 @@ const ByteArray &Corpus::UniformRandom(size_t random) const {
 
 void Corpus::PrintStats(std::ostream &out, const FeatureSet &fs) {
   out << "{ \"corpus_stats\": [\n";
-  std::string before_record = "";
+  std::string before_record;
   for (auto &record : records_) {
     out << before_record;
     before_record = ",\n";
@@ -179,7 +176,7 @@ void Corpus::PrintStats(std::ostream &out, const FeatureSet &fs) {
     out << "\"size\": " << record.data.size() << ", ";
     {
       out << "\"frequencies\": [";
-      std::string before_feature = "";
+      std::string before_feature;
       for (auto feature : record.features) {
         out << before_feature;
         before_feature = ", ";
@@ -268,14 +265,14 @@ size_t CoverageFrontier::Compute(const Corpus &corpus) {
   // Iterate all functions, set frontier_[] depending on whether the function
   // is partially covered or not.
   num_functions_in_frontier_ = 0;
-  IteratePcTableFunctions(pc_table_, [&](size_t beg, size_t end) {
+  IteratePcTableFunctions(pc_table_, [this](size_t beg, size_t end) {
     auto frontier_begin = frontier_.begin() + beg;
     auto frontier_end = frontier_.begin() + end;
     size_t cov_size_in_this_func =
         std::count(frontier_begin, frontier_end, true);
     if (cov_size_in_this_func == 0) return;  // Function not covered.
     if (cov_size_in_this_func == end - beg) {
-      // function fully covered => not in the forntier.
+      // function fully covered => not in the frontier.
       std::fill(frontier_begin, frontier_end, false);
       return;
     }

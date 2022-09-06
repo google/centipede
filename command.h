@@ -66,7 +66,7 @@ class Command final {
   std::string ToString() const;
   // Executes the command, returns the exit status.
   // Can be called more than once.
-  // If iterrrupted, may call RequestEarlyExit().
+  // If interrupted, may call RequestEarlyExit().
   int Execute();
 
   // Attempts to start a fork server, returns true on success.

@@ -16,7 +16,7 @@
 // RUN: Run && SolutionIs fUz
 // RUN: ExpectInLog "TEXT IN STDOUT"
 // RUN: ExpectInLog "TEXT IN STDERR"
-#include <cstddef>
+
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>

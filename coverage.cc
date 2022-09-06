@@ -16,7 +16,6 @@
 
 #include <string.h>
 
-#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -24,8 +23,6 @@
 #include <sstream>
 #include <string>
 #include <string_view>
-#include <utility>
-#include <vector>
 
 #include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_cat.h"
@@ -127,7 +124,7 @@ Coverage::PCTable Coverage::GetPcTableFromBinaryWithPcTable(
   if (system_exit_code) {
     LOG(INFO) << "system() for " << binary_path
               << " with --dump_pc_table failed: " << VV(system_exit_code);
-    return PCTable();
+    return {};
   }
   ByteArray pc_infos_as_bytes;
   ReadFromLocalFile(tmp_path, pc_infos_as_bytes);

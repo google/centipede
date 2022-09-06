@@ -114,7 +114,7 @@ std::string ProcessAndThreadUniqueID(std::string_view prefix);
 // This is a flavour of https://en.wikipedia.org/wiki/Reservoir_sampling
 // with two differences:
 //   * Elements with weight 0 are unconditionally included.
-//   * We choose which elements to remove insted of which elements to pick.
+//   * We choose which elements to remove instead of which elements to pick.
 //     We use this inverted algorithm because in a typical use case
 //     `target_size` is just slightly smaller than set.size().
 std::vector<size_t> RandomWeightedSubset(absl::Span<const uint32_t> set,
@@ -164,7 +164,7 @@ ByteArray PackFeaturesAndHash(const ByteArray &data,
 // https://github.com/google/AFL/blob/master/dictionaries/README.dictionaries
 // https://llvm.org/docs/LibFuzzer.html#dictionaries
 // Fills in `dictionary_entries` with byte sequences from the dictionary.
-// Returns true iff parsing completes succesfully.
+// Returns true iff parsing completes successfully.
 bool ParseAFLDictionary(std::string_view dictionary_text,
                         std::vector<ByteArray> &dictionary_entries);
 

@@ -15,7 +15,6 @@
 #include "./centipede_default_callbacks.h"
 
 #include <cstddef>
-#include <string>
 #include <string_view>
 #include <vector>
 
@@ -23,7 +22,6 @@
 #include "./defs.h"
 #include "./environment.h"
 #include "./logging.h"
-#include "./util.h"
 
 namespace centipede {
 

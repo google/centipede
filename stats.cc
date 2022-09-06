@@ -33,7 +33,7 @@ void PrintExperimentStatsForOneStatValue(absl::Span<const Stats> stats_vec,
                                          std::ostream &os,
                                          std::atomic<uint64_t> Stats::*field) {
   CHECK_EQ(stats_vec.size(), env_vec.size());
-  // Maps expriment names to indicies in env_vec/stats_vec.
+  // Maps experiment names to indices in env_vec/stats_vec.
   // We use std::map because we want lexicographic order of experiment names.
   std::map<std::string_view, std::vector<size_t>> experiment_to_indices;
   for (size_t i = 0; i < env_vec.size(); ++i) {
@@ -58,7 +58,7 @@ void PrintExperimentStatsForOneStatValue(absl::Span<const Stats> stats_vec,
     os << "max:\t" << stat_values.back() << "\t";
     os << "avg:\t"
        << (std::accumulate(stat_values.begin(), stat_values.end(), 0.) /
-           stat_values.size())
+           static_cast<double>(stat_values.size()))
        << "\t";
     os << "--";
     for (const auto value : stat_values) {

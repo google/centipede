@@ -14,7 +14,6 @@
 
 #include "./execution_request.h"
 
-#include <cstddef>
 #include <cstring>
 #include <vector>
 
@@ -23,6 +22,7 @@
 namespace centipede {
 
 namespace {
+
 enum Tags : SharedMemoryBlobSequence::Blob::size_and_tag_type {
   kTagInvalid,  // 0 is an invalid tag.
   kTagExecution,

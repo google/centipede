@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "./feature.h"
@@ -33,8 +34,9 @@ class ExecutionResult {
   ExecutionResult(ExecutionResult&& other) = default;
   ExecutionResult& operator=(ExecutionResult&& other) = default;
 
-  ExecutionResult() {}
-  explicit ExecutionResult(const FeatureVec& features) : features_(features) {}
+  ExecutionResult() = default;
+  explicit ExecutionResult(FeatureVec features)
+      : features_(std::move(features)) {}
 
   // Execution statistics.
   struct Stats {
@@ -80,7 +82,7 @@ class BatchResult {
   // If BatchResult is used in a hot loop, define it outside the loop and
   // use ClearAndResize() on every iteration.
   // This will reduce the number of mallocs.
-  BatchResult() {}
+  BatchResult() = default;
 
   // Not movable.
   BatchResult(BatchResult&& other) = delete;
@@ -95,7 +97,7 @@ class BatchResult {
     num_outputs_read_ = 0;
   }
 
-  // Writes one FeaturVec (from `vec` and `size`) to `blobseq`.
+  // Writes one FeatureVec (from `vec` and `size`) to `blobseq`.
   // Returns true iff successful.
   // Called by the runner.
   // When executing N inputs, the runner will call this at most N times.

@@ -14,7 +14,6 @@
 
 #include "./environment.h"
 
-#include <algorithm>
 #include <charconv>
 #include <cstddef>
 #include <filesystem>
@@ -284,7 +283,7 @@ Environment::Environment(int argc, char **argv)
   if (argc > 0) {
     exec_name = argv[0];
     for (int argno = 1; argno < argc; ++argno) {
-      args.push_back(argv[argno]);
+      args.emplace_back(argv[argno]);
     }
   }
 }
@@ -381,9 +380,9 @@ void Environment::UpdateForExperiment() {
 
   // Count the number of flag combinations.
   size_t num_combinations = 1;
-  for (const auto &experiment : experiments) {
-    CHECK_NE(experiment.flag_values.size(), 0) << experiment.flag_name;
-    num_combinations *= experiment.flag_values.size();
+  for (const auto &exp : experiments) {
+    CHECK_NE(exp.flag_values.size(), 0) << exp.flag_name;
+    num_combinations *= exp.flag_values.size();
   }
   CHECK_GT(num_combinations, 0);
   CHECK_EQ(num_threads % num_combinations, 0)
@@ -402,10 +401,10 @@ void Environment::UpdateForExperiment() {
   //   foo=2 bar=10 ...
   // Alternative would be to iterate in reverse order with rbegin()/rend().
   std::reverse(experiments.begin(), experiments.end());
-  for (const auto &experiment : experiments) {
-    size_t idx = my_combination_num % experiment.flag_values.size();
-    SetFlag(experiment.flag_name, experiment.flag_values[idx]);
-    my_combination_num /= experiment.flag_values.size();
+  for (const auto &exp : experiments) {
+    size_t idx = my_combination_num % exp.flag_values.size();
+    SetFlag(exp.flag_name, exp.flag_values[idx]);
+    my_combination_num /= exp.flag_values.size();
     experiment_name = std::to_string(idx) + experiment_name;
   }
   experiment_name = "E" + experiment_name;

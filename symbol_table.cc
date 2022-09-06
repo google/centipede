@@ -73,7 +73,7 @@ void SymbolTable::GetSymbolsFromBinary(const Coverage::PCTable &pc_table,
                  std::string(pcs_path)},
                 {/*env*/}, symbols_path);
     int exit_code = cmd.Execute();
-    if (exit_code) {
+    if (exit_code != EXIT_SUCCESS) {
       LOG(ERROR) << "system() failed: " << VV(cmd.ToString()) << VV(exit_code);
     } else {
       // Get and process the symbolizer output.

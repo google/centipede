@@ -60,7 +60,8 @@ struct RunTimeFlags {
 struct ThreadLocalRunnerState {
   // Intrusive doubly-linked list of TLS objects.
   // Guarded by state.tls_list_mu.
-  ThreadLocalRunnerState *next, *prev;
+  ThreadLocalRunnerState *next = nullptr, *prev = nullptr;
+
   // The pthread_create() interceptor calls OnThreadStart()/OnThreadStop()
   // before/after the thread callback.
   // The main thread calls OnThreadStart().
@@ -77,6 +78,7 @@ struct ThreadLocalRunnerState {
 // All data members will be initialized to zero, unless they have initializers.
 // Accesses to the subobjects should be fast, so we are trying to avoid
 // extra memory references where possible.
+// TODO(ussuri): Convert to a class and rename the data members accordingly.
 struct GlobalRunnerState {
   // Used by LLVMFuzzerMutate and initialized in main().
   ByteArrayMutator *byte_array_mutator = nullptr;
@@ -109,15 +111,15 @@ struct GlobalRunnerState {
 
   // Returns true iff `flag` is present.
   // Typical usage: pass ":some_flag:", i.e. the flag name surrounded with ':'.
-  bool HasFlag(const char *flag) {
+  bool HasFlag(const char *flag) const {
     if (!centipede_runner_flags) return false;
-    return strstr(centipede_runner_flags, flag) != 0;
+    return strstr(centipede_runner_flags, flag) != nullptr;
   }
 
   // If a flag=value pair is present, returns value,
   // otherwise returns `default_value`.
   // Typical usage: pass ":some_flag=".
-  uint64_t HasFlag(const char *flag, uint64_t default_value) {
+  uint64_t HasFlag(const char *flag, uint64_t default_value) const {
     if (!centipede_runner_flags) return default_value;
     const char *beg = strstr(centipede_runner_flags, flag);
     if (!beg) return default_value;
@@ -128,9 +130,9 @@ struct GlobalRunnerState {
   // The result is obtained by calling strndup, so make sure to save
   // it in `this` to avoid a leak.
   // Typical usage: pass ":some_flag=".
-  const char *GetStringFlag(const char *flag) {
+  const char *GetStringFlag(const char *flag) const {
     if (!centipede_runner_flags) return nullptr;
-    // Exctract "value" from ":flag=value:" inside centipede_runner_flags.
+    // Extract "value" from ":flag=value:" inside centipede_runner_flags.
     const char *beg = strstr(centipede_runner_flags, flag);
     if (!beg) return nullptr;
     const char *value_beg = beg + strlen(flag);

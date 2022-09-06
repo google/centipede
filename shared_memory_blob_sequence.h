@@ -75,7 +75,7 @@ class SharedMemoryBlobSequence {
 
   // Opens an existing shared blob sequence named `name`.
   // Aborts on any failure.
-  SharedMemoryBlobSequence(const char *name);
+  explicit SharedMemoryBlobSequence(const char *name);
 
   // Releases all resources.
   ~SharedMemoryBlobSequence();
@@ -92,7 +92,7 @@ class SharedMemoryBlobSequence {
     using size_and_tag_type = size_t;
     Blob(size_and_tag_type tag, size_and_tag_type size, const uint8_t *data)
         : tag(tag), size(size), data(data) {}
-    Blob() {}  // Construct an invalid Blob.
+    Blob() = default;  // Construct an invalid Blob.
     bool IsValid() const { return tag != 0; }
     const size_and_tag_type tag = 0;
     const size_and_tag_type size = 0;
@@ -136,6 +136,7 @@ class SharedMemoryBlobSequence {
  private:
   // mmaps `size_` bytes from `fd_`, assigns to `data_`. Crashes on error.
   void MmapData();
+
   // Copy of `name` passed to CTOR.
   // If non-null, DTOR calls shm_unlink on it and frees it.
   char *name_to_unlink_ = nullptr;
@@ -145,14 +146,15 @@ class SharedMemoryBlobSequence {
   // where size is 8 bytes and payload is size bytes.
   // After writing a blob, we also write 0 in place of the next blob's size,
   // if there is space left so that to overwrite any stale data left there.
-  uint8_t *data_;
+  uint8_t *data_ = nullptr;
   // offset_ points to the position in data_ after last Write (or last Read).
   size_t offset_ = 0;
-  size_t size_;  // size of the shared memory region.
-  int fd_;       // file descriptor used to mmap the shared memory region.
+  size_t size_ = 0;  // size of the shared memory region.
+  int fd_ = 0;       // file descriptor used to mmap the shared memory region.
   bool had_reads_after_reset_ = false;
   bool had_writes_after_reset_ = false;
 };
 
-};      // namespace centipede
+}  // namespace centipede
+
 #endif  // THIRD_PARTY_CENTIPEDE_SHARED_MEMORY_BLOB_SEQUENCE_H_

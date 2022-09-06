@@ -25,7 +25,6 @@
 #include "googletest/include/gtest/gtest.h"
 #include "absl/container/flat_hash_map.h"
 #include "./defs.h"
-#include "./feature.h"
 #include "./logging.h"
 
 namespace centipede {
@@ -183,7 +182,7 @@ TEST(Centipede, ParseAFLDictionary) {
                          dict));
   EXPECT_EQ(dict, std::vector<ByteArray>({{'v', '1'}, {'v', '2'}}));
 
-  // Hex entries and a properly escaped back slash.
+  // Hex entries and a properly escaped backslash.
   EXPECT_TRUE(ParseAFLDictionary("  \"\\xBC\\\\a\\xAB\\x00\"", dict));
   EXPECT_EQ(dict, std::vector<ByteArray>({{'\xBC', '\\', 'a', '\xAB', 0}}));
 
@@ -191,7 +190,7 @@ TEST(Centipede, ParseAFLDictionary) {
   EXPECT_TRUE(ParseAFLDictionary("\"\\r\\t\\n\\\"\"", dict));
   EXPECT_EQ(dict, std::vector<ByteArray>({{'\r', '\t', '\n', '"'}}));
 
-  // Improper use of back slash, still parses.
+  // Improper use of backslash, still parses.
   EXPECT_TRUE(ParseAFLDictionary("\"\\g\\h\"", dict));
   EXPECT_EQ(dict, std::vector<ByteArray>({{'\\', 'g', '\\', 'h'}}));
 }
@@ -217,6 +216,7 @@ TEST(Centipede, RandomWeightedSubset) {
     std::vector<std::vector<size_t>> ordered_results;
     std::map<size_t, std::vector<size_t>> freq_to_res;
     for (const auto &it : results) freq_to_res[it.second] = it.first;
+    ordered_results.reserve(freq_to_res.size());
     for (const auto &it : freq_to_res) ordered_results.push_back(it.second);
     return ordered_results;
   };

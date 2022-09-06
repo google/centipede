@@ -14,7 +14,6 @@
 
 // A simple fuzz target that contains bugs detectable by different sanitizers.
 // For now, asan and msan.
-#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
