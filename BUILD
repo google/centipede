@@ -429,6 +429,8 @@ cc_library(
         "shared_memory_blob_sequence.cc",
         "shared_memory_blob_sequence.h",
     ],
+    # NOTE: Centipede's own sources must never be sancov-instrumented.
+    copts = ["-fsanitize-coverage=0"],
 )
 
 ################################################################################
