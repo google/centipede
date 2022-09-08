@@ -142,7 +142,7 @@ def centipede_fuzz_target(
         native.cc_binary(
             name = fuzz_target,
             srcs = srcs or [name + ".cc"],
-            deps = deps + ["@//:centipede_runner"],
+            deps = deps + ["@centipede//:centipede_runner"],
             linkopts = [
                 "-ldl",
                 "-lrt",
