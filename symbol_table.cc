@@ -50,7 +50,7 @@ void SymbolTable::ReadFromLLVMSymbolizer(std::istream &in) {
 
 void SymbolTable::GetSymbolsFromBinary(const Coverage::PCTable &pc_table,
                                        std::string_view binary_path,
-                                       std::string_view llvm_symbolizer_path,
+                                       std::string_view symbolizer_path,
                                        std::string_view tmp_path1,
                                        std::string_view tmp_path2) {
   auto pcs_path(tmp_path1);
@@ -62,7 +62,7 @@ void SymbolTable::GetSymbolsFromBinary(const Coverage::PCTable &pc_table,
   }
   WriteToLocalFile(pcs_path, pcs_string);
   // Run the symbolizer.
-  Command cmd(llvm_symbolizer_path,
+  Command cmd(symbolizer_path,
               {"--no-inlines", "-e", std::string(binary_path), "<",
                std::string(pcs_path)},
               {/*env*/}, symbols_path);

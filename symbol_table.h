@@ -37,13 +37,13 @@ class SymbolTable {
   //   <empty line>
   void ReadFromLLVMSymbolizer(std::istream &in);
 
-  // Invokes `llvm_symbolizer_path --no-inlines` on `binary_path`,
+  // Invokes `symbolizer_path --no-inlines` on `binary_path`,
   // pipes all PCs from pc_table though it,
   // and calls ReadFromLLVMSymbolizer() on the output.
   // Possibly uses files `tmp_path1` and `tmp_path2` for temporary storage.
   void GetSymbolsFromBinary(const Coverage::PCTable &pc_table,
                             std::string_view binary_path,
-                            std::string_view llvm_symbolizer_path,
+                            std::string_view symbolizer_path,
                             std::string_view tmp_path1,
                             std::string_view tmp_path2);
 

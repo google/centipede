@@ -494,7 +494,7 @@ static std::vector<ByteArray> RunWithFunctionFilter(
   env.coverage_binary = env.binary;
   // Must symbolize in order for the filter to work.
   CHECK_EQ(system("which llvm-symbolizer"), EXIT_SUCCESS)
-      << "llvm_symbolizer should be installed and findable via PATH";
+      << "llvm-symbolizer should be installed and findable via PATH";
   env.symbolizer_path = "llvm-symbolizer";
   env.log_level = 0;
   env.function_filter = function_filter;
