@@ -25,6 +25,21 @@
 
 namespace centipede {
 
+size_t ByteArrayMutator::RoundUpToAdd(size_t curr_size, size_t to_add) {
+  const size_t remainder = (curr_size + to_add) % size_alignment_;
+  return (remainder == 0) ? to_add : (to_add + size_alignment_ - remainder);
+}
+
+size_t ByteArrayMutator::RoundDownToRemove(size_t curr_size, size_t to_remove) {
+  if (curr_size <= size_alignment_) return 0;
+  if (to_remove >= curr_size) return curr_size - size_alignment_;
+
+  size_t result_size = curr_size - to_remove;
+  result_size -= (result_size % size_alignment_);
+  to_remove = curr_size - result_size;
+  return (result_size == 0) ? to_remove - size_alignment_ : to_remove;
+}
+
 bool ByteArrayMutator::Mutate(ByteArray &data) {
   return ApplyOneOf<3>(
       {&ByteArrayMutator::MutateSameSize, &ByteArrayMutator::MutateIncreaseSize,
@@ -77,6 +92,10 @@ bool ByteArrayMutator::InsertBytes(ByteArray &data) {
   // Don't insert too many bytes at once.
   const size_t kMaxInsertSize = 20;
   size_t num_new_bytes = rng_() % kMaxInsertSize + 1;
+  num_new_bytes = RoundUpToAdd(data.size(), num_new_bytes);
+  if (num_new_bytes > kMaxInsertSize) {
+    num_new_bytes -= size_alignment_;
+  }
   // There are N+1 positions to insert something into an array of N.
   size_t pos = rng_() % (data.size() + 1);
   // Fixed array to avoid memory allocation.
@@ -88,10 +107,12 @@ bool ByteArrayMutator::InsertBytes(ByteArray &data) {
 }
 
 bool ByteArrayMutator::EraseBytes(ByteArray &data) {
-  if (data.size() <= 1) return false;
+  if (data.size() <= size_alignment_) return false;
   // Ok to erase a sizable chunk since small inputs are good (if they
   // produce good features).
   size_t num_bytes_to_erase = rng_() % (data.size() / 2) + 1;
+  num_bytes_to_erase = RoundDownToRemove(data.size(), num_bytes_to_erase);
+  if (num_bytes_to_erase == 0) return false;
   size_t pos = rng_() % (data.size() - num_bytes_to_erase + 1);
   data.erase(data.begin() + pos, data.begin() + pos + num_bytes_to_erase);
   return true;
@@ -125,9 +146,14 @@ bool ByteArrayMutator::InsertFromDictionary(ByteArray &data) {
 
 void ByteArrayMutator::CrossOverInsert(ByteArray &data,
                                        const ByteArray &other) {
+  if ((data.size() % size_alignment_) + other.size() < size_alignment_) return;
   // insert other[first:first+size] at data[pos]
-  size_t first = rng_() % other.size();
-  size_t size = 1 + rng_() % (other.size() - first);
+  size_t size = 1 + rng_() % other.size();
+  size = RoundUpToAdd(data.size(), size);
+  if (size > other.size()) {
+    size -= size_alignment_;
+  }
+  size_t first = rng_() % (other.size() - size + 1);
   size_t pos = rng_() % (data.size() + 1);
   data.insert(data.begin() + pos, other.begin() + first,
               other.begin() + first + size);

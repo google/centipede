@@ -24,6 +24,46 @@
 
 namespace centipede {
 
+// Tests that when alignment is not 1 byte, adding bytes to an input will result
+// in a size-aligned mutant (even if the input is not size-aligned).
+//
+// Note: This test cannot be in an anonymous namespace due to the FRIEND_TEST in
+// ByteArrayMutator.
+TEST(ByteArrayMutator, RoundUpToAddCorrectly) {
+  ByteArrayMutator mutator(1);
+  mutator.set_size_alignment(4);
+
+  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/0, /*to_add=*/0), 0);
+  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/4, /*to_add=*/0), 0);
+  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/4, /*to_add=*/3), 4);
+  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/5, /*to_add=*/0), 3);
+  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/5, /*to_add=*/2), 3);
+  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/5, /*to_add=*/18), 19);
+}
+
+// Tests that when alignment is not 1 byte, removing bytes from an input will
+// result in a size-aligned mutant (even if the input is not size-aligned).
+//
+// Note: This test cannot be in an anonymous namespace due to the FRIEND_TEST in
+// ByteArrayMutator.
+TEST(ByteArrayMutator, RoundDownToRemoveCorrectly) {
+  ByteArrayMutator mutator(1);
+  mutator.set_size_alignment(4);
+
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/0, /*to_remove=*/0), 0);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/0, /*to_remove=*/1), 0);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/1, /*to_remove=*/0), 0);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/1, /*to_remove=*/1), 0);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/4, /*to_remove=*/0), 0);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/4, /*to_remove=*/3), 0);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/5, /*to_remove=*/0), 1);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/5, /*to_remove=*/2), 1);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/7, /*to_remove=*/2), 3);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/23, /*to_remove=*/4), 7);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/23, /*to_remove=*/20), 19);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/23, /*to_remove=*/24), 19);
+}
+
 namespace {
 
 // Tests that two mutators seeded with different rng seeds produce different
@@ -50,9 +90,11 @@ TEST(ByteArrayMutator, Randomness) {
 void TestMutatorFn(ByteArrayMutator::Fn fn, const ByteArray &seed,
                    const std::vector<ByteArray> &expected_mutants,
                    const std::vector<ByteArray> &unexpected_mutants,
+                   size_t size_alignment = 1,
                    const std::vector<ByteArray> &dictionary = {},
                    size_t num_iterations = 100000000) {
   ByteArrayMutator mutator(1);
+  mutator.set_size_alignment(size_alignment);
   mutator.AddToDictionary(dictionary);
   absl::flat_hash_set<ByteArray> expected(expected_mutants.begin(),
                                           expected_mutants.end());
@@ -133,6 +175,26 @@ TEST(ByteArrayMutator, InsertBytes) {
                 });
 }
 
+TEST(ByteArrayMutator, InsertBytesWithAlignment) {
+  TestMutatorFn(&ByteArrayMutator::InsertBytes, {0, 1, 2},
+                /*expected_mutants=*/
+                {
+                    {0, 1, 2, 3},
+                    {0, 3, 1, 2},
+                    {3, 0, 1, 2},
+                },
+                /*unexpected_mutants=*/
+                {
+                    {0, 1},
+                    {0, 1, 2},
+                    {0, 1, 2, 3, 4},
+                    {0, 3, 1, 4, 2},
+                    {0, 3, 4, 1, 2},
+                    {3, 4, 0, 1, 2},
+                },
+                /*size_alignment=*/4);
+}
+
 // Currently, same as for InsertBytes. Will change in future as we add more
 // mutators.
 TEST(ByteArrayMutator, MutateIncreaseSize) {
@@ -151,6 +213,25 @@ TEST(ByteArrayMutator, MutateIncreaseSize) {
                     {0, 1},
                     {0, 3, 1, 4, 2},
                 });
+}
+
+TEST(ByteArrayMutator, MutateIncreaseSizeWithAlignment) {
+  TestMutatorFn(&ByteArrayMutator::MutateIncreaseSize, {0, 1, 2},
+                /*expected_mutants=*/
+                {
+                    {0, 1, 2, 3},
+                    {0, 3, 1, 2},
+                    {3, 0, 1, 2},
+                },
+                /*unexpected_mutants=*/
+                {
+                    {0, 1},
+                    {0, 1, 2, 3, 4},
+                    {0, 3, 1, 4, 2},
+                    {0, 3, 4, 1, 2},
+                    {3, 4, 0, 1, 2},
+                },
+                /*size_alignment=*/4);
 }
 
 TEST(ByteArrayMutator, EraseBytes) {
@@ -173,6 +254,46 @@ TEST(ByteArrayMutator, EraseBytes) {
                 });
 }
 
+TEST(ByteArrayMutator, EraseBytesWithAlignment) {
+  TestMutatorFn(&ByteArrayMutator::EraseBytes, {0, 1, 2, 3},
+                /*expected_mutants=*/
+                {
+                    {0, 1, 2, 3},
+                },
+                /*unexpected_mutants=*/
+                {
+                    {0, 1, 2},
+                    {0, 1, 3},
+                    {0, 2, 3},
+                    {1, 2, 3},
+                    {0, 1},
+                    {0, 3},
+                    {2, 3},
+                    {0},
+                    {1},
+                    {2},
+                },
+                /*size_alignment=*/4);
+  TestMutatorFn(&ByteArrayMutator::EraseBytes, {0, 1, 2, 3, 4},
+                /*expected_mutants=*/
+                {
+                    {0, 1, 2, 3},
+                    {1, 2, 3, 4},
+                    {0, 1, 3, 4},
+                },
+                /*unexpected_mutants=*/
+                {
+                    {0, 1, 2, 3, 4},
+                    {0, 1, 2},
+                    {0, 1, 3},
+                    {0, 2, 3},
+                    {1, 2, 3},
+                    {0, 1},
+                    {0},
+                },
+                /*size_alignment=*/4);
+}
+
 // Currently, same as EraseBytes. Will change in future as we add more mutators.
 TEST(ByteArrayMutator, MutateDecreaseSize) {
   TestMutatorFn(&ByteArrayMutator::MutateDecreaseSize, {0, 1, 2, 3},
@@ -192,6 +313,46 @@ TEST(ByteArrayMutator, MutateDecreaseSize) {
                     {1},
                     {2},
                 });
+}
+
+TEST(ByteArrayMutator, MutateDecreaseSizeWithAlignment) {
+  TestMutatorFn(&ByteArrayMutator::MutateDecreaseSize, {0, 1, 2, 3},
+                /*expected_mutants=*/
+                {
+                    {0, 1, 2, 3},
+                },
+                /*unexpected_mutants=*/
+                {
+                    {0, 1, 2},
+                    {0, 1, 3},
+                    {0, 2, 3},
+                    {1, 2, 3},
+                    {0, 1},
+                    {0, 3},
+                    {2, 3},
+                    {0},
+                    {1},
+                    {2},
+                },
+                /*size_alignment=*/4);
+  TestMutatorFn(&ByteArrayMutator::MutateDecreaseSize, {0, 1, 2, 3, 4},
+                /*expected_mutants=*/
+                {
+                    {0, 1, 2, 3},
+                    {1, 2, 3, 4},
+                    {0, 1, 3, 4},
+                },
+                /*unexpected_mutants=*/
+                {
+                    {0, 1, 2, 3, 4},
+                    {0, 1, 2},
+                    {0, 1, 3},
+                    {0, 2, 3},
+                    {1, 2, 3},
+                    {0, 1},
+                    {0},
+                },
+                /*size_alignment=*/4);
 }
 
 // Tests that MutateSameSize will eventually produce all possible mutants of
@@ -276,6 +437,7 @@ TEST(ByteArrayMutator, OverwriteFromDictionary) {
                     {6, 2, 3, 4, 5},
                     {1, 2, 3, 4, 0},
                 },
+                /*size_alignment=*/1,
                 /*dictionary=*/
                 {
                     {7, 8, 9},
@@ -301,6 +463,7 @@ TEST(ByteArrayMutator, InsertFromDictionary) {
                     {1, 2, 3, 7, 8},
                     {7, 8, 1, 2, 3},
                 },
+                /*size_alignment=*/1,
                 /*dictionary=*/
                 {
                     {4, 5},
@@ -313,8 +476,10 @@ TEST(ByteArrayMutator, InsertFromDictionary) {
 // and so we can test for all possible expected mutants.
 void TestCrossOver(void (ByteArrayMutator::*fn)(ByteArray &, const ByteArray &),
                    const ByteArray &seed, const ByteArray &other,
-                   const std::vector<ByteArray> &all_possible_mutants) {
+                   const std::vector<ByteArray> &all_possible_mutants,
+                   size_t size_alignment = 1) {
   ByteArrayMutator mutator(1);
+  mutator.set_size_alignment(size_alignment);
   absl::flat_hash_set<ByteArray> expected(all_possible_mutants.begin(),
                                           all_possible_mutants.end());
   absl::flat_hash_set<ByteArray> found;
@@ -367,6 +532,61 @@ TEST(ByteArrayMutator, CrossOverInsert) {
                     {1, 4, 2},
                     {4, 1, 2},
                 });
+}
+
+TEST(ByteArrayMutator, CrossOverInsertWithAlignment) {
+  TestCrossOver(&ByteArrayMutator::CrossOverInsert, {1}, {2},
+                /*all_possible_mutants=*/
+                {
+                    {1},
+                },
+                /*size_alignment=*/4);
+  TestCrossOver(&ByteArrayMutator::CrossOverInsert, {1, 2}, {3, 4},
+                /*all_possible_mutants=*/
+                {
+                    {1, 2, 3, 4},
+                    {1, 3, 4, 2},
+                    {3, 4, 1, 2},
+                },
+                /*size_alignment=*/4);
+  TestCrossOver(&ByteArrayMutator::CrossOverInsert, {1, 2}, {3, 4, 5},
+                /*all_possible_mutants=*/
+                {
+                    {1, 2, 3, 4},
+                    {1, 3, 4, 2},
+                    {3, 4, 1, 2},
+                    {1, 2, 4, 5},
+                    {1, 4, 5, 2},
+                    {4, 5, 1, 2},
+                },
+                /*size_alignment=*/4);
+  TestCrossOver(&ByteArrayMutator::CrossOverInsert, {1, 2, 3, 4, 5}, {6},
+                /*all_possible_mutants=*/
+                {
+                    {1, 2, 3, 4, 5},
+                },
+                /*size_alignment=*/4);
+  TestCrossOver(&ByteArrayMutator::CrossOverInsert, {1, 2, 3}, {4, 5, 6, 7},
+                /*all_possible_mutants=*/
+                {
+                    {4, 1, 2, 3},
+                    {5, 1, 2, 3},
+                    {6, 1, 2, 3},
+                    {7, 1, 2, 3},
+                    {1, 4, 2, 3},
+                    {1, 5, 2, 3},
+                    {1, 6, 2, 3},
+                    {1, 7, 2, 3},
+                    {1, 2, 4, 3},
+                    {1, 2, 5, 3},
+                    {1, 2, 6, 3},
+                    {1, 2, 7, 3},
+                    {1, 2, 3, 4},
+                    {1, 2, 3, 5},
+                    {1, 2, 3, 6},
+                    {1, 2, 3, 7},
+                },
+                /*size_alignment=*/4);
 }
 
 TEST(ByteArrayMutator, CrossOverOverwrite) {
@@ -424,8 +644,8 @@ TEST(ByteArrayMutator, CrossOverOverwrite) {
 
 TEST(ByteArrayMutator, CrossOver) {
   // Most of CrossOver is tested above in CrossOverOverwrite/CrossOverInsert.
-  // Here just test one set of inputs to ensure CrossOver calls the other
-  // two functions correctly.
+  // Here just test one set of inputs to ensure CrossOver calls the other two
+  // functions correctly.
   TestCrossOver(&ByteArrayMutator::CrossOver, {1, 2}, {3, 4},
                 /*all_possible_mutants=*/
                 {
@@ -462,6 +682,58 @@ TEST(ByteArrayMutator, FailedMutations) {
   EXPECT_LT(num_failed_erase, kNumIter / 2);
   // The generic Mutate() should fail very infrequently.
   EXPECT_LT(num_failed_generic, kNumIter / 1000);
+}
+
+TEST(ByteArrayMutator, MutateManyWithAlignedInputs) {
+  const size_t kSizeAlignment = 4;
+  ByteArrayMutator mutator(1);
+  mutator.set_size_alignment(kSizeAlignment);
+  const size_t kNumMutantsToGenerate = 10000;
+  std::vector<ByteArray> mutants;
+
+  // If all inputs are aligned, expect all generated mutants to be aligned.
+  const std::vector<ByteArray> aligned_inputs = {
+      {0, 1, 2, 3},
+      {0, 1, 2, 3, 4, 5, 6, 7},
+      {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+  };
+  mutator.MutateMany(aligned_inputs, kNumMutantsToGenerate,
+                     /*crossover_level=*/50, mutants);
+  EXPECT_EQ(mutants.size(), kNumMutantsToGenerate);
+  for (const ByteArray &mutant : mutants) {
+    EXPECT_EQ(mutant.size() % kSizeAlignment, 0);
+  }
+}
+
+TEST(ByteArrayMutator, MutateManyWithUnalignedInputs) {
+  const size_t kSizeAlignment = 4;
+  ByteArrayMutator mutator(1);
+  mutator.set_size_alignment(kSizeAlignment);
+  const size_t kNumMutantsToGenerate = 10000;
+  std::vector<ByteArray> mutants;
+
+  // If there are unaligned inputs, most mutants should be aligned, but the ones
+  // that are unaligned should be the same size as the unaligned inputs (as they
+  // resulted from mutators that did not change the size of the inputs).
+  const std::vector<ByteArray> unaligned_inputs = {
+      {0},
+      {0, 1},
+      {0, 1, 2},
+      {0, 1, 2, 3, 4},
+      {0, 1, 2, 3, 4, 5},
+      {0, 1, 2, 3, 4, 5, 6},
+      {0, 1, 2, 3, 4, 5, 6, 7, 8},
+      {0, 1, 2, 3, 4, 5, 6, 7, 8, 9},
+      {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+  };
+  mutator.MutateMany(unaligned_inputs, kNumMutantsToGenerate,
+                     /*crossover_level=*/50, mutants);
+  EXPECT_EQ(mutants.size(), kNumMutantsToGenerate);
+  for (const ByteArray &mutant : mutants) {
+    if (mutant.size() % kSizeAlignment != 0) {
+      EXPECT_LE(mutant.size(), 11);
+    }
+  }
 }
 
 }  // namespace

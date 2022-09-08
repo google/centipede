@@ -100,6 +100,13 @@ class ByteArrayMutator {
   // Erases random bytes.
   bool EraseBytes(ByteArray &data);
 
+  // Set size alignment for mutants with modified sizes. Some mutators do not
+  // change input size, but mutators that insert or erase bytes will produce
+  // mutants with aligned sizes (if possible).
+  void set_size_alignment(size_t size_alignment) {
+    size_alignment_ = size_alignment;
+  }
+
  private:
   // Applies fn[random_index] to data, returns true if a mutation happened.
   template <size_t kArraySize>
@@ -112,6 +119,34 @@ class ByteArrayMutator {
     }
     return false;  // May still happen periodically.
   }
+
+  // Given a current size and a number of bytes to add, returns the number of
+  // bytes that should be added for the resulting size to be properly aligned.
+  //
+  // If the original to_add would result in an unaligned input size, we round up
+  // to the next larger aligned size.
+  size_t RoundUpToAdd(size_t curr_size, size_t to_add);
+
+  // Given a current size and a number of bytes to remove, returns the number of
+  // bytes that should be removed for the resulting size to be property aligned.
+  //
+  // If the original to_remove would result in an unaligned input size, we
+  // round down to the next smaller aligned size.
+  //
+  // However, we never return a number of bytes to remove that would result in a
+  // 0 size. In this case, the resulting size will be the smaller of
+  // curr_size and size_alignment_.
+  size_t RoundDownToRemove(size_t curr_size, size_t to_remove);
+
+  FRIEND_TEST(ByteArrayMutator, RoundUpToAddCorrectly);
+  FRIEND_TEST(ByteArrayMutator, RoundDownToRemoveCorrectly);
+
+  // Size alignment in bytes to generate mutants.
+  //
+  // For example, if size_alignment_ is 1, generated mutants can have any
+  // number of bytes. If size_alignment_ is 4, generated mutants will have sizes
+  // that are 4-byte aligned.
+  size_t size_alignment_ = 1;
 
   Rng rng_;
   std::vector<ByteArray> dictionary_;
