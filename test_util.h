@@ -18,11 +18,6 @@
 #include <filesystem>
 #include <string>
 
-#include "./logging.h"
-
-#define EXPECT_OK(status) EXPECT_TRUE((status).ok()) << VV(status)
-#define ASSERT_OK(status) ASSERT_TRUE((status).ok()) << VV(status)
-
 namespace centipede {
 
 // Returns a temp dir for use inside tests. The dir is chosen in the following
