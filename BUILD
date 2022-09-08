@@ -135,6 +135,7 @@ cc_library(
     srcs = ["shared_memory_blob_sequence.cc"],
     hdrs = ["shared_memory_blob_sequence.h"],
     linkopts = ["-lrt"],  # for shm_open.
+    deps = ["@com_google_absl//absl/log:check"],
     # don't add any dependencies.
 )
 
@@ -445,6 +446,7 @@ cc_library(
     ],
     # NOTE: Centipede's own sources must never be sancov-instrumented.
     copts = ["-fsanitize-coverage=0"],
+    deps = ["@com_google_absl//absl/log:check"],
 )
 
 ################################################################################
