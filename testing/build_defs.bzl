@@ -41,12 +41,6 @@ def _sancov_transition_impl(settings, attr):
             # https://llvm.org/docs/LibFuzzer.html#fuzzer-friendly-build-mode
             "-DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION",
         ],
-        "//command_line_option:linkopt": settings["//command_line_option:linkopt"] + [
-            # runner_interceptors defines its own memcmp/etc,
-            # which triggers the linker's --warn-backrefs. Selectively disable the warning.
-            # https://lld.llvm.org/ELF/warn_backrefs.html
-            "-Wl,--warn-backrefs-exclude=*/centipede*runner_interceptors.o",
-        ],
         "//command_line_option:compilation_mode": "opt",
         "//command_line_option:strip": "never",  # preserve debug info.
         "//command_line_option:features": filtered_features,
@@ -58,12 +52,10 @@ sancov_transition = transition(
     implementation = _sancov_transition_impl,
     inputs = [
         "//command_line_option:copt",
-        "//command_line_option:linkopt",
         "//command_line_option:features",
     ],
     outputs = [
         "//command_line_option:copt",
-        "//command_line_option:linkopt",
         "//command_line_option:compilation_mode",
         "//command_line_option:strip",
         "//command_line_option:features",
