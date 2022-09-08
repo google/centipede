@@ -103,6 +103,17 @@ cc_library(
 )
 
 cc_library(
+    name = "stats",
+    srcs = ["stats.cc"],
+    hdrs = ["stats.h"],
+    deps = [
+        ":environment",
+        "@centipede//:logging",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
     name = "blob_file",
     srcs = ["blob_file.cc"],
     hdrs = ["blob_file.h"],
@@ -473,6 +484,17 @@ cc_test(
         ":logging",
         ":util",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "stats_test",
+    srcs = ["stats_test.cc"],
+    deps = [
+        ":stats",
+        "@centipede//:logging",
+        "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
     ],
 )
