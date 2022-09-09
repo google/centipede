@@ -21,34 +21,28 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <cstddef>
 #include <cstdint>
-#include <cstdio>
+
+#include "absl/log/check.h"
 
 namespace centipede {
-
-static void ErrorOnFailure(bool condition, const char *text) {
-  if (!condition) return;
-  std::perror(text);
-  abort();
-}
 
 SharedMemoryBlobSequence::SharedMemoryBlobSequence(const char *name,
                                                    size_t size)
     : size_(size) {
-  ErrorOnFailure(size < sizeof(Blob::size), "Size too small");
+  PCHECK(size >= sizeof(Blob::size)) << "Size too small";
   fd_ = shm_open(name, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
   name_to_unlink_ = strdup(name);  // Using raw C strings to avoid dependencies.
-  ErrorOnFailure(fd_ < 0, "shm_open() failed");
-  ErrorOnFailure(ftruncate(fd_, size_), "ftruncate() failed)");
+  PCHECK(!(fd_ < 0)) << "shm_open() failed";
+  PCHECK(!(ftruncate(fd_, size_))) << "ftruncate() failed)";
   MmapData();
 }
 
 SharedMemoryBlobSequence::SharedMemoryBlobSequence(const char *name) {
   fd_ = shm_open(name, O_RDWR, 0);
-  ErrorOnFailure(fd_ < 0, "shm_open() failed");
+  PCHECK(fd_ >=  0) << "shm_open() failed";
   struct stat statbuf;
-  ErrorOnFailure(fstat(fd_, &statbuf), "fstat() failed");
+  PCHECK(!(fstat(fd_, &statbuf))) << "fstat() failed";
   size_ = statbuf.st_size;
   MmapData();
 }
@@ -56,16 +50,16 @@ SharedMemoryBlobSequence::SharedMemoryBlobSequence(const char *name) {
 void SharedMemoryBlobSequence::MmapData() {
   data_ =
       (uint8_t *)mmap(NULL, size_, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0);
-  ErrorOnFailure(data_ == MAP_FAILED, "mmap() failed");
+  PCHECK(!(data_ == MAP_FAILED)) << "mmap() failed";
 }
 
 SharedMemoryBlobSequence::~SharedMemoryBlobSequence() {
-  ErrorOnFailure(munmap(data_, size_), "munmap() failed");
+  PCHECK(munmap(data_, size_) == 0) << "munmap() failed";
   if (name_to_unlink_) {
-    ErrorOnFailure(shm_unlink(name_to_unlink_), "shm_unlink() failed");
+    PCHECK(shm_unlink(name_to_unlink_) >= 0) << "shm_unlink() failed";
     free(name_to_unlink_);
   }
-  ErrorOnFailure(close(fd_), "close() failed");
+  PCHECK(close(fd_) == 0) << "close() failed";
 }
 
 void SharedMemoryBlobSequence::Reset() {
@@ -75,8 +69,8 @@ void SharedMemoryBlobSequence::Reset() {
 }
 
 bool SharedMemoryBlobSequence::Write(Blob blob) {
-  ErrorOnFailure(!blob.IsValid(), "Write(): blob.tag must not be zero");
-  ErrorOnFailure(had_reads_after_reset_, "Write(): Had reads after reset");
+  PCHECK(blob.IsValid()) << "blob.tag must not be zero";
+  PCHECK(!had_reads_after_reset_) << "Had reads after reset";
   had_writes_after_reset_ = true;
   if (offset_ + sizeof(blob.size) + sizeof(blob.tag) + blob.size > size_)
     return false;
@@ -102,7 +96,7 @@ bool SharedMemoryBlobSequence::Write(Blob blob) {
 }
 
 SharedMemoryBlobSequence::Blob SharedMemoryBlobSequence::Read() {
-  ErrorOnFailure(had_writes_after_reset_, "Had writes after reset");
+  PCHECK(!had_writes_after_reset_) << "Had writes after reset";
   had_reads_after_reset_ = true;
   if (offset_ + sizeof(Blob::size) + sizeof(Blob::tag) >= size_) return {};
   // Read blob_tag.
@@ -114,9 +108,9 @@ SharedMemoryBlobSequence::Blob SharedMemoryBlobSequence::Read() {
   memcpy(&blob_size, data_ + offset_, sizeof(Blob::size));
   offset_ += sizeof(Blob::size);
   // Read blob_data.
-  ErrorOnFailure(offset_ + blob_size > size_, "Not enough bytes");
+  PCHECK(offset_ + blob_size <= size_) << "Not enough bytes";
   if (blob_tag == 0 && blob_size == 0) return {};
-  ErrorOnFailure(blob_tag == 0, "Read: blob.tag must not be zero");
+  PCHECK(blob_tag != 0) << "blob.tag must not be zero";
   Blob result{blob_tag, blob_size, data_ + offset_};
   offset_ += result.size;
   return result;
