@@ -29,83 +29,76 @@
 #include "./logging.h"
 #include "./util.h"
 
-ABSL_FLAG(std::string, binary, "", "The target binary");
+ABSL_FLAG(std::string, binary, "", "The target binary.");
 ABSL_FLAG(std::string, coverage_binary, "",
-          "The actual binary from which coverge is collected "
-          "- if different from --binary");
+          "The actual binary from which coverage is collected - if different "
+          "from --binary.");
 ABSL_FLAG(std::string, extra_binaries, "",
-          "A comma-separated list of extra target binaries. "
-          "These binaries are fed the same inputs as the main binary, "
-          "but the coverage feedback from them is not collected. "
-          "Use this e.g. to run the target under sanitizers.");
-ABSL_FLAG(std::string, workdir, "", "The working directory");
+          "A comma-separated list of extra target binaries. These binaries are "
+          "fed the same inputs as the main binary, but the coverage feedback "
+          "from them is not collected. Use this e.g. to run the target under "
+          "sanitizers.");
+ABSL_FLAG(std::string, workdir, "", "The working directory.");
 ABSL_FLAG(std::string, merge_from, "",
-          "Another working directory to merge the corpus from. "
-          "Inputs from 'merge_from' will be added to 'workdir' "
-          "if the add new features.");
+          "Another working directory to merge the corpus from. Inputs from "
+          "--merge_from will be added to --workdir if the add new features.");
 ABSL_FLAG(size_t, num_runs, std::numeric_limits<size_t>::max(),
-          "number of runs");
+          "Number of runs.");
 ABSL_FLAG(size_t, seed, 0,
-          "rng seed. "
-          "If 0, some other random number is used as seed");
-ABSL_FLAG(size_t, total_shards, 1, "number of shards");
+          "A seed for the random number generator. If 0, some other random "
+          "number is used as seed.");
+ABSL_FLAG(size_t, total_shards, 1, "Number of shards.");
 ABSL_FLAG(size_t, first_shard_index, 0,
-          "index of the first shard, [0, total_shards-num_threads]. ");
+          "Index of the first shard, [0, --total_shards - --num_threads].");
 ABSL_FLAG(size_t, num_threads, 1,
-          "number of threads to execute in one process. "
-          "i-th thread, where i is in [0, num_threads), will work on shard "
-          "(first_shard_index + i) ");
+          "Number of threads to execute in one process. i-th thread, where i "
+          "is in [0, --num_threads), will work on shard "
+          "(--first_shard_index + i).");
 ABSL_FLAG(size_t, j, 0,
           "If not 0, --j=N is a shorthand for "
           "--num_threads=N --total_shards=N --first_shard_index=0. "
           "Overrides values of these flags if they are also used.");
-ABSL_FLAG(size_t, max_len, 4096, "Max length of mutants. Passed to mutator");
+ABSL_FLAG(size_t, max_len, 4096, "Max length of mutants. Passed to mutator.");
 ABSL_FLAG(size_t, batch_size, 1000,
-          "The number of inputs given to the target at one time."
-          " Batches of more than 1 input are used to amortize the process"
-          " start-up cost.");
+          "The number of inputs given to the target at one time. Batches of "
+          "more than 1 input are used to amortize the process start-up cost.");
 ABSL_FLAG(size_t, load_other_shard_frequency, 10,
-          "Load a random other shard after processing this many batches. "
-          "Use 0 to disable loading other shards. "
-          " For now, choose the value of this flag so that shard loads "
-          " happen at most once in a few minutes. In future we may be able to "
-          " find the suitable value automatically");
+          "Load a random other shard after processing this many batches. Use 0 "
+          "to disable loading other shards.  For now, choose the value of this "
+          "flag so that shard loads  happen at most once in a few minutes. In "
+          "future we may be able to find the suitable value automatically.");
 ABSL_FLAG(size_t, prune_frequency, 100,
-          "Prune the corpus every time after this many inputs were added."
-          " If zero, pruning is disabled."
-          " Pruning removes redundant inputs from the corpus, e.g. inputs"
-          " that have only 'frequent', i.e. uninteresting features."
-          " When the corpus gets larger than max_corpus_size, some random"
-          " elements may also be removed.");
+          "Prune the corpus every time after this many inputs were added. If "
+          "zero, pruning is disabled. Pruning removes redundant inputs from "
+          "the corpus, e.g. inputs that have only \"frequent\", i.e. "
+          "uninteresting features. When the corpus gets larger than "
+          "--max_corpus_size, some random elements may also be removed.");
 ABSL_FLAG(size_t, address_space_limit_mb, 8192,
           "If not zero, instructs the target to set setrlimit(RLIMIT_AS) to "
-          "this number of megabytes. "
-          "Some targets (e.g. if built with ASAN, which can't run with "
-          "RLIMIT_AS) may choose to ignore this flag. See also rss_limit_mb");
-ABSL_FLAG(
-    size_t, rss_limit_mb, 4096,
-    "If not zero, instructs the target to fail if RSS goes over this "
-    "number of megabytes and report an OOM. See also address_space_limit_mb. "
-    "These two flags have somewhat different meaning. "
-    "address_space_limit_mb does not allow the process to grow the used "
-    "address space beyond the limit. "
-    "rss_limit_mb runs a background thread that monitors max RSS "
-    "and also checks max RSS after executing every input, "
-    "so it may detect OOM late. "
-    "However rss_limit_mb allows Centipede to *report* an OOM condition "
-    "in most cases, while address_space_limit_mb will cause a crash that may "
-    "be hard to attribute to OOM. ");
+          "this number of megabytes. Some targets (e.g. if built with ASAN, "
+          "which can't run with RLIMIT_AS) may choose to ignore this flag. See "
+          "also --rss_limit_mb.");
+ABSL_FLAG(size_t, rss_limit_mb, 4096,
+          "If not zero, instructs the target to fail if RSS goes over this "
+          "number of megabytes and report an OOM. See also "
+          "--address_space_limit_mb. These two flags have somewhat different "
+          "meaning. --address_space_limit_mb does not allow the process to "
+          "grow the used address space beyond the limit. --rss_limit_mb runs a "
+          "background thread that monitors max RSS and also checks max RSS "
+          "after executing every input, so it may detect OOM late. However "
+          "--rss_limit_mb allows Centipede to *report* an OOM condition in "
+          "most cases, while --address_space_limit_mb will cause a crash that "
+          "may be hard to attribute to OOM.");
 ABSL_FLAG(size_t, timeout, 60,
-          "Timeout in seconds (if not zero). "
-          "If an input runs longer than this number of seconds the runner "
-          "process will abort. "
-          "Support may vary depending on the runner. ");
+          "Timeout in seconds (if not 0). If an input runs longer than this "
+          "number of seconds the runner process will abort. Support may vary "
+          "depending on the runner.");
 ABSL_FLAG(bool, fork_server, true,
           "If true (default) tries to execute the target(s) via the fork "
-          "server, if supported by the target(s). "
-          "Prepend the binary path with '%f' to disable the fork server. "
-          "--fork_server applies to binaries passed via these flags: "
-          "--binary, --extra_binaries, --input_filter");
+          "server, if supported by the target(s). Prepend the binary path with "
+          "'%f' to disable the fork server. --fork_server applies to binaries "
+          "passed via these flags: --binary, --extra_binaries, "
+          "--input_filter.");
 ABSL_FLAG(bool, full_sync, false,
           "Perform a full corpus sync on startup. If true, feature sets and "
           "corpora are read from all shards before fuzzing. This way fuzzing "
@@ -113,116 +106,105 @@ ABSL_FLAG(bool, full_sync, false,
           "adding duplicating inputs. This however is very expensive when the "
           "number of shards is very large.");
 ABSL_FLAG(bool, use_corpus_weights, true,
-          "If true, use weighted distribution when"
-          " choosing the corpus element to mutate."
-          " This flag is mostly for Centipede developers.");
+          "If true, use weighted distribution when choosing the corpus element "
+          "to mutate. This flag is mostly for Centipede developers.");
 ABSL_FLAG(bool, use_coverage_frontier, false,
-          "If true, use coverage frontier when"
-          " choosing the corpus element to mutate."
-          " This flag is mostly for Centipede developers.");
+          "If true, use coverage frontier when choosing the corpus element to "
+          "mutate. This flag is mostly for Centipede developers.");
 ABSL_FLAG(size_t, max_corpus_size, 100000,
           "Indicates the number of inputs in the in-memory corpus after which"
-          "more agressive pruning will be applied.");
+          "more aggressive pruning will be applied.");
 ABSL_FLAG(int, crossover_level, 50,
-          "Defines how much crossover is used during mutations. "
-          "0 means no crossover, 100 means the most aggressive crossover. "
-          "See https://en.wikipedia.org/wiki/Crossover_(genetic_algorithm).");
+          "Defines how much crossover is used during mutations. 0 means no "
+          "crossover, 100 means the most aggressive crossover. See "
+          "https://en.wikipedia.org/wiki/Crossover_(genetic_algorithm).");
 ABSL_FLAG(bool, use_pc_features, true,
-          "When available from instrumentation, use features derived from PCs");
+          "When available from instrumentation, use features derived from "
+          "PCs.");
 ABSL_FLAG(bool, use_cmp_features, true,
           "When available from instrumentation, use features derived from "
-          "instrumentation of CMP instructions");
+          "instrumentation of CMP instructions.");
 ABSL_FLAG(size_t, path_level, 0,  // Not ready for wide usage.
           "When available from instrumentation, use features derived from "
           "bounded execution paths. Be careful, may cause exponential feature "
-          "explosion. 0 means no path features. "
-          "Values between 1 and 100 define how agressively to use the paths. ");
+          "explosion. 0 means no path features. Values between 1 and 100 "
+          "define how aggressively to use the paths.");
 ABSL_FLAG(bool, use_dataflow_features, true,
           "When available from instrumentation, use features derived from "
-          "data flows");
+          "data flows.");
 ABSL_FLAG(bool, use_counter_features, false,
           "When available from instrumentation, use features derived from "
-          "counting the number of occurrences of a given PC. "
-          "When enabled, supersedes --use_pc_features.");
+          "counting the number of occurrences of a given PC. When enabled, "
+          "supersedes --use_pc_features.");
 ABSL_FLAG(bool, use_pcpair_features, false,
           "If true, PC pairs are used as additional synthetic features. "
           "Experimental, use with care - it may explode the corpus.");
 ABSL_FLAG(size_t, feature_frequency_threshold, 100,
-          "Internal flag. "
-          "When a given feature is present in the corpus this many times "
-          "Centipede will stop recording it for future corpus elements. "
-          "Larger values will use more RAM but may improve corpus weights. "
-          "Valid values are 1 - 255.");
+          "Internal flag. When a given feature is present in the corpus this "
+          "many times Centipede will stop recording it for future corpus "
+          "elements. Larger values will use more RAM but may improve corpus "
+          "weights. Valid values are 1 - 255.");
 ABSL_FLAG(bool, require_pc_table, true,
-          "If true, Centipede will exit if the pc_table is not found.");
+          "If true, Centipede will exit if the --pc_table is not found.");
 ABSL_FLAG(bool, generate_corpus_stats, false,
-          "If true, a file workdir/corpus-stats-BINARY.json containing"
-          "corpus stats will be generated periodically");
+          "If true, a file workdir/corpus-stats-BINARY.json containing corpus "
+          "stats will be generated periodically.");
 ABSL_FLAG(std::string, save_corpus_to_local_dir, "",
-          "save the remote corpus from working to the given directory, one "
+          "Save the remote corpus from working to the given directory, one "
           "file per corpus.");
 ABSL_FLAG(std::string, export_corpus_from_local_dir, "",
-          "export a corpus from a local directory with one file per input "
-          "into the sharded remote corpus in workdir. Not recursive");
+          "Export a corpus from a local directory with one file per input into "
+          "the sharded remote corpus in workdir. Not recursive.");
 ABSL_FLAG(std::string, corpus_dir, "",
-          "Comma-separated list of paths to local corpus dirs, "
-          "with one file per input."
-          "At startup, the files are exported into the corpus in workdir. "
-          "While fuzzing the new corpus elements are written to the first dir. "
-          "This makes it more convenient to interop with libFuzzer corpora.");
+          "Comma-separated list of paths to local corpus dirs, with one file "
+          "per input.At startup, the files are exported into the corpus in "
+          "--workdir. While fuzzing the new corpus elements are written to the "
+          "first dir. This makes it more convenient to interop with libFuzzer "
+          "corpora.");
 ABSL_FLAG(std::string, symbolizer_path, "llvm-symbolizer",
           "Path to the symbolizer tool. By default, we use llvm-symbolizer "
-          "and assume it is in PATH");
-ABSL_FLAG(
-    size_t, distill_shards, 0,
-    "The first `distill_shards` will write the distilled corpus to "
-    "workdir/distilled-BINARY.SHARD. Implies full_sync for these shards. "
-    "Note that every shard will produce its own variant of distilled corpus. "
-    "Distillation will work properly only if all shards already have their "
-    "feature files computed.");
-
+          "and assume it is in PATH.");
+ABSL_FLAG(size_t, distill_shards, 0,
+          "The first --distill_shards will write the distilled corpus to "
+          "workdir/distilled-BINARY.SHARD. Implies --full_sync for these "
+          "shards. Note that every shard will produce its own variant of "
+          "distilled corpus. Distillation will work properly only if all "
+          "shards already have their feature files computed.");
 ABSL_FLAG(bool, exit_on_crash, false,
-          "If true, Centipede will exit on the first crash of the target");
-ABSL_FLAG(size_t, num_crash_reports, 5, "report this many crashes per shard");
+          "If true, Centipede will exit on the first crash of the target.");
+ABSL_FLAG(size_t, num_crash_reports, 5, "report this many crashes per shard.");
 ABSL_FLAG(std::string, input_filter, "",
-          "Path to a tool that filters bad inputs. "
-          "The tool is invoked as 'input_filter INPUT_FILE' and returns 0 "
-          "if the input is good and non-0 otherwise. Ignored if empty. "
-          "The input_filter is invoked only for inputs that are considered "
-          "for addition to the corpus.");
-
+          "Path to a tool that filters bad inputs. The tool is invoked as "
+          "`input_filter INPUT_FILE` and should return 0 if the input is good "
+          "and non-0 otherwise. Ignored if empty. The --input_filter is "
+          "invoked only for inputs that are considered for addition to the "
+          "corpus.");
 ABSL_FLAG(std::string, for_each_blob, "",
-          "If non-empty, extracts individual blobs from the files "
-          "given as arguments, copies each blob to a temporary file, "
-          "and applies this command to that temporary file. "
-          "%P is replaced with the temporary file's path and "
-          "%H is replaced with the blob's hash. "
-          "Example: "
-          "  centipede --for_each_blob='ls -l  %P && echo %H' corpus.0");
-
+          "If non-empty, extracts individual blobs from the files given as "
+          "arguments, copies each blob to a temporary file, and applies this "
+          "command to that temporary file. %P is replaced with the temporary "
+          "file's path and %H is replaced with the blob's hash. Example:\n"
+          "$ centipede --for_each_blob='ls -l  %P && echo %H' corpus.0");
 ABSL_FLAG(std::string, experiment, "",
-          "A colon-separated list of values, each of which is a flag"
-          " followed by = and a comma-separated list of values."
-          " Example: 'foo=1,2,3:bar=10,20'. "
-          " When non-empty, this flag is used to run an A/B[/C/D...] "
-          " experiment: different threads will set different values of 'foo'"
-          " and 'bar' and will run independent fuzzing sessions. "
-          " If more than one flag is given, all flag combinations are tested. "
-          " In example above: '--foo=1 --bar=10' ... '--foo=3 --bar=20'. "
-          " The number of threads should be multiple of the number of flag"
-          " combinations");
-
+          "A colon-separated list of values, each of which is a flag followed "
+          "by = and a comma-separated list of values. Example: "
+          "'foo=1,2,3:bar=10,20'. When non-empty, this flag is used to run an "
+          "A/B[/C/D...] experiment: different threads will set different "
+          "values of 'foo' and 'bar' and will run independent fuzzing "
+          "sessions. If more than one flag is given, all flag combinations are "
+          "tested. In example above: '--foo=1 --bar=10' ... "
+          "'--foo=3 --bar=20'. The number of threads should be multiple of the "
+          "number of flag combinations.");
 ABSL_FLAG(std::string, dictionary, "",
-          "A comma-separated list of paths to dictionary files. "
-          "The dictionary file is either in AFL/libFuzzer plain text format or "
-          "in the binary Centipede corpus file format. "
-          "The flag is interpreted by CentipedeCallbacks so its meaning may "
-          "be different in custom implementations of CentipedeCallbacks.");
-
+          "A comma-separated list of paths to dictionary files. The dictionary "
+          "file is either in AFL/libFuzzer plain text format or in the binary "
+          "Centipede corpus file format. The flag is interpreted by "
+          "CentipedeCallbacks so its meaning may be different in custom "
+          "implementations of CentipedeCallbacks.");
 ABSL_FLAG(std::string, function_filter, "",
           "A comma-separated list of functions that fuzzing needs to focus on. "
           "If this list is non-empty, the fuzzer will mutate only those inputs "
-          "that trigger code in one of these functions. ");
+          "that trigger code in one of these functions.");
 ABSL_FLAG(size_t, shmem_size_mb, 1024,
           "Size of the shared memory regions used to communicate between the "
           "ending and the runner.");
