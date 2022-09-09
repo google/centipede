@@ -38,7 +38,10 @@ cc_binary(
         ":centipede_default_callbacks",
         ":centipede_interface",
         ":environment",
+        "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
+        "@com_google_absl//absl/log:flags",
+        "@com_google_absl//absl/log:initialize",
     ],
 )
 
