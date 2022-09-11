@@ -22,6 +22,8 @@
 #include "./centipede_interface.h"
 #include "./environment.h"
 
+ABSL_DECLARE_FLAG(int, stderrthreshold);
+
 int main(int argc, char **argv) {
   // By default, log everything to stderr. Explicit --stderrthreshold=N on the
   // command line takes precedence (ParseCommandLine() below resets the flag).
