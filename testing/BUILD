@@ -56,7 +56,7 @@ centipede_fuzz_target(
 ################################################################################
 
 centipede_fuzz_target(
-    name = "multi_sanitizer_test",
+    name = "multi_sanitizer_fuzz_target",
 )
 
 ################################################################################

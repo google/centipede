@@ -29,7 +29,8 @@ class Command final {
   Command& operator=(Command&& other) = delete;
 
   // Move constructor, ensures the moved-from object doesn't own the pipes.
-  // TODO(kcc): [impl] add a test, other than multi_sanitizer_test.sh, for this.
+  // TODO(kcc): [impl] add a test, other than multi_sanitizer_fuzz_target.sh,
+  // for this.
   Command(Command&& other)
       : path_(std::move(other.path_)),
         args_(std::move(other.args_)),
@@ -52,8 +53,8 @@ class Command final {
   // `out`: stdout redirect path (empty means none).
   // `err`: stderr redirect path (empty means none).
   // If `out` == `err` and both are non-empty, stdout/stderr are combined.
-  Command(std::string_view path, const std::vector<std::string> &args = {},
-          const std::vector<std::string> &env = {}, std::string_view out = "",
+  Command(std::string_view path, const std::vector<std::string>& args = {},
+          const std::vector<std::string>& env = {}, std::string_view out = "",
           std::string_view err = "")
       : path_(path), args_(args), env_(env), out_(out), err_(err) {}
 
