@@ -27,6 +27,10 @@ using Rng = std::mt19937_64;
 
 using ByteArray = std::vector<uint8_t>;
 
+// Macro used to allow tests to access protected or private members of a class.
+#define FRIEND_TEST(test_case_name, test_name) \
+  friend class test_case_name##_##test_name##_Test
+
 }  // namespace centipede
 
 #endif  // THIRD_PARTY_CENTIPEDE_DEFS_H_
