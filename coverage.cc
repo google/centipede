@@ -126,7 +126,7 @@ Coverage::PCTable Coverage::GetPcTableFromBinaryWithPcTable(
   int system_exit_code = cmd.Execute();
   if (system_exit_code) {
     LOG(INFO) << "system() for " << binary_path
-              << " with dump_pc_table failed: " << system_exit_code;
+              << " with --dump_pc_table failed: " << VV(system_exit_code);
     return PCTable();
   }
   ByteArray pc_infos_as_bytes;

@@ -71,20 +71,20 @@ function Run() {
 # Checks that $1 is the solution for the puzzle.
 function SolutionIs() {
   echo ====== SolutionIs: $1
-  grep "input bytes: $1" "${log}"
+  grep "Input bytes: $1" "${log}"
 }
 
 # Expects that Centipde found a timeout.
 function ExpectTimeout() {
   echo ======= ExpectTimeout
-  grep "timeout of .* seconds exceeded; exiting" "${log}"
-  grep "failure description: timeout-exceeded" "${log}"
+  grep "Timeout of .* seconds exceeded; exiting" "${log}"
+  grep "Failure description: timeout-exceeded" "${log}"
 }
 
 # Expects that Centipede found a OOM.
 function ExpectOOM() {
   echo ======= ExpectOOM
-  grep "failure description: out-of-memory" "${log}"
+  grep "Failure description: out-of-memory" "${log}"
 }
 
 # Expects that $1 is found in the log.

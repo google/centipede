@@ -53,7 +53,7 @@ TEST(SharedMemoryBlobSequence, ParentChild) {
   // Creating a child w/o first creating a parent should crash.
   EXPECT_DEATH(
       SharedMemoryBlobSequence child_with_no_parent(ShmemName().c_str()),
-      "shm_open failed");
+      "shm_open\\(\\) failed");
 
   SharedMemoryBlobSequence parent(ShmemName().c_str(), 1000);
   // Parent writes data.
@@ -106,10 +106,10 @@ TEST(SharedMemoryBlobSequence, CheckForResourceLeaks) {
 TEST(SharedMemoryBlobSequence, ReadVsWriteWithoutReset) {
   SharedMemoryBlobSequence blobseq(ShmemName().c_str(), 1000);
   blobseq.Write(Blob({1, 2, 3}));
-  EXPECT_DEATH(blobseq.Read(), "had_writes_after_reset");
+  EXPECT_DEATH(blobseq.Read(), "Had writes after reset");
   blobseq.Reset();
   EXPECT_EQ(blobseq.Read().size, 3);
-  EXPECT_DEATH(blobseq.Write(Blob({1, 2, 3, 4})), "had_reads_after_reset");
+  EXPECT_DEATH(blobseq.Write(Blob({1, 2, 3, 4})), "Had reads after reset");
   blobseq.Reset();
   blobseq.Write(Blob({1, 2, 3, 4}));
 }
@@ -118,7 +118,7 @@ TEST(SharedMemoryBlobSequence, ReadVsWriteWithoutReset) {
 TEST(SharedMemoryBlobSequence, WriteToFullSequence) {
   // Can't create SharedMemoryBlobSequence with sizes < 8.
   EXPECT_DEATH(SharedMemoryBlobSequence blobseq(ShmemName().c_str(), 7),
-               "size too small");
+               "Size too small");
 
   // Allocate a blob sequence with 28 bytes of storage.
   SharedMemoryBlobSequence blobseq(ShmemName().c_str(), 28);

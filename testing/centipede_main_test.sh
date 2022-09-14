@@ -109,7 +109,7 @@ test_dictionary() {
 
   echo "============ ${FUNC}: testing non-existing dictionary file"
   test_fuzz  --workdir="${WD}" --num_runs=0 --dictionary=/dev/null | tee "${LOG}"
-  assert_regex_in_file "empty or corrupt dictionary file: /dev/null" "${LOG}"
+  assert_regex_in_file "Empty or corrupt dictionary file: /dev/null" "${LOG}"
 
   echo "============ ${FUNC}: testing plain text dictionary file"
   echo '"blah"' > "${DICT}"
@@ -117,7 +117,7 @@ test_dictionary() {
   echo '"bazz"' >> "${DICT}"
   cat "${DICT}"
   test_fuzz  --workdir="${WD}" --num_runs=0 --dictionary="${DICT}" | tee "${LOG}"
-  assert_regex_in_file "loaded 3 dictionary entries from AFL/libFuzzer dictionary ${DICT}" "${LOG}"
+  assert_regex_in_file "Loaded 3 dictionary entries from AFL/libFuzzer dictionary ${DICT}" "${LOG}"
 
   echo "============ ${FUNC}: creating a binary dictionary file with 2 entries"
   echo "foo" > "${TMPCORPUS}"/foo
@@ -129,7 +129,7 @@ test_dictionary() {
   echo "============ ${FUNC}: testing binary dictionary file"
   ensure_empty_dir "${WD}"
   test_fuzz  --workdir="${WD}" --num_runs=0 --dictionary="${DICT}" | tee "${LOG}"
-  assert_regex_in_file "loaded 2 dictionary entries from ${DICT}" "${LOG}"
+  assert_regex_in_file "Loaded 2 dictionary entries from ${DICT}" "${LOG}"
 }
 
 # Creates workdir ($1) and tests --for_each_blob.

@@ -120,7 +120,7 @@ static void CheckTimeout() {
   if (state.run_time_flags.timeout_in_seconds != 0) {
     if (curr_time - start_time >
         static_cast<time_t>(state.run_time_flags.timeout_in_seconds)) {
-      fprintf(stderr, "========= timeout of %zd seconds exceeded; exiting\n",
+      fprintf(stderr, "========= Timeout of %zd seconds exceeded; exiting\n",
               state.run_time_flags.timeout_in_seconds);
       WriteFailureDescription("timeout-exceeded");
       _exit(EXIT_FAILURE);

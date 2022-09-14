@@ -17,7 +17,7 @@
 // it is also effective.
 
 // RUN: Run --use_dataflow_features=0 --path_level=10
-// RUN: ExpectInLog "input bytes: .x1.x2.x3"
+// RUN: ExpectInLog "Input bytes: .x1.x2.x3"
 
 // This puzzle aborts on input "\x1\x2\x3"
 // The code here has very little control flow, but an exponential number of

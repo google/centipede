@@ -63,7 +63,7 @@ void CentipedeCallbacks::PopulateSymbolAndPcTables(
     symbols.GetSymbolsFromBinary(pc_table, binary_name, env_.symbolizer_path,
                                  tmp1, tmp2);
     if (symbols.size() != pc_table.size()) {
-      LOG(INFO) << "symbolization failed, debug symbols will not be used";
+      LOG(INFO) << "Symbolization failed, debug symbols will not be used";
       // Preserve the pc_table. Set symbols to unknown so that the sizes of
       // pc_table and symbols continue to match.
       symbols.SetAllToUnknown(pc_table.size());
@@ -129,7 +129,7 @@ int CentipedeCallbacks::ExecuteCentipedeSancovBinaryWithShmem(
       execution_request::RequestExecution(inputs, inputs_blobseq_);
 
   if (num_inputs_written != inputs.size()) {
-    LOG(INFO) << "wrote " << num_inputs_written << "/" << inputs.size()
+    LOG(INFO) << "Wrote " << num_inputs_written << "/" << inputs.size()
               << " inputs; shmem_size_mb might be too small: "
               << env_.shmem_size_mb;
   }
@@ -150,7 +150,7 @@ int CentipedeCallbacks::ExecuteCentipedeSancovBinaryWithShmem(
   // * some outputs were not written because the outputs_blobseq_ overflown.
   //   * Logged by the following code.
   if (retval == 0 && batch_result.num_outputs_read() != num_inputs_written) {
-    LOG(INFO) << "read " << batch_result.num_outputs_read() << "/"
+    LOG(INFO) << "Read " << batch_result.num_outputs_read() << "/"
               << num_inputs_written
               << " outputs; shmem_size_mb might be too small: "
               << env_.shmem_size_mb;
@@ -207,7 +207,7 @@ size_t CentipedeCallbacks::LoadDictionary(std::string_view dictionary_path) {
   std::vector<ByteArray> entries;
   if (ParseAFLDictionary(text, entries) && !entries.empty()) {
     byte_array_mutator_.AddToDictionary(entries);
-    LOG(INFO) << "loaded " << entries.size()
+    LOG(INFO) << "Loaded " << entries.size()
               << " dictionary entries from AFL/libFuzzer dictionary "
               << dictionary_path;
     return entries.size();
@@ -217,9 +217,9 @@ size_t CentipedeCallbacks::LoadDictionary(std::string_view dictionary_path) {
   std::vector<ByteArray> unpacked_corpus;
   UnpackBytesFromAppendFile(packed_corpus, &unpacked_corpus);
   CHECK(!unpacked_corpus.empty())
-      << "empty or corrupt dictionary file: " << dictionary_path;
+      << "Empty or corrupt dictionary file: " << dictionary_path;
   byte_array_mutator_.AddToDictionary(unpacked_corpus);
-  LOG(INFO) << "loaded " << unpacked_corpus.size()
+  LOG(INFO) << "Loaded " << unpacked_corpus.size()
             << " dictionary entries from " << dictionary_path;
   return unpacked_corpus.size();
 }

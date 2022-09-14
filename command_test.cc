@@ -58,11 +58,11 @@ TEST(Command, Execute) {
     Command self_sigint("bash -c 'kill -SIGINT $$'");
     self_sigint.Execute();
     if (EarlyExitRequested()) {
-      LOG(INFO) << "early exit requested";
+      LOG(INFO) << "Early exit requested";
       exit(ExitCode());
     }
   };
-  EXPECT_DEATH(self_sigint_lambda(), "early exit requested");
+  EXPECT_DEATH(self_sigint_lambda(), "Early exit requested");
 }
 
 TEST(Command, ForkServer) {

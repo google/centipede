@@ -110,7 +110,7 @@ int Centipede::SaveCorpusToLocalDir(const Environment &env,
       ++num_read;
       WriteToLocalHashedFileInDir(save_corpus_to_local_dir, blob);
     }
-    LOG(INFO) << "read " << num_read << " from " << env.MakeCorpusPath(shard);
+    LOG(INFO) << "Read " << num_read << " from " << env.MakeCorpusPath(shard);
   }
   return 0;
 }
@@ -171,10 +171,9 @@ void Centipede::Log(std::string_view log_type, size_t min_log_level) {
     return;
   }
   const size_t seconds_since_beginning = timer_.seconds_since_beginning();
-  double exec_speed =
-      seconds_since_beginning
-          ? static_cast<double>(num_runs_) / seconds_since_beginning
-          : 0;
+  double exec_speed = seconds_since_beginning ? static_cast<double>(num_runs_) /
+                                                    seconds_since_beginning
+                                              : 0;
   if (exec_speed > 1.) exec_speed = std::floor(exec_speed);
   auto [max, avg] = corpus_.MaxAndAvgSize();
   stats_.corpus_size = corpus_.NumActive();
@@ -277,7 +276,7 @@ bool Centipede::RunBatch(const std::vector<ByteArray> &input_vec,
         success;
   }
   if (!success && env_.exit_on_crash) {
-    LOG(INFO) << "exit_on_crash is enabled; exiting soon";
+    LOG(INFO) << "--exit_on_crash is enabled; exiting soon";
     RequestEarlyExit(1);
     return false;
   }
@@ -411,13 +410,13 @@ void Centipede::MergeFromOtherCorpus(std::string_view merge_from_dir,
     for (size_t idx = initial_corpus_size; idx < new_corpus_size; ++idx) {
       CHECK_OK(appender->Append(corpus_.Get(idx)));
     }
-    LOG(INFO) << "merge: " << (new_corpus_size - initial_corpus_size)
+    LOG(INFO) << "Merge: " << (new_corpus_size - initial_corpus_size)
               << " new inputs added";
   }
 }
 
 void Centipede::FuzzingLoop() {
-  LOG(INFO) << "shard: " << env_.my_shard_index << "/" << env_.total_shards
+  LOG(INFO) << "Shard: " << env_.my_shard_index << "/" << env_.total_shards
             << " " << TemporaryLocalDirPath() << " "
             << "seed: " << env_.seed << "\n\n\n";
 
@@ -438,9 +437,8 @@ void Centipede::FuzzingLoop() {
     size_t num_shards_loaded = 0;
     for (auto shard : shards) {
       LoadShard(env_, shard, /*rerun=*/shard == env_.my_shard_index);
-      if ((++num_shards_loaded % 100) == 0) {  // Log every 100 shards.
-        LOG(INFO) << "num_shards_loaded: " << num_shards_loaded;
-      }
+      // Log every 100 shards.
+      LOG_IF(INFO, (++num_shards_loaded % 100) == 0) << VV(num_shards_loaded);
     }
   } else {
     // Only load my shard.
@@ -553,7 +551,7 @@ void Centipede::ReportCrash(std::string_view binary,
   std::string log_prefix =
       absl::StrCat("ReportCrash[", num_crash_reports_, "]: ");
 
-  LOG(INFO) << log_prefix << "the crash occurred when running " << binary
+  LOG(INFO) << log_prefix << "The crash occurred when running " << binary
             << " on " << input_vec.size() << " inputs";
   num_crash_reports_++;
   if (num_crash_reports_ == env_.max_num_crash_reports) {
@@ -573,13 +571,13 @@ void Centipede::ReportCrash(std::string_view binary,
     auto crash_dir = env_.MakeCrashReproducerDirPath();
     RemoteMkdir(crash_dir);
     std::string file_path = std::filesystem::path(crash_dir).append(hash);
-    LOG(INFO) << log_prefix << "crash detected, saving input to " << file_path;
-    LOG(INFO) << "input bytes: " << AsString(input);
-    LOG(INFO) << "exit code: " << batch_result.exit_code();
-    LOG(INFO) << "failure description: " << batch_result.failure_description();
+    LOG(INFO) << log_prefix << "Crash detected, saving input to " << file_path;
+    LOG(INFO) << "Input bytes: " << AsString(input);
+    LOG(INFO) << "Exit code: " << batch_result.exit_code();
+    LOG(INFO) << "Failure description: " << batch_result.failure_description();
     auto file = RemoteFileOpen(file_path, "w");  // overwrites existing file.
     if (!file) {
-      LOG(FATAL) << log_prefix << "failed to open " << file_path;
+      LOG(FATAL) << log_prefix << "Failed to open " << file_path;
     }
     RemoteFileAppend(file, input);
     RemoteFileClose(file);
@@ -589,7 +587,7 @@ void Centipede::ReportCrash(std::string_view binary,
   // First, try the input on which we presumably crashed.
   CHECK_EQ(input_vec.size(), batch_result.results().size());
   if (batch_result.num_outputs_read() < input_vec.size()) {
-    LOG(INFO) << log_prefix << "executing input "
+    LOG(INFO) << log_prefix << "Executing input "
               << batch_result.num_outputs_read() << " out of "
               << input_vec.size();
     if (TryOneInput(input_vec[batch_result.num_outputs_read()])) return;

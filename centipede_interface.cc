@@ -66,7 +66,7 @@ int ForEachBlob(const Environment &env) {
     auto blob_reader = DefaultBlobFileReaderFactory();
     absl::Status open_status = blob_reader->Open(arg);
     if (!open_status.ok()) {
-      LOG(INFO) << "failed to open " << arg << ": " << open_status;
+      LOG(INFO) << "Failed to open " << arg << ": " << open_status;
       return EXIT_FAILURE;
     }
     absl::Span<uint8_t> blob;
@@ -112,7 +112,7 @@ int CentipedeMain(const Environment &env,
   }
 
   // Create the coverage dir once, before creating any threads.
-  LOG(INFO) << "coverage dir " << env.MakeCoverageDirPath();
+  LOG(INFO) << "Coverage dir " << env.MakeCoverageDirPath();
   RemoteMkdir(env.MakeCoverageDirPath());
 
   auto one_time_callbacks = callbacks_factory.create(env);
