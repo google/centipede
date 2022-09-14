@@ -277,7 +277,9 @@ Environment::Environment(int argc, char **argv)
   CHECK_GE(total_shards, 1);
   CHECK_GE(batch_size, 1);
   CHECK_GE(num_threads, 1);
-  CHECK_LE(my_shard_index + num_threads, total_shards);
+  CHECK_LE(num_threads, total_shards);
+  CHECK_LE(my_shard_index + num_threads, total_shards)
+      << VV(my_shard_index) << VV(num_threads);
   if (argc > 0) {
     exec_name = argv[0];
     for (int argno = 1; argno < argc; ++argno) {
