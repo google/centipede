@@ -30,6 +30,7 @@
 #include "./environment.h"
 #include "./execution_result.h"
 #include "./remote_file.h"
+#include "./stats.h"
 #include "./symbol_table.h"
 
 namespace centipede {
@@ -39,7 +40,7 @@ class Centipede {
  public:
   Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
             const Coverage::PCTable &pc_table, const SymbolTable &symbols,
-            CoverageLogger &coverage_logger);
+            CoverageLogger &coverage_logger, Stats &stats);
   virtual ~Centipede() {}
   // Main loop.
   void FuzzingLoop();
@@ -150,6 +151,9 @@ class Centipede {
   // * with --v=2 (or higher) before "init-done".
   // * with --v=1 (or higher) after "init-done".
   int coverage_logger_verbose_level_ = 2;
+
+  // Statistics of the current run.
+  Stats &stats_;
 
   // Counts the number of crashes reported so far.
   int num_crash_reports_ = 0;

@@ -36,6 +36,7 @@
 #include "./environment.h"
 #include "./logging.h"
 #include "./remote_file.h"
+#include "./stats.h"
 #include "./symbol_table.h"
 #include "./util.h"
 
@@ -125,29 +126,35 @@ int CentipedeMain(const Environment &env,
   }
   CoverageLogger coverage_logger(pc_table, symbols);
 
-  std::vector<Environment> envs(env.num_threads, env);
-  std::vector<std::thread> threads(env.num_threads);
-  auto thread_callback = [&](Environment &my_env) {
+  auto thread_callback = [&](Environment &my_env, Stats &stats) {
     CreateLocalDirRemovedAtExit(TemporaryLocalDirPath());  // creates temp dir.
     my_env.seed = GetRandomSeed(env.seed);  // uses TID, call in this thread.
     auto user_callbacks = callbacks_factory.create(my_env);
     Centipede centipede(my_env, *user_callbacks, pc_table, symbols,
-                        coverage_logger);
+                        coverage_logger, stats);
     centipede.FuzzingLoop();
     callbacks_factory.destroy(user_callbacks);
   };
+
+  std::vector<Environment> envs(env.num_threads, env);
+  std::vector<Stats> stats_vec(env.num_threads);
+  std::vector<std::thread> threads(env.num_threads);
 
   // Create threads.
   for (size_t thread_idx = 0; thread_idx < env.num_threads; thread_idx++) {
     Environment &my_env = envs[thread_idx];
     my_env.my_shard_index = env.my_shard_index + thread_idx;
     my_env.UpdateForExperiment();
-    threads[thread_idx] = std::thread(thread_callback, std::ref(my_env));
+    threads[thread_idx] = std::thread(thread_callback, std::ref(my_env),
+                                      std::ref(stats_vec[thread_idx]));
   }
   // Join threads.
   for (size_t thread_idx = 0; thread_idx < env.num_threads; thread_idx++) {
     threads[thread_idx].join();
   }
+
+  PrintExperimentStats(stats_vec, envs, std::cerr);
+
   return ExitCode();
 }
 

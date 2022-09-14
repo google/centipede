@@ -78,7 +78,7 @@ namespace centipede {
 Centipede::Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
                      const Coverage::PCTable &pc_table,
                      const SymbolTable &symbols,
-                     CoverageLogger &coverage_logger)
+                     CoverageLogger &coverage_logger, Stats &stats)
     : env_(env),
       user_callbacks_(user_callbacks),
       rng_(env_.seed),
@@ -89,6 +89,7 @@ Centipede::Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
       symbols_(symbols),
       function_filter_(env_.function_filter, symbols_),
       coverage_logger_(coverage_logger),
+      stats_(stats),
       input_filter_path_(std::filesystem::path(TemporaryLocalDirPath())
                              .append("filter-input")),
       input_filter_cmd_(env_.input_filter, {input_filter_path_}, {/*env*/},
@@ -176,6 +177,8 @@ void Centipede::Log(std::string_view log_type, size_t min_log_level) {
           : 0;
   if (exec_speed > 1.) exec_speed = std::floor(exec_speed);
   auto [max, avg] = corpus_.MaxAndAvgSize();
+  stats_.corpus_size = corpus_.NumActive();
+  stats_.num_covered_pcs = fs_.ToCoveragePCs().size();
   LOG(INFO) << env_.experiment_name << "[" << num_runs_ << "]"
             << " " << log_type << ":"
             << " ft: " << fs_.size() << " cov: " << fs_.ToCoveragePCs().size()
