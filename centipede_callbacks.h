@@ -93,8 +93,9 @@ class CentipedeCallbacks {
   // implement the Structure-Aware Fuzzing interface, as described here:
   // github.com/google/fuzzing/blob/master/docs/structure-aware-fuzzing.md
   //
-  // Produces `mutants.size()` mutants,
-  // replacing the existing elements of `mutants`.
+  // Produces at most `mutants.size()` non-empty mutants,
+  // replacing the existing elements of `mutants`,
+  // and shrinking `mutants` if needed.
   //
   // Returns true on success.
   bool MutateViaExternalBinary(std::string_view binary,

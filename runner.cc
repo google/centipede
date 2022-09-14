@@ -471,9 +471,13 @@ static int MutateInputsFromShmem(
   // Use `input_data` as a scratch to produce mutants.
   uint8_t *mutant = input_data;
   constexpr size_t kMaxMutantSize = kMaxDataSize;
+  constexpr size_t kAverageMutationAttempts = 2;
 
   // Produce mutants.
-  for (size_t i = 0; i < num_mutants; ++i) {
+  for (size_t attempt = 0, num_outputs = 0;
+       attempt < num_mutants * kAverageMutationAttempts &&
+       num_outputs < num_mutants;
+       ++attempt) {
     const auto &input = inputs[rand_r(&seed) % num_inputs];
 
     size_t size = std::min(input.size(), kMaxMutantSize);
@@ -489,8 +493,9 @@ static int MutateInputsFromShmem(
     } else {
       new_size = custom_mutator_cb(mutant, size, kMaxDataSize, rand_r(&seed));
     }
-
+    if (new_size == 0) continue;
     if (!outputs_blobseq.Write({1 /*unused tag*/, new_size, mutant})) break;
+    ++num_outputs;
   }
   return EXIT_SUCCESS;
 }

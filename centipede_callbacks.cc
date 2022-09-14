@@ -184,9 +184,13 @@ bool CentipedeCallbacks::MutateViaExternalBinary(
   int retval = cmd.Execute();
 
   // Read all mutants.
-  for (auto &mutant : mutants) {
+  for (size_t i = 0; i < mutants.size(); ++i) {
     auto blob = outputs_blobseq_.Read();
-    if (blob.size == 0) break;
+    if (blob.size == 0) {
+      mutants.resize(i);
+      break;
+    }
+    auto &mutant = mutants[i];
     mutant.clear();
     mutant.insert(mutant.begin(), blob.data, blob.data + blob.size);
   }

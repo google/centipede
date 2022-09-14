@@ -176,10 +176,13 @@ extern "C" __attribute__((weak)) size_t LLVMFuzzerMutate(uint8_t *data,
 // Reverts the bytes in `data` and sometimes adds a number in [100,107)
 // at the end.
 // If available, LLVMFuzzerMutate is used some of the time.
+// Also returns 0 sometimes to simulate mutation failures.
 extern "C" size_t LLVMFuzzerCustomMutator(uint8_t *data, size_t size,
                                           size_t max_size, unsigned int seed) {
   if ((seed % 3) == 0) {
     return LLVMFuzzerMutate(data, size, max_size);
+  } else if ((seed % 3) == 1) {
+    return 0;
   }
   for (size_t i = 0; i < size / 2; ++i) {
     std::swap(data[i], data[size - i - 1]);

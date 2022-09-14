@@ -326,7 +326,7 @@ TEST(Centipede, MutateViaExternalBinary) {
   all_expected_mutants.insert(all_expected_mutants.end(),
                               expected_crossover_mutants.begin(),
                               expected_crossover_mutants.end());
-  std::vector<ByteArray> mutants(10000);
+  std::vector<ByteArray> mutants;
 
   // Test with crossover enabled (default).
   {
@@ -334,9 +334,11 @@ TEST(Centipede, MutateViaExternalBinary) {
     MutateCallbacks callbacks(env);
 
     // Expect to fail on the binary w/o a custom mutator.
+    mutants.resize(1);
     EXPECT_FALSE(callbacks.MutateViaExternalBinary(
         binary_without_custom_mutator, inputs, mutants));
     // Expect to succeed on the binary with a custom mutator.
+    mutants.resize(10000);
     EXPECT_TRUE(callbacks.MutateViaExternalBinary(binary_with_custom_mutator,
                                                   inputs, mutants));
     // Check that we see all expected mutants, and that they are non-empty.
@@ -351,6 +353,7 @@ TEST(Centipede, MutateViaExternalBinary) {
     Environment env_no_crossover;
     env_no_crossover.crossover_level = 0;
     MutateCallbacks callbacks_no_crossover(env_no_crossover);
+    mutants.resize(10000);
     EXPECT_TRUE(callbacks_no_crossover.MutateViaExternalBinary(
         binary_with_custom_mutator, inputs, mutants));
     // Must contain normal mutants, but not the ones from crossover.
