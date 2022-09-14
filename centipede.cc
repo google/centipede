@@ -458,7 +458,7 @@ void Centipede::FuzzingLoop() {
   if (corpus_.NumTotal() == 0)
     corpus_.Add(user_callbacks_.DummyValidInput(), {}, fs_, coverage_frontier_);
 
-  Log("init-done:", 0);
+  Log("init-done", 0);
   // Clear timer_ and num_runs_, so that the pre-init work doesn't affect them.
   timer_ = Timer();
   num_runs_ = 0;
