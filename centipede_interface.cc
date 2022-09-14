@@ -21,6 +21,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <thread>  // NOLINT(build/c++11)
 #include <vector>
@@ -88,6 +89,28 @@ int ForEachBlob(const Environment &env) {
   return EXIT_SUCCESS;
 }
 
+// Runs in a dedicated thread, periodically calls PrintExperimentStats
+// on `stats_vec` and `envs`.
+// Stops when `continue_running` becomes false.
+// Exits immediately if --experiment flag is not used.
+void PrintExperimentStatsThread(const std::atomic<bool> &continue_running,
+                                const std::vector<Stats> &stats_vec,
+                                const std::vector<Environment> &envs) {
+  CHECK(!envs.empty());
+  if (envs.front().experiment.empty()) return;
+  for (int i = 0; continue_running; ++i) {
+    // Sleep at least a few seconds, and at most 600.
+    int seconds_to_sleep = std::clamp(i, 5, 600);
+    // Sleep(1) in a loop so that we check continue_running once a second.
+    while (--seconds_to_sleep && continue_running) {
+      sleep(1);
+    }
+    std::ostringstream os;
+    PrintExperimentStats(stats_vec, envs, os);
+    LOG(INFO) << "Experiment:\n" << os.str();
+  }
+}
+
 }  // namespace
 
 int CentipedeMain(const Environment &env,
@@ -139,6 +162,7 @@ int CentipedeMain(const Environment &env,
   std::vector<Environment> envs(env.num_threads, env);
   std::vector<Stats> stats_vec(env.num_threads);
   std::vector<std::thread> threads(env.num_threads);
+  std::atomic<bool> stats_thread_continue_running(true);
 
   // Create threads.
   for (size_t thread_idx = 0; thread_idx < env.num_threads; thread_idx++) {
@@ -148,12 +172,17 @@ int CentipedeMain(const Environment &env,
     threads[thread_idx] = std::thread(thread_callback, std::ref(my_env),
                                       std::ref(stats_vec[thread_idx]));
   }
+
+  std::thread stats_thread(PrintExperimentStatsThread,
+                           std::ref(stats_thread_continue_running),
+                           std::ref(stats_vec), std::ref(envs));
+
   // Join threads.
   for (size_t thread_idx = 0; thread_idx < env.num_threads; thread_idx++) {
     threads[thread_idx].join();
   }
-
-  PrintExperimentStats(stats_vec, envs, std::cerr);
+  stats_thread_continue_running = false;
+  stats_thread.join();
 
   return ExitCode();
 }
