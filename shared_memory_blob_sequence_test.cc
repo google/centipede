@@ -183,4 +183,17 @@ TEST(SharedMemoryBlobSequence, WriteAfterReset) {
   EXPECT_FALSE(blob2.IsValid());
 }
 
+// Test ReleaseSharedMemory and NumBytesUsed.
+TEST(SharedMemoryBlobSequence, ReleaseSharedMemory) {
+  // Allocate a blob sequence with 1M bytes of storage.
+  SharedMemoryBlobSequence blobseq(ShmemName().c_str(), 1 << 20);
+  EXPECT_EQ(blobseq.NumBytesUsed(), 0);
+  EXPECT_TRUE(blobseq.Write(Blob({1, 2, 3, 4})));
+  EXPECT_GT(blobseq.NumBytesUsed(), 5);
+  blobseq.ReleaseSharedMemory();
+  EXPECT_EQ(blobseq.NumBytesUsed(), 0);
+  EXPECT_TRUE(blobseq.Write(Blob({1, 2, 3, 4})));
+  EXPECT_GT(blobseq.NumBytesUsed(), 5);
+}
+
 }  // namespace centipede

@@ -74,6 +74,19 @@ void SharedMemoryBlobSequence::Reset() {
   had_writes_after_reset_ = false;
 }
 
+void SharedMemoryBlobSequence::ReleaseSharedMemory() {
+  // Setting size to 0 releases the memory to OS.
+  ErrorOnFailure(ftruncate(fd_, 0) != 0, "ftruncate(0) failed)");
+  // Set the size back to `size`. The memory is not actually reserved.
+  ErrorOnFailure(ftruncate(fd_, size_) != 0, "ftruncate(size_) failed)");
+}
+
+size_t SharedMemoryBlobSequence::NumBytesUsed() const {
+  struct stat statbuf;
+  ErrorOnFailure(fstat(fd_, &statbuf), "fstat() failed)");
+  return statbuf.st_blocks * S_BLKSIZE;
+}
+
 bool SharedMemoryBlobSequence::Write(Blob blob) {
   ErrorOnFailure(!blob.IsValid(), "Write(): blob.tag must not be zero");
   ErrorOnFailure(had_reads_after_reset_, "Write(): Had reads after reset");

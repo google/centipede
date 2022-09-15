@@ -137,10 +137,12 @@ int CentipedeCallbacks::ExecuteCentipedeSancovBinaryWithShmem(
   // Run.
   Command &cmd = GetOrCreateCommandForBinary(binary);
   int retval = cmd.Execute();
+  inputs_blobseq_.ReleaseSharedMemory();  // Inputs are already consumed.
 
   // Get results.
   batch_result.exit_code() = retval;
   CHECK(batch_result.Read(outputs_blobseq_));
+  outputs_blobseq_.ReleaseSharedMemory();  // Outputs are already consumed.
 
   // We may have fewer feature blobs than inputs if
   // * some inputs were not written (i.e. num_inputs_written < inputs.size).
@@ -182,6 +184,7 @@ bool CentipedeCallbacks::MutateViaExternalBinary(
   // Execute.
   Command &cmd = GetOrCreateCommandForBinary(binary);
   int retval = cmd.Execute();
+  inputs_blobseq_.ReleaseSharedMemory();  // Inputs are already consumed.
 
   // Read all mutants.
   for (size_t i = 0; i < mutants.size(); ++i) {
@@ -194,6 +197,7 @@ bool CentipedeCallbacks::MutateViaExternalBinary(
     mutant.clear();
     mutant.insert(mutant.begin(), blob.data, blob.data + blob.size);
   }
+  outputs_blobseq_.ReleaseSharedMemory();  // Outputs are already consumed.
   return retval == 0;
 }
 

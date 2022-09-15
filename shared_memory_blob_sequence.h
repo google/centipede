@@ -125,6 +125,14 @@ class SharedMemoryBlobSequence {
   // Does not affect the contents of the shared memory.
   void Reset();
 
+  // Releases shared memory used by `this`.
+  void ReleaseSharedMemory();
+
+  // Returns the number of bytes used by the shared mapping.
+  // It will be zero just after creation and after the call to
+  // ReleaseSharedMemory().
+  size_t NumBytesUsed() const;
+
  private:
   // mmaps `size_` bytes from `fd_`, assigns to `data_`. Crashes on error.
   void MmapData();
