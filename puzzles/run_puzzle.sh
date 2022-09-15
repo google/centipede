@@ -28,7 +28,9 @@ ls -la "$(dirname "$0")"
 source "$(dirname "$0")/../test_util.sh"
 
 readonly centipede_dir="$(centipede::get_centipede_test_srcdir)"
-readonly centipede="${centipede_dir}/centipede_main"
+centipede::maybe_set_var_to_executable_path \
+  centipede "${centipede_dir}/centipede_main"
+readonly centipede
 
 readonly target_name="$(basename "$0")"
 readonly seed_and_puzzle_name="${target_name#run_}"
@@ -44,9 +46,9 @@ readonly script="${TEST_TMPDIR}/script"
 
 # Read the configuration from the puzzle source.
 grep 'RUN:' "${puzzle_source_path}" | sed 's/^.*RUN://' > "${script}"
-echo ======== SCRIPT
+echo "======== SCRIPT"
 cat "${script}"
-echo ======== END SCRIPT
+echo "======== END SCRIPT"
 
 ##################################### USER_FUNCTIONS
 
@@ -70,27 +72,27 @@ function Run() {
 
 # Checks that $1 is the solution for the puzzle.
 function SolutionIs() {
-  echo ====== SolutionIs: $1
-  grep "Input bytes: $1" "${log}"
+  echo "====== ${FUNCNAME[0]}: $1"
+  centipede::assert_regex_in_file "Input bytes: $1" "${log}"
 }
 
 # Expects that Centipde found a timeout.
 function ExpectTimeout() {
-  echo ======= ExpectTimeout
-  grep "Timeout of .* seconds exceeded; exiting" "${log}"
-  grep "Failure description: timeout-exceeded" "${log}"
+  echo "======= ${FUNCNAME[0]}"
+  centipede::assert_regex_in_file "Timeout of .* seconds exceeded; exiting" "${log}"
+  centipede::assert_regex_in_file "Failure description: timeout-exceeded" "${log}"
 }
 
 # Expects that Centipede found a OOM.
 function ExpectOOM() {
-  echo ======= ExpectOOM
-  grep "Failure description: out-of-memory" "${log}"
+  echo "======= ${FUNCNAME[0]}"
+  centipede::assert_regex_in_file "Failure description: out-of-memory" "${log}"
 }
 
 # Expects that $1 is found in the log.
 function ExpectInLog() {
-  echo ======= ExpectInLog: $1
-  grep "$1" "${log}"
+  echo "======= ${FUNCNAME[0]}: $1"
+  centipede::assert_regex_in_file "$1" "${log}"
 }
 
 ##################################### end USER_FUNCTIONS
