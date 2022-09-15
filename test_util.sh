@@ -59,3 +59,30 @@ function centipede::maybe_set_var_to_executable_path() {
     die "Path '${var_ref}' doesn't exist or is not executable"
   fi
 }
+
+function centipede::ensure_empty_dir() {
+  mkdir -p "$1"
+  rm -rf "$1:?"/*
+}
+
+function centipede::assert_regex_in_file() {
+  local -r regex="$1"
+  local -r file="$2"
+  if ! grep -q "${regex}" "${file}"; then
+    echo
+    echo ">>>>>>>>>> BEGIN ${file} >>>>>>>>>>"
+    cat "${file}"
+    echo "<<<<<<<<<< END ${file} <<<<<<<<<<"
+    echo
+    die "^^^ File ${file} doesn't contain expected regex /${regex}/"
+  fi
+}
+
+function centipede::print_fuzzing_stats_from_log() {
+  echo "====== LOGS: $*"
+  for f in "init-done:" "end-fuzz:"; do
+    grep "centipede.*${f}" "$@"
+    echo
+  done
+}
+

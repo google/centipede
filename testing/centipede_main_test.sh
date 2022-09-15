@@ -47,40 +47,14 @@ abort_test_fuzz() {
   set +x
 }
 
-assert_regex_in_file() {
-  local -r regex="$1"
-  local -r file="$2"
-  if ! grep "${regex}" "${file}"; then
-    echo
-    echo ">>>>>>>>>> BEGIN ${file} >>>>>>>>>>"
-    cat "${file}"
-    echo "<<<<<<<<<< END ${file} <<<<<<<<<<"
-    echo
-    die "^^^ File ${file} doesn't contain expected regex /${regex}/"
-  fi
-}
-
-print_fuzzing_stats_from_log() {
-  echo "====== LOGS: $*"
-  for f in "init-done:" "end-fuzz:"; do
-    grep "centipede.*${f}" "$@"
-    echo
-  done
-}
-
-ensure_empty_dir() {
-  mkdir -p "$1"
-  rm -rf "$1:?"/*
-}
-
 # Creates workdir ($1) and tests fuzzing with a target that crashes.
 test_crashing_target() {
   FUNC="${FUNCNAME[0]}"
   WD="${TEST_TMPDIR}/${FUNC}/WD"
   TMPCORPUS="${TEST_TMPDIR}/${FUNC}/C"
   LOG="${TEST_TMPDIR}/${FUNC}/log"
-  ensure_empty_dir "${WD}"
-  ensure_empty_dir "${TMPCORPUS}"
+  centipede::ensure_empty_dir "${WD}"
+  centipede::ensure_empty_dir "${TMPCORPUS}"
 
   # Create a corpus with one crasher and one other input.
   echo -n "AbOrT" > "${TMPCORPUS}/AbOrT"  # induces abort in the target.
@@ -90,11 +64,11 @@ test_crashing_target() {
   # Run fuzzing with num_runs=0, i.e. only run the inputs from the corpus.
   # Expecting a crash to be observed and reported.
   abort_test_fuzz --workdir="${WD}" --num_runs=0 | tee "${LOG}"
-  assert_regex_in_file "2 inputs to rerun" "${LOG}"
-  assert_regex_in_file "Batch execution failed; exit code:" "${LOG}"
+  centipede::assert_regex_in_file "2 inputs to rerun" "${LOG}"
+  centipede::assert_regex_in_file "Batch execution failed; exit code:" "${LOG}"
 
   # Comes from test_fuzz_target.cc
-  assert_regex_in_file "I AM ABOUT TO ABORT" "${LOG}"
+  centipede::assert_regex_in_file "I AM ABOUT TO ABORT" "${LOG}"
 }
 
 # Creates workdir ($1) and tests how dictionaries are loaded.
@@ -104,12 +78,12 @@ test_dictionary() {
   TMPCORPUS="${TEST_TMPDIR}/${FUNC}/C"
   DICT="${TEST_TMPDIR}/${FUNC}/dict"
   LOG="${TEST_TMPDIR}/${FUNC}/log"
-  ensure_empty_dir "${WD}"
-  ensure_empty_dir "${TMPCORPUS}"
+  centipede::ensure_empty_dir "${WD}"
+  centipede::ensure_empty_dir "${TMPCORPUS}"
 
   echo "============ ${FUNC}: testing non-existing dictionary file"
   test_fuzz  --workdir="${WD}" --num_runs=0 --dictionary=/dev/null | tee "${LOG}"
-  assert_regex_in_file "Empty or corrupt dictionary file: /dev/null" "${LOG}"
+  centipede::assert_regex_in_file "Empty or corrupt dictionary file: /dev/null" "${LOG}"
 
   echo "============ ${FUNC}: testing plain text dictionary file"
   echo '"blah"' > "${DICT}"
@@ -117,19 +91,19 @@ test_dictionary() {
   echo '"bazz"' >> "${DICT}"
   cat "${DICT}"
   test_fuzz  --workdir="${WD}" --num_runs=0 --dictionary="${DICT}" | tee "${LOG}"
-  assert_regex_in_file "Loaded 3 dictionary entries from AFL/libFuzzer dictionary ${DICT}" "${LOG}"
+  centipede::assert_regex_in_file "Loaded 3 dictionary entries from AFL/libFuzzer dictionary ${DICT}" "${LOG}"
 
   echo "============ ${FUNC}: creating a binary dictionary file with 2 entries"
   echo "foo" > "${TMPCORPUS}"/foo
   echo "bat" > "${TMPCORPUS}"/binary
-  ensure_empty_dir "${WD}"
+  centipede::ensure_empty_dir "${WD}"
   test_fuzz  --workdir="${WD}" --export_corpus_from_local_dir "${TMPCORPUS}"
   cp "${WD}/corpus.0" "${DICT}"
 
   echo "============ ${FUNC}: testing binary dictionary file"
-  ensure_empty_dir "${WD}"
+  centipede::ensure_empty_dir "${WD}"
   test_fuzz  --workdir="${WD}" --num_runs=0 --dictionary="${DICT}" | tee "${LOG}"
-  assert_regex_in_file "Loaded 2 dictionary entries from ${DICT}" "${LOG}"
+  centipede::assert_regex_in_file "Loaded 2 dictionary entries from ${DICT}" "${LOG}"
 }
 
 # Creates workdir ($1) and tests --for_each_blob.
@@ -138,8 +112,8 @@ test_for_each_blob() {
   WD="${TEST_TMPDIR}/${FUNC}/WD"
   TMPCORPUS="${TEST_TMPDIR}/${FUNC}/C"
   LOG="${TEST_TMPDIR}/${FUNC}/log"
-  ensure_empty_dir "${WD}"
-  ensure_empty_dir "${TMPCORPUS}"
+  centipede::ensure_empty_dir "${WD}"
+  centipede::ensure_empty_dir "${TMPCORPUS}"
 
   echo "FoO" > "${TMPCORPUS}"/a
   echo "bAr" > "${TMPCORPUS}"/b
@@ -147,9 +121,9 @@ test_for_each_blob() {
   test_fuzz  --workdir="${WD}" --export_corpus_from_local_dir "${TMPCORPUS}"
   echo "============ ${FUNC}: test for_each_blob"
   test_fuzz --for_each_blob="cat %P"  "${WD}"/corpus.0 | tee "${LOG}"
-  assert_regex_in_file "Running 'cat %P' on ${WD}/corpus.0" "${LOG}"
-  assert_regex_in_file FoO "${LOG}"
-  assert_regex_in_file bAr "${LOG}"
+  centipede::assert_regex_in_file "Running 'cat %P' on ${WD}/corpus.0" "${LOG}"
+  centipede::assert_regex_in_file FoO "${LOG}"
+  centipede::assert_regex_in_file bAr "${LOG}"
 }
 
 # Creates workdir ($1) and tests --use_pcpair_features.
@@ -157,17 +131,17 @@ test_pcpair_features() {
   FUNC="${FUNCNAME[0]}"
   WD="${TEST_TMPDIR}/${FUNC}/WD"
   LOG="${TEST_TMPDIR}/${FUNC}/log"
-  ensure_empty_dir "${WD}"
+  centipede::ensure_empty_dir "${WD}"
 
   echo "============ ${FUNC}: fuzz with --use_pcpair_features=1"
   test_fuzz --workdir="${WD}" --use_pcpair_features=1  --num_runs=10000 \
     --symbolizer_path="${LLVM_SYMBOLIZER}" | tee "${LOG}"
-  assert_regex_in_file "end-fuzz.*pair: [^0]" "${LOG}"  # check the output
+  centipede::assert_regex_in_file "end-fuzz.*pair: [^0]" "${LOG}"
 
   echo "============ ${FUNC}: fuzz with --use_pcpair_features=1 w/o symbolizer"
   test_fuzz --workdir="${WD}" --use_pcpair_features=1  --num_runs=10000 \
     --symbolizer_path=/dev/null  | tee "${LOG}"
-  assert_regex_in_file "end-fuzz.*pair: [^0]" "${LOG}"  # check the output
+  centipede::assert_regex_in_file "end-fuzz.*pair: [^0]" "${LOG}"
 }
 
 test_crashing_target
