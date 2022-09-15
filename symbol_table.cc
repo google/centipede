@@ -14,6 +14,7 @@
 
 #include "./symbol_table.h"
 
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -53,26 +54,44 @@ void SymbolTable::GetSymbolsFromBinary(const Coverage::PCTable &pc_table,
                                        std::string_view symbolizer_path,
                                        std::string_view tmp_path1,
                                        std::string_view tmp_path2) {
-  auto pcs_path(tmp_path1);
-  auto symbols_path(tmp_path2);
-  // Create the input file (one PC per line).
-  std::string pcs_string;
-  for (auto &pc_info : pc_table) {
-    absl::StrAppend(&pcs_string, "0x", absl::Hex(pc_info.pc), "\n");
+  // NOTE: --symbolizer_path=/dev/null is a somewhat expected alternative to ""
+  // that users might pass.
+  if (symbolizer_path.empty() || symbolizer_path == "/dev/null") {
+    LOG(WARNING) << "Symbolizer unspecified: debug symbols will not be used";
+  } else {
+    auto pcs_path(tmp_path1);
+    auto symbols_path(tmp_path2);
+    // Create the input file (one PC per line).
+    std::string pcs_string;
+    for (auto &pc_info : pc_table) {
+      absl::StrAppend(&pcs_string, "0x", absl::Hex(pc_info.pc), "\n");
+    }
+    WriteToLocalFile(pcs_path, pcs_string);
+    // Run the symbolizer.
+    Command cmd(symbolizer_path,
+                {"--no-inlines", "-e", std::string(binary_path), "<",
+                 std::string(pcs_path)},
+                {/*env*/}, symbols_path);
+    int exit_code = cmd.Execute();
+    if (exit_code) {
+      LOG(ERROR) << "system() failed: " << VV(cmd.ToString()) << VV(exit_code);
+    } else {
+      // Get and process the symbolizer output.
+      std::ifstream symbolizer_output(std::string{symbols_path});
+      ReadFromLLVMSymbolizer(symbolizer_output);
+      std::filesystem::remove(pcs_path);
+      std::filesystem::remove(symbols_path);
+      if (size() != pc_table.size()) {
+        LOG(ERROR) << "Symbolization failed: debug symbols will not be used";
+      }
+    }
   }
-  WriteToLocalFile(pcs_path, pcs_string);
-  // Run the symbolizer.
-  Command cmd(symbolizer_path,
-              {"--no-inlines", "-e", std::string(binary_path), "<",
-               std::string(pcs_path)},
-              {/*env*/}, symbols_path);
-  int system_exit_code = cmd.Execute();
-  if (system_exit_code) LOG(INFO) << "system() failed " << system_exit_code;
-  // Get and process the symbolizer output.
-  std::ifstream symbolizer_output(std::string{symbols_path});
-  ReadFromLLVMSymbolizer(symbolizer_output);
-  std::filesystem::remove(pcs_path);
-  std::filesystem::remove(symbols_path);
+
+  if (size() != pc_table.size()) {
+    // Something went wrong. Set symbols to unknown so the sizes of pc_table and
+    // symbols always match.
+    SetAllToUnknown(pc_table.size());
+  }
 }
 
 void SymbolTable::SetAllToUnknown(size_t size) {

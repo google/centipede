@@ -36,14 +36,16 @@ centipede::maybe_set_var_to_executable_path \
 # Shorthand for centipede --binary=test_fuzz_target
 test_fuzz() {
   set -x
-  "${CENTIPEDE_BINARY}" --binary="${TEST_TARGET_BINARY}" "$@" 2>&1
+  "${CENTIPEDE_BINARY}" \
+    --binary="${TEST_TARGET_BINARY}" --symbolizer_path=/dev/null "$@" 2>&1
   set +x
 }
 
 # Shorthand for centipede --binary=abort_fuzz_target
 abort_test_fuzz() {
   set -x
-  "${CENTIPEDE_BINARY}" --binary="${ABORT_TEST_TARGET_BINARY}" "$@" 2>&1
+  "${CENTIPEDE_BINARY}" \
+    --binary="${ABORT_TEST_TARGET_BINARY}" --symbolizer_path=/dev/null "$@" 2>&1
   set +x
 }
 

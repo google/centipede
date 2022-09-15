@@ -62,12 +62,6 @@ void CentipedeCallbacks::PopulateSymbolAndPcTables(
     std::string binary_name = binary_flags[0];
     symbols.GetSymbolsFromBinary(pc_table, binary_name, env_.symbolizer_path,
                                  tmp1, tmp2);
-    if (symbols.size() != pc_table.size()) {
-      LOG(INFO) << "Symbolization failed, debug symbols will not be used";
-      // Preserve the pc_table. Set symbols to unknown so that the sizes of
-      // pc_table and symbols continue to match.
-      symbols.SetAllToUnknown(pc_table.size());
-    }
   }
 }
 
