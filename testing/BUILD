@@ -128,7 +128,7 @@ sh_test(
     data = [
         ":abort_fuzz_target",
         ":test_fuzz_target",
-        "@centipede//:centipede_main",
+        "@centipede",
         "@centipede//:test_util_sh",
     ],
 )

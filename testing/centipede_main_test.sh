@@ -25,7 +25,7 @@ CENTIPEDE_TEST_SRCDIR="$(centipede::get_centipede_test_srcdir)"
 # The following variables can be overridden externally by passing --test_env to
 # the build command, e.g. --test_env=EXAMPLE_TARGET_BINARY="/some/path".
 centipede::maybe_set_var_to_executable_path \
-  CENTIPEDE_BINARY "${CENTIPEDE_TEST_SRCDIR}/centipede_main"
+  CENTIPEDE_BINARY "${CENTIPEDE_TEST_SRCDIR}/centipede"
 centipede::maybe_set_var_to_executable_path \
   TEST_TARGET_BINARY "${CENTIPEDE_TEST_SRCDIR}/testing/test_fuzz_target"
 centipede::maybe_set_var_to_executable_path \

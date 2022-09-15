@@ -29,10 +29,8 @@ exports_files([
 #                                  Binaries
 ################################################################################
 
-# The "master" rule that builds the main Centipede executable named
-# `centipede_main`. Dependent rules must use this one in their `deps` attribute.
 cc_binary(
-    name = "centipede_main",
+    name = "centipede",
     srcs = ["centipede_main.cc"],
     deps = [
         ":centipede_default_callbacks",
@@ -43,19 +41,6 @@ cc_binary(
         "@com_google_absl//absl/log:flags",
         "@com_google_absl//absl/log:initialize",
     ],
-)
-
-# An "alias" rule that copies the `centipede_main` executable to `centipede`.
-# End-users may use this one to build a more conveniently named executable.
-genrule(
-    name = "centipede",
-    srcs = [":centipede_main"],
-    outs = ["centipede"],
-    # NOTE: If would seem natural to `mv` instead, but Bazel/Bazel both end up
-    # still copying the file, not moving it.
-    cmd = "cp $< $@",
-    executable = True,
-    output_to_bindir = True,
 )
 
 ################################################################################
