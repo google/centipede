@@ -500,13 +500,16 @@ static int MutateInputsFromShmem(
   return EXIT_SUCCESS;
 }
 
-// ASAN/TSAN/MSAN can not be used with RLIMIT_AS.
-#if !defined(ADDRESS_SANITIZER) && !defined(THREAD_SANITIZER) && \
-    !defined(MEMORY_SANITIZER)
-constexpr bool kCanUseRlimitAs = true;
-#else
-constexpr bool kCanUseRlimitAs = false;
-#endif
+// Returns the current process VmSize, in bytes.
+static size_t GetVmSizeInBytes() {
+  FILE *f = fopen("/proc/self/statm", "r");  // man proc
+  if (!f) return 0;
+  size_t vm_size = 0;
+  fscanf(f, "%zd", &vm_size);
+  fclose(f);
+  return vm_size << 10;  // proc gives VmSize in Kb.
+}
+
 
 // Sets RLIMIT_CORE, RLIMIT_AS
 static void SetLimits() {
@@ -514,9 +517,14 @@ static void SetLimits() {
   struct rlimit rlimit_core = {0, 0};
   setrlimit(RLIMIT_CORE, &rlimit_core);
 
+  // ASAN/TSAN/MSAN can not be used with RLIMIT_AS.
+  // We get the current VmSize, if it is greater than 1Tb, we assume we
+  // are running under one of ASAN/TSAN/MSAN and thus cannot use RLIMIT_AS.
+  constexpr size_t one_tb = 1ULL << 40;
+  size_t vm_size_in_bytes = GetVmSizeInBytes();
   // Set the address-space limit (RLIMIT_AS).
   // No-op under ASAN/TSAN/MSAN - those may still rely on rss_limit_mb.
-  if constexpr (kCanUseRlimitAs) {
+  if (vm_size_in_bytes < one_tb) {
     size_t address_space_limit_mb =
         state.HasFlag(":address_space_limit_mb=", 0);
     if (address_space_limit_mb > 0) {
@@ -524,6 +532,11 @@ static void SetLimits() {
       struct rlimit rlimit_as = {limit_in_bytes, limit_in_bytes};
       setrlimit(RLIMIT_AS, &rlimit_as);
     }
+  } else {
+    fprintf(stderr,
+            "Not using RLIMIT_AS; "
+            "VmSize is %zdGb, suspecting ASAN/MSAN/TSAN\n",
+            vm_size_in_bytes >> 30);
   }
 }
 
