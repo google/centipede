@@ -299,9 +299,9 @@ If you need to also export the distilled corpus to a libFuzzer-style directory
 ## Coverage report
 
 Centipede generates a simple coverage report in a form of a text file. The shard
-0 generates a file `workdir/coverage-report-BINARY.0.txt`
+123 generates a file `workdir/coverage-report-BINARY.000123.txt`
 before the actual fuzzing begins, i.e. the report reflects the coverage as
-observed by the shard 0 after loading the corpus.
+observed by the shard 123 after loading the corpus.
 
 The report shows functions that are fully covered (all control flow edges are
 observed at least once), not covered, or partially covered. For partially

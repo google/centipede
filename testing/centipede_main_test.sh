@@ -100,7 +100,7 @@ test_dictionary() {
   echo "bat" > "${TMPCORPUS}"/binary
   centipede::ensure_empty_dir "${WD}"
   test_fuzz  --workdir="${WD}" --export_corpus_from_local_dir "${TMPCORPUS}"
-  cp "${WD}/corpus.0" "${DICT}"
+  cp "${WD}/corpus.000000" "${DICT}"
 
   echo "============ ${FUNC}: testing binary dictionary file"
   centipede::ensure_empty_dir "${WD}"
@@ -122,8 +122,8 @@ test_for_each_blob() {
 
   test_fuzz  --workdir="${WD}" --export_corpus_from_local_dir "${TMPCORPUS}"
   echo "============ ${FUNC}: test for_each_blob"
-  test_fuzz --for_each_blob="cat %P"  "${WD}"/corpus.0 | tee "${LOG}"
-  centipede::assert_regex_in_file "Running 'cat %P' on ${WD}/corpus.0" "${LOG}"
+  test_fuzz --for_each_blob="cat %P"  "${WD}"/corpus.000000 | tee "${LOG}"
+  centipede::assert_regex_in_file "Running 'cat %P' on ${WD}/corpus.000000" "${LOG}"
   centipede::assert_regex_in_file FoO "${LOG}"
   centipede::assert_regex_in_file bAr "${LOG}"
 }

@@ -143,8 +143,11 @@ struct ScopedTempDir {
   std::vector<ByteArray> GetCorpus(size_t shard_index,
                                    std::string_view name_prefix = "corpus.") {
     ByteArray corpus_data;
-    ReadFromLocalFile(GetFilePath(absl::StrCat(name_prefix, shard_index)),
-                      corpus_data);
+    // NOTE: The "6" in the "%06d" comes from kDigitsInShardIndex in
+    // environment.cc.
+    ReadFromLocalFile(
+        GetFilePath(absl::StrFormat("%s%06d", name_prefix, shard_index)),
+        corpus_data);
     std::vector<ByteArray> corpus;
     UnpackBytesFromAppendFile(corpus_data, &corpus);
     return corpus;

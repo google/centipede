@@ -24,6 +24,7 @@
 
 #include "absl/flags/flag.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "./logging.h"
@@ -288,6 +289,12 @@ Environment::Environment(int argc, char **argv)
   }
 }
 
+namespace {
+// Max number of decimal digits in a shard index given `total_shards`. Used to
+// pad indices with 0's in output file names so the names are sorted by index.
+inline constexpr int kDigitsInShardIndex = 6;
+}  // namespace
+
 std::string Environment::MakeCoverageDirPath() const {
   return std::filesystem::path(workdir).append(
       absl::StrCat(binary_name, "-", binary_hash));
@@ -299,24 +306,30 @@ std::string Environment::MakeCrashReproducerDirPath() const {
 
 std::string Environment::MakeCorpusPath(size_t shard_index) const {
   return std::filesystem::path(workdir).append(
-      absl::StrCat("corpus.", shard_index));
+      absl::StrFormat("corpus.%0*d", kDigitsInShardIndex, shard_index));
 }
+
 std::string Environment::MakeFeaturesPath(size_t shard_index) const {
   return std::filesystem::path(MakeCoverageDirPath())
-      .append(absl::StrCat("features.", shard_index));
+      .append(
+          absl::StrFormat("features.%0*d", kDigitsInShardIndex, shard_index));
 }
+
 std::string Environment::MakeDistilledPath() const {
-  return std::filesystem::path(workdir).append(
-      absl::StrCat("distilled-", binary_name, ".", my_shard_index));
+  return std::filesystem::path(workdir).append(absl::StrFormat(
+      "distilled-%s.%0*d", binary_name, kDigitsInShardIndex, my_shard_index));
 }
 
 std::string Environment::MakeCoverageReportPath() const {
-  return std::filesystem::path(workdir).append(absl::StrCat(
-      "coverage-report-", binary_name, ".", my_shard_index, ".txt"));
+  return std::filesystem::path(workdir).append(
+      absl::StrFormat("coverage-report-%s.%0*d.txt", binary_name,
+                      kDigitsInShardIndex, my_shard_index));
 }
+
 std::string Environment::MakeCorpusStatsPath() const {
   return std::filesystem::path(workdir).append(
-      absl::StrCat("corpus-stats-", binary_name, ".", my_shard_index, ".json"));
+      absl::StrFormat("corpus-stats-%s.%0*d.json", binary_name,
+                      kDigitsInShardIndex, my_shard_index));
 }
 
 // Returns true if `value` is one of "1", "true".
