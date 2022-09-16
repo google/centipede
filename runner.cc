@@ -24,12 +24,13 @@
 
 #include <elf.h>
 #include <limits.h>
-#include <link.h>  // dl_iterate_phdr
+#include <link.h>     // dl_iterate_phdr
 #include <pthread.h>  // NOLINT: use pthread to avoid extra dependencies.
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/auxv.h>
 #include <sys/resource.h>
 #include <sys/time.h>
 #include <time.h>
@@ -507,7 +508,7 @@ static size_t GetVmSizeInBytes() {
   size_t vm_size = 0;
   fscanf(f, "%zd", &vm_size);
   fclose(f);
-  return vm_size << 10;  // proc gives VmSize in Kb.
+  return vm_size * getauxval(AT_PAGESZ);  // proc gives VmSize in pages.
 }
 
 
