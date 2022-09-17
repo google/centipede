@@ -18,7 +18,10 @@ package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])
 
-exports_files(["centipede_main_test.sh"])
+exports_files([
+    "centipede_main_test.sh",
+    "multi_sanitizer_fuzz_target.cc",
+])
 
 ################################################################################
 #                        Fuzz targets for fuzz tests
