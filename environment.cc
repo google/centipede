@@ -218,8 +218,8 @@ Environment::Environment(int argc, char **argv)
           absl::GetFlag(FLAGS_coverage_binary).empty()
               ? (binary.empty() ? "" : *absl::StrSplit(binary, ' ').begin())
               : absl::GetFlag(FLAGS_coverage_binary)),
-      extra_binaries(absl::StrSplit(absl::GetFlag(FLAGS_extra_binaries), ',',
-                                    absl::SkipEmpty{})),
+      extra_binaries(absl::StrSplit(absl::GetFlag(FLAGS_extra_binaries),
+                                    absl::ByAnyChar{", "}, absl::SkipEmpty{})),
       workdir(absl::GetFlag(FLAGS_workdir)),
       merge_from(absl::GetFlag(FLAGS_merge_from)),
       num_runs(absl::GetFlag(FLAGS_num_runs)),
