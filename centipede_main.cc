@@ -14,22 +14,18 @@
 
 #include <vector>
 
-#include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
-#include "absl/log/flags.h"
+#include "absl/log/globals.h"
 #include "absl/log/initialize.h"
 #include "./centipede_default_callbacks.h"
 #include "./centipede_interface.h"
 #include "./environment.h"
 
-ABSL_DECLARE_FLAG(int, stderrthreshold);
-
 int main(int argc, char **argv) {
   // By default, log everything to stderr. Explicit --stderrthreshold=N on the
-  // command line takes precedence (ParseCommandLine() below resets the flag).
+  // command line takes precedence.
   // NB: The invocation order is important here.
-  absl::SetFlag(&FLAGS_stderrthreshold,
-                static_cast<int>(absl::LogSeverityAtLeast::kInfo));
+  absl::SetStderrThreshold(absl::LogSeverityAtLeast::kInfo);
   // Parse the command line.
   std::vector<char *> args = absl::ParseCommandLine(argc, argv);
   // Initialize the logging subsystem.
