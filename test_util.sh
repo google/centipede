@@ -62,7 +62,7 @@ function centipede::maybe_set_var_to_executable_path() {
 
 function centipede::ensure_empty_dir() {
   mkdir -p "$1"
-  rm -rf "$1:?"/*
+  rm -rf "${1:?}"/*
 }
 
 function centipede::assert_regex_in_file() {
