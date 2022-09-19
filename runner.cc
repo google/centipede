@@ -506,11 +506,11 @@ static size_t GetVmSizeInBytes() {
   FILE *f = fopen("/proc/self/statm", "r");  // man proc
   if (!f) return 0;
   size_t vm_size = 0;
-  fscanf(f, "%zd", &vm_size);
+  // NOTE: Ignore any (unlikely) failures to suppress a compiler warning.
+  (void)fscanf(f, "%zd", &vm_size);
   fclose(f);
   return vm_size * getauxval(AT_PAGESZ);  // proc gives VmSize in pages.
 }
-
 
 // Sets RLIMIT_CORE, RLIMIT_AS
 static void SetLimits() {

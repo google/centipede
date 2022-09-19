@@ -30,6 +30,7 @@
 #include "googletest/include/gtest/gtest.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
 #include "./blob_file.h"
 #include "./centipede_callbacks.h"
 #include "./centipede_interface.h"
