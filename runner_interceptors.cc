@@ -100,8 +100,13 @@ extern "C" int memcmp(const void *s1, const void *s2, size_t n) {
     state.cmp_feature_set.set(
         centipede::ConvertContextAndArgPairToNumber(a, b, hash));
   }
-  if (memcmp_orig) return memcmp_orig(s1, s2, n);
-  return memcmp_fallback(s1, s2, n);
+  int result =
+      memcmp_orig ? memcmp_orig(s1, s2, n) : memcmp_fallback(s1, s2, n);
+  if (result != 0 && state.run_time_flags.use_auto_dictionary) {
+    tls.cmp_traceN.Capture(n, reinterpret_cast<const uint8_t *>(s1),
+                           reinterpret_cast<const uint8_t *>(s2));
+  }
+  return result;
 }
 
 // pthread_create interceptor.

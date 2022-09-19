@@ -79,6 +79,8 @@ std::string CentipedeCallbacks::ConstructRunnerFlags(
                                                      : "",
       path_level,
       env_.use_cmp_features && !disable_coverage ? ":use_cmp_features:" : "",
+      env_.use_auto_dictionary && !disable_coverage ? ":use_auto_dictionary:"
+                                                    : "",
       env_.use_dataflow_features && !disable_coverage
           ? ":use_dataflow_features:"
           : "",

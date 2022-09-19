@@ -28,6 +28,7 @@
 #include "./byte_array_mutator.h"
 #include "./execution_result.h"
 #include "./feature.h"
+#include "./runner_cmp_trace.h"
 
 namespace centipede {
 
@@ -49,6 +50,7 @@ struct RunTimeFlags {
   uint64_t use_dataflow_features : 1;
   uint64_t use_cmp_features : 1;
   uint64_t use_counter_features : 1;
+  uint64_t use_auto_dictionary : 1;
   uint64_t timeout_in_seconds;
   uint64_t rss_limit_mb;
   uint64_t crossover_level;
@@ -71,6 +73,14 @@ struct ThreadLocalRunnerState {
   // We allow paths of up to 100, controlled at run-time via the "path_level".
   static constexpr size_t kBoundedPathLength = 100;
   HashedRingBuffer<kBoundedPathLength> path_ring_buffer;
+
+  // Cmp traces capture the arguments of CMP instructions, memcmp, etc.
+  // We have dedicated traces for 2-, 4-, and 8-byte comparison, and
+  // a catch-all `cmp_traceN` trace for memcmp, etc.
+  CmpTrace<2, 1024> cmp_trace2;
+  CmpTrace<4, 1024> cmp_trace4;
+  CmpTrace<8, 1024> cmp_trace8;
+  CmpTrace<0, 1024> cmp_traceN;
 };
 
 // One global object of this type is created by the runner at start up.
@@ -103,6 +113,7 @@ struct GlobalRunnerState {
       .use_dataflow_features = HasFlag(":use_dataflow_features:"),
       .use_cmp_features = HasFlag(":use_cmp_features:"),
       .use_counter_features = HasFlag(":use_counter_features:"),
+      .use_auto_dictionary = HasFlag(":use_auto_dictionary:"),
       .timeout_in_seconds = HasFlag(":timeout_in_seconds=", 0),
       .rss_limit_mb = HasFlag(":rss_limit_mb=", 0),
       .crossover_level = HasFlag(":crossover_level=", 50)};

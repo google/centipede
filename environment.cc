@@ -125,6 +125,9 @@ ABSL_FLAG(bool, use_pc_features, true,
 ABSL_FLAG(bool, use_cmp_features, true,
           "When available from instrumentation, use features derived from "
           "instrumentation of CMP instructions.");
+ABSL_FLAG(bool, use_auto_dictionary, false,
+          "If true, use automatically-generated dictionary derived from "
+          "intercepting comparison instructions, memcmp, and similar.");
 ABSL_FLAG(size_t, path_level, 0,  // Not ready for wide usage.
           "When available from instrumentation, use features derived from "
           "bounded execution paths. Be careful, may cause exponential feature "
@@ -244,6 +247,7 @@ Environment::Environment(int argc, char **argv)
       use_pc_features(absl::GetFlag(FLAGS_use_pc_features)),
       path_level(absl::GetFlag(FLAGS_path_level)),
       use_cmp_features(absl::GetFlag(FLAGS_use_cmp_features)),
+      use_auto_dictionary(absl::GetFlag(FLAGS_use_auto_dictionary)),
       use_dataflow_features(absl::GetFlag(FLAGS_use_dataflow_features)),
       use_counter_features(absl::GetFlag(FLAGS_use_counter_features)),
       use_pcpair_features(absl::GetFlag(FLAGS_use_pcpair_features)),

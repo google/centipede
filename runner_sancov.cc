@@ -89,24 +89,36 @@ void __sanitizer_cov_trace_const_cmp1(uint8_t Arg1, uint8_t Arg2) {
 }
 void __sanitizer_cov_trace_const_cmp2(uint16_t Arg1, uint16_t Arg2) {
   TraceCmp(Arg1, Arg2);
+  if (Arg1 != Arg2 && state.run_time_flags.use_auto_dictionary)
+    tls.cmp_trace2.Capture(Arg1, Arg2);
 }
 void __sanitizer_cov_trace_const_cmp4(uint32_t Arg1, uint32_t Arg2) {
   TraceCmp(Arg1, Arg2);
+  if (Arg1 != Arg2 && state.run_time_flags.use_auto_dictionary)
+    tls.cmp_trace4.Capture(Arg1, Arg2);
 }
 void __sanitizer_cov_trace_const_cmp8(uint64_t Arg1, uint64_t Arg2) {
   TraceCmp(Arg1, Arg2);
+  if (Arg1 != Arg2 && state.run_time_flags.use_auto_dictionary)
+    tls.cmp_trace8.Capture(Arg1, Arg2);
 }
 void __sanitizer_cov_trace_cmp1(uint8_t Arg1, uint8_t Arg2) {
   TraceCmp(Arg1, Arg2);
 }
 void __sanitizer_cov_trace_cmp2(uint16_t Arg1, uint16_t Arg2) {
   TraceCmp(Arg1, Arg2);
+  if (Arg1 != Arg2 && state.run_time_flags.use_auto_dictionary)
+    tls.cmp_trace2.Capture(Arg1, Arg2);
 }
 void __sanitizer_cov_trace_cmp4(uint32_t Arg1, uint32_t Arg2) {
   TraceCmp(Arg1, Arg2);
+  if (Arg1 != Arg2 && state.run_time_flags.use_auto_dictionary)
+    tls.cmp_trace4.Capture(Arg1, Arg2);
 }
 void __sanitizer_cov_trace_cmp8(uint64_t Arg1, uint64_t Arg2) {
   TraceCmp(Arg1, Arg2);
+  if (Arg1 != Arg2 && state.run_time_flags.use_auto_dictionary)
+    tls.cmp_trace8.Capture(Arg1, Arg2);
 }
 // TODO(kcc): [impl] handle switch.
 void __sanitizer_cov_trace_switch(uint64_t Val, uint64_t *Cases) {}
