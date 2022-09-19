@@ -360,6 +360,11 @@ cc_library(
     hdrs = ["runner_interface.h"],
 )
 
+cc_library(
+    name = "runner_cmp_trace",
+    hdrs = ["runner_cmp_trace.h"],
+)
+
 # A fuzz target needs to link with this library in order to run with Centipede.
 # The fuzz target must provide its own main().
 #
@@ -382,6 +387,7 @@ cc_library(
         ":execution_request",
         ":execution_result",
         ":feature",
+        ":runner_cmp_trace",
         ":runner_fork_server",
         ":runner_interface",
         ":shared_memory_blob_sequence",
@@ -423,6 +429,7 @@ cc_library(
         "feature.h",
         "runner.cc",
         "runner.h",
+        "runner_cmp_trace.h",
         "runner_fork_server.cc",
         "runner_interceptors.cc",
         "runner_interface.h",
@@ -573,6 +580,15 @@ cc_test(
         ":logging",
         ":test_util",
         ":util",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "runner_cmp_trace_test",
+    srcs = ["runner_cmp_trace_test.cc"],
+    deps = [
+        ":runner_cmp_trace",
         "@com_google_googletest//:gtest_main",
     ],
 )
