@@ -306,6 +306,8 @@ bool Centipede::RunBatch(const std::vector<ByteArray> &input_vec,
       }
       if (corpus_file) {
         CHECK_OK(corpus_file->Append(input_vec[i]));
+        CHECK_OK(corpus_file->Close());
+        CHECK_OK(corpus_file->Open(env_.MakeCorpusPath(env_.my_shard_index)));
       }
       if (!env_.corpus_dir.empty()) {
         WriteToLocalHashedFileInDir(env_.corpus_dir[0], input_vec[i]);
