@@ -322,6 +322,8 @@ cc_library(
     deps = [
         ":logging",
         ":util",
+        "//file/base",
+        "//tech/file/proto:types_cc_proto",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
