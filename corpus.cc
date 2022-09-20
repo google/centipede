@@ -97,7 +97,7 @@ FeatureSet::ComputeWeight(const FeatureVec &features) const {
 
 //================= Corpus
 
-// Returns the weigth of `fv` computed using `fs` and `coverage_frontier`.
+// Returns the weight of `fv` computed using `fs` and `coverage_frontier`.
 static size_t ComputeWeight(const FeatureVec &fv, const FeatureSet &fs,
                             const CoverageFrontier &coverage_frontier) {
   size_t weight = fs.ComputeWeight(fv);
@@ -275,7 +275,7 @@ size_t CoverageFrontier::Compute(const Corpus &corpus) {
         std::count(frontier_begin, frontier_end, true);
     if (cov_size_in_this_func == 0) return;  // Function not covered.
     if (cov_size_in_this_func == end - beg) {
-      // function fully covered => not in the forntier.
+      // function fully covered => not in the frontier.
       std::fill(frontier_begin, frontier_end, false);
       return;
     }

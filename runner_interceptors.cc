@@ -17,7 +17,7 @@
 // have their own conflicting interceptors.
 // The typical usage of sanitizers with Centipede is via the --extra_binaries
 // flag, where the sanitized binary does not produce coverage output and thus
-// does't need (most of?) interceptors.
+// doesn't need (most of?) interceptors.
 #if !defined(ADDRESS_SANITIZER) && !defined(THREAD_SANITIZER) && \
     !defined(MEMORY_SANITIZER)
 #include <dlfcn.h>  // for dlsym()
@@ -53,7 +53,7 @@ struct ThreadCreateArgs {
 };
 
 // Wrapper for a `start_routine` argument of pthread_create().
-// Calls the actuall start_routine and returns its results.
+// Calls the actual start_routine and returns its results.
 // Performs custom actions before and after start_routine().
 // `arg` is a `ThreadCreateArgs *` with the actual pthread_create() args.
 void *MyThreadStart(void *arg) {

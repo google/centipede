@@ -95,7 +95,7 @@ class BatchResult {
     num_outputs_read_ = 0;
   }
 
-  // Writes one FeaturVec (from `vec` and `size`) to `blobseq`.
+  // Writes one FeatureVec (from `vec` and `size`) to `blobseq`.
   // Returns true iff successful.
   // Called by the runner.
   // When executing N inputs, the runner will call this at most N times.

@@ -31,7 +31,7 @@
 
 namespace centipede {
 
-class SymbolTable;  // To avoid mutuall inclusion with symbol_table.h.
+class SymbolTable;  // To avoid mutual inclusion with symbol_table.h.
 
 // Reads and visualizes the code coverage produced by SanitizerCoverage.
 // https://clang.llvm.org/docs/SanitizerCoverage.html
@@ -138,7 +138,7 @@ class CoverageLogger {
   CoverageLogger(const Coverage::PCTable &pc_table, const SymbolTable &symbols)
       : pc_table_(pc_table), symbols_(symbols) {}
 
-  // Checks if `pc_index` or its symbolized decsription was observed before.
+  // Checks if `pc_index` or its symbolized description was observed before.
   // If yes, returns empty string.
   // If this is the first observation, returns a symbolized description.
   // If symbolization is not available, returns a non-symbolized description.

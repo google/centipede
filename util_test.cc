@@ -183,7 +183,7 @@ TEST(Centipede, ParseAFLDictionary) {
                          dict));
   EXPECT_EQ(dict, std::vector<ByteArray>({{'v', '1'}, {'v', '2'}}));
 
-  // Hex entries and a properly escaped back slash.
+  // Hex entries and a properly escaped backslash.
   EXPECT_TRUE(ParseAFLDictionary("  \"\\xBC\\\\a\\xAB\\x00\"", dict));
   EXPECT_EQ(dict, std::vector<ByteArray>({{'\xBC', '\\', 'a', '\xAB', 0}}));
 
@@ -191,7 +191,7 @@ TEST(Centipede, ParseAFLDictionary) {
   EXPECT_TRUE(ParseAFLDictionary("\"\\r\\t\\n\\\"\"", dict));
   EXPECT_EQ(dict, std::vector<ByteArray>({{'\r', '\t', '\n', '"'}}));
 
-  // Improper use of back slash, still parses.
+  // Improper use of backslash, still parses.
   EXPECT_TRUE(ParseAFLDictionary("\"\\g\\h\"", dict));
   EXPECT_EQ(dict, std::vector<ByteArray>({{'\\', 'g', '\\', 'h'}}));
 }

@@ -139,7 +139,7 @@ struct Environment {
   // or if num_threads is not a multiple of the number of flag combinations
   // (which is 6 in this example).
   //
-  // Sets load_other_shard_frequency=0 (experiments should be indepdentent).
+  // Sets load_other_shard_frequency=0 (experiments should be independent).
   //
   // Sets this->experiment_name to a string like "E01",
   // which means "value #0 is used for foo and value #1 is used for bar".

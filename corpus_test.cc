@@ -78,12 +78,12 @@ TEST(FeatureSet, CountUnseenAndPruneFrequentFeatures_IncrementFrequencies) {
   size_t frequency_threshold = 3;
   FeatureSet feature_set(frequency_threshold);
   FeatureVec features;
-  // Short hand for CountUnseenAndPruneFrequentFeatures.
+  // Shorthand for CountUnseenAndPruneFrequentFeatures.
   auto CountUnseenAndPrune = [&]() -> size_t {
     return feature_set.CountUnseenAndPruneFrequentFeatures(features);
   };
-  // Short hand for IncrementFrequencies.
   auto Increment = [&](const FeatureVec features) {
+  // Shorthand for IncrementFrequencies.
     feature_set.IncrementFrequencies(features);
   };
 

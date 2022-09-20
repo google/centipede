@@ -141,7 +141,7 @@ struct GlobalRunnerState {
   // Typical usage: pass ":some_flag=".
   const char *GetStringFlag(const char *flag) {
     if (!centipede_runner_flags) return nullptr;
-    // Exctract "value" from ":flag=value:" inside centipede_runner_flags.
+    // Extract "value" from ":flag=value:" inside centipede_runner_flags.
     const char *beg = strstr(centipede_runner_flags, flag);
     if (!beg) return nullptr;
     const char *value_beg = beg + strlen(flag);

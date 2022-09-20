@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Utilities used for Centipede => Runner requests.
+
 #ifndef THIRD_PARTY_CENTIPEDE_EXECUTION_REQUEST_H_
 #define THIRD_PARTY_CENTIPEDE_EXECUTION_REQUEST_H_
 
@@ -23,7 +25,6 @@
 
 namespace centipede {
 
-// Utilities used for Centipede => Runner requests.
 namespace execution_request {
 
 // Sends a request (via `blobseq`) to execute `inputs`.

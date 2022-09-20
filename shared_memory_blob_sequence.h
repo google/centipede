@@ -154,5 +154,6 @@ class SharedMemoryBlobSequence {
   bool had_writes_after_reset_ = false;
 };
 
-};      // namespace centipede
+}  // namespace centipede
+
 #endif  // THIRD_PARTY_CENTIPEDE_SHARED_MEMORY_BLOB_SEQUENCE_H_

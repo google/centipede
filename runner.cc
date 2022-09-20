@@ -176,8 +176,8 @@ extern "C" size_t LLVMFuzzerMutate(uint8_t *data, size_t size,
 // An arbitrary large size for input data.
 static const size_t kMaxDataSize = 1 << 20;
 // Input data.
-// Every input is stored in `input_data` and then passed to the target.
-// We allocate `input_data` from heap at startup to avoid malloc in a loop.
+// Every input is stored in `g_input_data` and then passed to the target.
+// We allocate `g_input_data` from heap at startup to avoid malloc in a loop.
 // We don't make it a global because it will make data flow instrumentation
 // treat every input byte touched as a separate feature, which will cause
 // arbitrary growth of input size.
@@ -220,7 +220,7 @@ PrepareCoverage() {
   }
 }
 
-// Post-processes all coverage data, puts it all into `features`.
+// Post-processes all coverage data, puts it all into `g_features`.
 // `target_return_value` is the value returned by LLVMFuzzerTestOneInput.
 //
 // If `target_return_value == -1`, sets `features` to empty.  This way,
@@ -628,7 +628,7 @@ extern "C" int CentipedeRunnerMain(
     return EXIT_FAILURE;
   }
 
-  // By default, run every iput file one-by-one.
+  // By default, run every input file one-by-one.
   for (int i = 1; i < argc; i++) {
     centipede::ReadOneInputExecuteItAndDumpCoverage(argv[i], test_one_input_cb);
   }

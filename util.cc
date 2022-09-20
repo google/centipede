@@ -172,7 +172,7 @@ static void RemoveDirsAtExit() {
 }
 
 void CreateLocalDirRemovedAtExit(std::string_view path) {
-  // Safe-guard against removing dirs not created by TemporaryLocalDirPath().
+  // Safeguard against removing dirs not created by TemporaryLocalDirPath().
   CHECK_NE(path.find("/centipede-"), std::string::npos);
   // Create the dir.
   std::filesystem::remove_all(path);

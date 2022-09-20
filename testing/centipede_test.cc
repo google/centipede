@@ -304,7 +304,7 @@ TEST(Centipede, MutateViaExternalBinary) {
   std::vector<ByteArray> inputs = {{0, 1, 2}, {3, 4}};
   // The custom mutator in the test binary will revert the order of bytes
   // and sometimes add a number in [100-107) at the end.
-  // Periodically, the custom mutator will fallback to LLVMFuzzerMutate,
+  // Periodically, the custom mutator will fall back to LLVMFuzzerMutate,
   // which in turn will sometimes shrink the inputs.
   std::vector<ByteArray> some_of_expected_mutants = {
       // Reverted inputs, sometimes with an extra byte at the end.
@@ -373,7 +373,7 @@ class MergeMock : public CentipedeCallbacks {
  public:
   explicit MergeMock(const Environment &env) : CentipedeCallbacks(env) {}
 
-  // Doesn't exectute anything.
+  // Doesn't execute anything.
   // All inputs are 1-byte long.
   // For an input {X}, the feature output is {X}.
   bool Execute(std::string_view binary, const std::vector<ByteArray> &inputs,

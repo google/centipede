@@ -75,7 +75,7 @@ function SolutionIs() {
   centipede::assert_regex_in_file "Input bytes: $1" "${log}"
 }
 
-# Expects that Centipde found a timeout.
+# Expects that Centipede found a timeout.
 function ExpectTimeout() {
   echo "======= ${FUNCNAME[0]}"
   centipede::assert_regex_in_file "Timeout of .* seconds exceeded; exiting" "${log}"

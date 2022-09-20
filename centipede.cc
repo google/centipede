@@ -522,7 +522,7 @@ void Centipede::FuzzingLoop() {
       size_t other_shard_index =
           (env_.my_shard_index + 1 + rand) % env_.total_shards;
       CHECK_NE(other_shard_index, env_.my_shard_index);
-      LoadShard(env_, other_shard_index, /*rerun*/ false);
+      LoadShard(env_, other_shard_index, /*rerun=*/ false);
     }
 
     // Prune if we added enough new elements since last prune.
