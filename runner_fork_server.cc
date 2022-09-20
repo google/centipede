@@ -56,7 +56,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <cstddef>
 #include <cstring>
 
 namespace centipede {

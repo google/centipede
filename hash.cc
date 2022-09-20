@@ -20,7 +20,6 @@
 #include <string_view>
 
 #include "absl/types/span.h"
-#include "./defs.h"
 #include "./util.h"
 
 namespace centipede {

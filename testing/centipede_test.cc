@@ -16,7 +16,6 @@
 #include <unistd.h>
 
 #include <algorithm>
-#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>

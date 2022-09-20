@@ -14,7 +14,6 @@
 
 #include "./environment.h"
 
-#include <algorithm>
 #include <charconv>
 #include <cstddef>
 #include <filesystem>

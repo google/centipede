@@ -48,11 +48,9 @@
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
-#include <functional>
 #include <iostream>
 #include <memory>
 #include <numeric>
-#include <sstream>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -62,7 +60,6 @@
 #include "absl/strings/str_cat.h"
 #include "absl/types/span.h"
 #include "./blob_file.h"
-#include "./command.h"
 #include "./coverage.h"
 #include "./defs.h"
 #include "./environment.h"

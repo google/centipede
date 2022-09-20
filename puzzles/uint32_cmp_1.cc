@@ -14,7 +14,7 @@
 
 // Centipede puzzle: one 4-byte cmp.
 // RUN: Run && SolutionIs Fuzz
-#include <cstddef>
+
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>

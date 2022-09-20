@@ -15,7 +15,7 @@
 #include "./command.h"
 
 #include <signal.h>
-#include <sys/wait.h>
+#include <sys/wait.h>  // NOLINT(for WTERMSIG)
 
 #include <cstdlib>
 #include <string>

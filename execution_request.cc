@@ -14,7 +14,6 @@
 
 #include "./execution_request.h"
 
-#include <cstddef>
 #include <cstring>
 #include <vector>
 

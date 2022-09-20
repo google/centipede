@@ -21,7 +21,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 

@@ -36,9 +36,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <algorithm>
-#include <atomic>
-#include <cstdint>
 #include <vector>
 
 #include "./byte_array_mutator.h"

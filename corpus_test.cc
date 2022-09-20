@@ -17,7 +17,6 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
-#include <sstream>
 #include <vector>
 
 #include "googletest/include/gtest/gtest.h"

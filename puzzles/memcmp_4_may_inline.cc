@@ -14,7 +14,7 @@
 
 // Centipede puzzle: one 4-byte memcmp, which may get inlined.
 // RUN: Run && SolutionIs FUZz
-#include <cstddef>
+
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>

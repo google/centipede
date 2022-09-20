@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "./blob_file.h"
+#include "./command.h"
 #include "./centipede_callbacks.h"
 #include "./corpus.h"
 #include "./coverage.h"
