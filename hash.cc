@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "./hash.h"
+
 #include <openssl/sha.h>  // IWYU pragma: keep
 
 #include <cstddef>
@@ -20,7 +22,6 @@
 #include <string_view>
 
 #include "absl/types/span.h"
-#include "./util.h"
 
 namespace centipede {
 

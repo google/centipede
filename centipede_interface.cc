@@ -35,6 +35,7 @@
 #include "./coverage.h"
 #include "./defs.h"
 #include "./environment.h"
+#include "./hash.h"
 #include "./logging.h"
 #include "./remote_file.h"
 #include "./stats.h"

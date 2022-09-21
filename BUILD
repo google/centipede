@@ -69,18 +69,28 @@ cc_library(
     hdrs = ["defs.h"],
 )
 
+# Hash function
+cc_library(
+    name = "hash",
+    srcs = ["hash.cc"],
+    hdrs = ["hash.h"],
+    linkopts = ["-lcrypto"],
+    deps = [
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
 # Various utilities.
 cc_library(
     name = "util",
     srcs = [
-        "hash.cc",
         "util.cc",
     ],
     hdrs = ["util.h"],
-    linkopts = ["-lcrypto"],
     deps = [
         ":defs",
         ":feature",
+        ":hash",
         ":logging",
         "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/strings",
@@ -237,6 +247,7 @@ cc_library(
         ":environment",
         ":execution_request",
         ":execution_result",
+        ":hash",
         ":logging",
         ":shared_memory_blob_sequence",
         ":util",
@@ -251,6 +262,7 @@ cc_library(
         ":blob_file",
         ":defs",
         ":feature",
+        ":hash",
         ":util",
         "@com_google_absl//absl/container:flat_hash_map",
     ],
@@ -302,6 +314,7 @@ cc_library(
         ":coverage",
         ":defs",
         ":environment",
+        ":hash",
         ":logging",
         ":remote_file",
         ":stats",
@@ -479,9 +492,19 @@ cc_test(
     srcs = ["util_test.cc"],
     deps = [
         ":defs",
+        ":hash",
         ":logging",
         ":util",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "hash_test",
+    srcs = ["hash_test.cc"],
+    deps = [
+        ":hash",
         "@com_google_googletest//:gtest_main",
     ],
 )

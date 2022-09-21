@@ -43,6 +43,7 @@
 #include "absl/types/span.h"
 #include "./defs.h"
 #include "./feature.h"
+#include "./hash.h"
 #include "./logging.h"
 
 namespace centipede {

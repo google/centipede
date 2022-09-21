@@ -37,6 +37,7 @@
 #include "./environment.h"
 #include "./execution_result.h"
 #include "./feature.h"
+#include "./hash.h"
 #include "./logging.h"
 #include "./shard_reader.h"
 #include "./test_util.h"

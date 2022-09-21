@@ -114,6 +114,7 @@ cc_test(
         "@centipede//:environment",
         "@centipede//:execution_result",
         "@centipede//:feature",
+        "@centipede//:hash",
         "@centipede//:logging",
         "@centipede//:shard_reader",
         "@centipede//:test_util",

@@ -21,6 +21,7 @@
 #include "./blob_file.h"
 #include "./defs.h"
 #include "./feature.h"
+#include "./hash.h"
 #include "./util.h"
 
 namespace centipede {

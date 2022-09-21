@@ -28,6 +28,7 @@
 #include "./defs.h"
 #include "./execution_request.h"
 #include "./execution_result.h"
+#include "./hash.h"
 #include "./logging.h"
 #include "./symbol_table.h"
 #include "./util.h"
