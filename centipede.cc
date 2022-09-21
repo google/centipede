@@ -487,10 +487,8 @@ void Centipede::FuzzingLoop() {
     CHECK_LT(new_runs, env_.num_runs);
     auto remaining_runs = env_.num_runs - new_runs;
     auto batch_size = std::min(env_.batch_size, remaining_runs);
-    // Pick a small but non-trivial number of inputs so that crossover works.
-    // TODO(kcc): may need to parametrize this constant.
     std::vector<ByteArray> inputs, mutants;
-    inputs.resize(20);
+    inputs.resize(env_.mutate_batch_size);
     for (auto &input : inputs) {
       input = env_.use_corpus_weights ? corpus_.WeightedRandom(rng_())
                                       : corpus_.UniformRandom(rng_());

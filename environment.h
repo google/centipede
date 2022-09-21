@@ -40,6 +40,7 @@ struct Environment {
   size_t num_threads;
   size_t max_len;
   size_t batch_size;
+  size_t mutate_batch_size;
   size_t load_other_shard_frequency;
   size_t seed;
   size_t prune_frequency;

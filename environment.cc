@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/flags/flag.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
@@ -62,6 +63,8 @@ ABSL_FLAG(size_t, max_len, 4096, "Max length of mutants. Passed to mutator.");
 ABSL_FLAG(size_t, batch_size, 1000,
           "The number of inputs given to the target at one time. Batches of "
           "more than 1 input are used to amortize the process start-up cost.");
+ABSL_FLAG(size_t, mutate_batch_size, 20,
+          "Mutate this many inputs to produce batch_size mutants");
 ABSL_FLAG(size_t, load_other_shard_frequency, 10,
           "Load a random other shard after processing this many batches. Use 0 "
           "to disable loading other shards.  For now, choose the value of this "
@@ -230,6 +233,7 @@ Environment::Environment(int argc, char **argv)
       num_threads(absl::GetFlag(FLAGS_num_threads)),
       max_len(absl::GetFlag(FLAGS_max_len)),
       batch_size(absl::GetFlag(FLAGS_batch_size)),
+      mutate_batch_size(absl::GetFlag(FLAGS_mutate_batch_size)),
       load_other_shard_frequency(
           absl::GetFlag(FLAGS_load_other_shard_frequency)),
       seed(absl::GetFlag(FLAGS_seed)),
@@ -354,16 +358,28 @@ static size_t GetIntFlag(std::string_view value) {
 
 void Environment::SetFlag(std::string_view name, std::string_view value) {
   // TODO(kcc): support more flags, as needed.
-  if (name == "use_cmp_features")
-    use_cmp_features = GetBoolFlag(value);
-  else if (name == "use_coverage_frontier")
-    use_coverage_frontier = GetBoolFlag(value);
-  else if (name == "path_level")
-    path_level = GetIntFlag(value);
-  else if (name == "max_corpus_size")
-    max_corpus_size = GetIntFlag(value);
-  else
-    CHECK(false) << "Unknown flag for experiment: " << name << "=" << value;
+
+  // Handle bool flags.
+  absl::flat_hash_map<std::string, bool *> bool_flags{
+      {"use_cmp_features", &use_cmp_features},
+      {"use_coverage_frontier", &use_coverage_frontier}};
+  auto bool_iter = bool_flags.find(name);
+  if (bool_iter != bool_flags.end()) {
+    *bool_iter->second = GetBoolFlag(value);
+    return;
+  }
+
+  // Handle int flags.
+  absl::flat_hash_map<std::string, size_t *> int_flags{
+      {"path_level", &path_level},
+      {"max_corpus_size", &max_corpus_size},
+      {"mutate_batch_size", &mutate_batch_size}};
+  auto int_iter = int_flags.find(name);
+  if (int_iter != int_flags.end()) {
+    *int_iter->second = GetIntFlag(value);
+    return;
+  }
+  CHECK(false) << "Unknown flag for experiment: " << name << "=" << value;
 }
 
 void Environment::UpdateForExperiment() {
