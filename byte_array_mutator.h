@@ -25,6 +25,30 @@
 
 namespace centipede {
 
+// A simple class representing an array of up to kMaxEntrySize bytes.
+struct DictEntry {
+  static constexpr uint8_t kMaxEntrySize = 15;
+
+ public:
+  DictEntry(const uint8_t *bytes, uint8_t size)
+      : bytes_{},  // initialize bytes_ to all zeros
+        size_(size) {
+    if (size_ > kMaxEntrySize) __builtin_trap();
+    memcpy(bytes_, bytes, size);
+  }
+  const uint8_t *begin() const { return bytes_; }
+  const uint8_t *end() const { return bytes_ + size_; }
+  size_t size() const { return size_; }
+  bool operator<(const DictEntry &other) const {
+    return memcmp(this, &other, sizeof(*this)) < 0;
+  }
+
+ private:
+  // bytes_ must go first so that operator < is lexicographic.
+  uint8_t bytes_[kMaxEntrySize];
+  uint8_t size_;  // between 1 and kMaxEntrySize.
+};
+
 // This class allows to mutate a ByteArray in different ways.
 // All mutations expect and guarantee that `data` remains non-empty
 // since there is only one possible empty input and it's uninteresting.
@@ -149,7 +173,7 @@ class ByteArrayMutator {
   size_t size_alignment_ = 1;
 
   Rng rng_;
-  std::vector<ByteArray> dictionary_;
+  std::vector<DictEntry> dictionary_;
 };
 
 }  // namespace centipede

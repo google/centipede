@@ -119,14 +119,16 @@ bool ByteArrayMutator::EraseBytes(ByteArray &data) {
 
 void ByteArrayMutator::AddToDictionary(
     const std::vector<ByteArray> &dict_entries) {
-  dictionary_.insert(dictionary_.end(), dict_entries.begin(),
-                     dict_entries.end());
+  for (const ByteArray &entry : dict_entries) {
+    if (entry.size() > DictEntry::kMaxEntrySize) continue;
+    dictionary_.emplace_back(entry.data(), entry.size());
+  }
 }
 
 bool ByteArrayMutator::OverwriteFromDictionary(ByteArray &data) {
   if (dictionary_.empty()) return false;
   size_t dict_entry_idx = rng_() % dictionary_.size();
-  const ByteArray &dic_entry = dictionary_[dict_entry_idx];
+  const auto &dic_entry = dictionary_[dict_entry_idx];
   if (dic_entry.size() > data.size()) return false;
   size_t overwrite_pos = rng_() % (data.size() - dic_entry.size() + 1);
   std::copy(dic_entry.begin(), dic_entry.end(), data.begin() + overwrite_pos);
@@ -136,7 +138,7 @@ bool ByteArrayMutator::OverwriteFromDictionary(ByteArray &data) {
 bool ByteArrayMutator::InsertFromDictionary(ByteArray &data) {
   if (dictionary_.empty()) return false;
   size_t dict_entry_idx = rng_() % dictionary_.size();
-  const ByteArray &dict_entry = dictionary_[dict_entry_idx];
+  const auto &dict_entry = dictionary_[dict_entry_idx];
   // There are N+1 positions to insert something into an array of N.
   size_t pos = rng_() % (data.size() + 1);
   data.insert(data.begin() + pos, dict_entry.begin(), dict_entry.end());
