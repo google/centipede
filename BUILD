@@ -102,6 +102,16 @@ cc_library(
 )
 
 cc_library(
+    name = "analyze_corpora",
+    srcs = ["analyze_corpora.cc"],
+    hdrs = ["analyze_corpora.h"],
+    deps = [
+        ":util",
+        "@centipede//:logging",
+    ],
+)
+
+cc_library(
     name = "blob_file",
     srcs = ["blob_file.cc"],
     hdrs = ["blob_file.h"],
@@ -295,6 +305,7 @@ cc_library(
         "centipede_interface.h",
     ],
     deps = [
+        ":analyze_corpora",
         ":blob_file",
         ":centipede_callbacks",
         ":centipede_lib",
@@ -304,6 +315,7 @@ cc_library(
         ":environment",
         ":logging",
         ":remote_file",
+        ":shard_reader",
         ":stats",
         ":util",
         "@com_google_absl//absl/status",
@@ -493,6 +505,16 @@ cc_test(
         ":stats",
         "@centipede//:logging",
         "@com_google_absl//absl/types:span",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "analyze_corpora_test",
+    srcs = ["analyze_corpora_test.cc"],
+    deps = [
+        ":analyze_corpora",
+        "@centipede//:logging",
         "@com_google_googletest//:gtest_main",
     ],
 )
