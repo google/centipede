@@ -131,6 +131,7 @@ cc_library(
         # This target must have a minimal set of dependencies since it is
         # used in fuzz_target_runner.
         ":feature",
+        ":runner_cmp_trace",
         ":shared_memory_blob_sequence",
     ],
 )

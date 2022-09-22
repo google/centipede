@@ -21,6 +21,7 @@
 #include <thread>  // NOLINT
 #include <vector>
 
+#include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "./feature.h"
 #include "./shared_memory_blob_sequence.h"
@@ -42,6 +43,9 @@ TEST(ExecutionResult, WriteThenRead) {
   // Imitate execution of two inputs.
   FeatureVec v1{1, 2, 3};
   FeatureVec v2{5, 6, 7, 8};
+  std::vector<uint8_t> cmp0{5, 6, 7};
+  std::vector<uint8_t> cmp1{6, 7, 8};
+  std::vector<uint8_t> cmp2{7, 8, 9};
   ExecutionResult::Stats stats1{.peak_rss_mb = 10};
   ExecutionResult::Stats stats2{.peak_rss_mb = 20};
   // First input.
@@ -49,6 +53,7 @@ TEST(ExecutionResult, WriteThenRead) {
   EXPECT_TRUE(BatchResult::WriteOneFeatureVec(v1.data(), v1.size(), blobseq));
   // Write stats after features. The order should not matter.
   EXPECT_TRUE(BatchResult::WriteStats(stats1, blobseq));
+  // Done.
   EXPECT_TRUE(BatchResult::WriteInputEnd(blobseq));
 
   // Second input.
@@ -56,6 +61,12 @@ TEST(ExecutionResult, WriteThenRead) {
   // Write stats before features.
   EXPECT_TRUE(BatchResult::WriteStats(stats2, blobseq));
   EXPECT_TRUE(BatchResult::WriteOneFeatureVec(v2.data(), v2.size(), blobseq));
+  // Write CMP traces.
+  EXPECT_TRUE(BatchResult::WriteCmpArgs(cmp0.data(), cmp1.data(), cmp0.size(),
+                                        blobseq));
+  EXPECT_TRUE(BatchResult::WriteCmpArgs(cmp1.data(), cmp2.data(), cmp1.size(),
+                                        blobseq));
+  // Done.
   EXPECT_TRUE(BatchResult::WriteInputEnd(blobseq));
 
   // Ensure we've read them.
@@ -67,6 +78,14 @@ TEST(ExecutionResult, WriteThenRead) {
   EXPECT_EQ(batch_result.results()[0].stats(), stats1);
   EXPECT_EQ(batch_result.results()[1].features(), v2);
   EXPECT_EQ(batch_result.results()[1].stats(), stats2);
+  EXPECT_THAT(batch_result.results()[1].cmp_args(),
+              testing::ElementsAre(3,        // size
+                                   5, 6, 7,  // cmp0
+                                   6, 7, 8,  // cmp1
+                                   3,        // size
+                                   6, 7, 8,  // cmp1
+                                   7, 8, 9   // cmp2
+                                   ));
 
   // If there are fewer ExecutionResult-s than expected everything should work.
   blobseq.Reset();

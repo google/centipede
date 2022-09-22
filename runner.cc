@@ -320,6 +320,21 @@ ReadOneInputExecuteItAndDumpCoverage(
   fclose(features_file);
 }
 
+// Calls centipede::BatchResult::WriteCmpArgs for every CMP arg pair
+// found in `cmp_trace`.
+// Returns true if all writes succeeded.
+template <typename CmpTrace>
+bool WriteCmpArgs(CmpTrace &cmp_trace,
+                  centipede::SharedMemoryBlobSequence &blobseq) {
+  bool write_failed = false;
+  cmp_trace.ForEachNonZero(
+      [&](uint8_t size, const uint8_t *v0, const uint8_t *v1) {
+        if (!centipede::BatchResult::WriteCmpArgs(v0, v1, size, blobseq))
+          write_failed = true;
+      });
+  return !write_failed;
+}
+
 // Handles an ExecutionRequest, see RequestExecution().
 // Reads inputs from `inputs_blobseq`, runs them,
 // saves coverage features to `feature_blobseq`.
@@ -354,6 +369,20 @@ static int ExecuteInputsFromShmem(
             features.data(), features.size(), feature_blobseq)) {
       break;
     }
+
+    // Copy the CMP traces to shared memory.
+    if (state.run_time_flags.use_auto_dictionary) {
+      bool write_failed = false;
+      state.ForEachTls([&write_failed, &feature_blobseq](
+                           centipede::ThreadLocalRunnerState &tls) {
+        if (!WriteCmpArgs(tls.cmp_trace2, feature_blobseq)) write_failed = true;
+        if (!WriteCmpArgs(tls.cmp_trace4, feature_blobseq)) write_failed = true;
+        if (!WriteCmpArgs(tls.cmp_trace8, feature_blobseq)) write_failed = true;
+        if (!WriteCmpArgs(tls.cmp_traceN, feature_blobseq)) write_failed = true;
+      });
+      if (write_failed) break;
+    }
+
     // Write the stats.
     if (!centipede::BatchResult::WriteStats(state.stats, feature_blobseq))
       break;

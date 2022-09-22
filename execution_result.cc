@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <cstring>
 
+#include "./runner_cmp_trace.h"
 #include "./shared_memory_blob_sequence.h"
 
 namespace centipede {
@@ -28,6 +29,7 @@ enum Tags : SharedMemoryBlobSequence::Blob::size_and_tag_type {
   kTagInputBegin,
   kTagInputEnd,
   kTagStats,
+  kTagCmpArgs,
 };
 }  // namespace
 
@@ -51,6 +53,16 @@ bool BatchResult::WriteStats(const ExecutionResult::Stats &stats,
       {kTagStats, sizeof(stats), reinterpret_cast<const uint8_t *>(&stats)});
 }
 
+bool BatchResult::WriteCmpArgs(const uint8_t *v0, const uint8_t *v1,
+                               size_t size, SharedMemoryBlobSequence &blobseq) {
+  constexpr size_t kMaxSize = CmpTrace<0, 1>::kMaxNumBytesPerValue;
+  uint8_t data[kMaxSize * 2];
+  if (size > kMaxSize) __builtin_trap();
+  memcpy(data, v0, size);
+  memcpy(data + size, v1, size);
+  return blobseq.Write({kTagCmpArgs, size * 2, data});
+}
+
 // The sequence we expect to receive is
 // InputBegin, Features, Stats, InputEnd, InputBegin, ...
 // with a total of results().size() tuples (InputBegin ... InputEnd).
@@ -70,12 +82,22 @@ bool BatchResult::Read(SharedMemoryBlobSequence &blobseq) {
       ++num_begins;
       if (num_begins > num_expected_tuples) return false;
       current_execution_result = &results()[num_ends];
+      current_execution_result->clear();
       continue;
     }
     if (blob.tag == kTagInputEnd) {
       ++num_ends;
       if (num_ends != num_begins) return false;
       current_execution_result = nullptr;
+      continue;
+    }
+    if (blob.tag == kTagCmpArgs) {
+      auto &cmp_args = current_execution_result->cmp_args();
+      // CMP size must fit into one byte.
+      if (blob.size % 2 != 0) return false;
+      if (blob.size / 2 >= 256) return false;
+      cmp_args.push_back(blob.size / 2);
+      cmp_args.insert(cmp_args.end(), blob.data, blob.data + blob.size);
       continue;
     }
     if (blob.tag == kTagStats) {

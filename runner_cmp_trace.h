@@ -37,7 +37,10 @@ namespace centipede {
 template <uint8_t kFixedSize, size_t kNumItems>
 class CmpTrace {
  public:
-  static constexpr size_t kNumBytesPerValue = kFixedSize ? kFixedSize : 16;
+  // kMaxNumBytesPerValue does not depend on kFixedSize.
+  static constexpr size_t kMaxNumBytesPerValue = 16;
+  static constexpr size_t kNumBytesPerValue =
+      kFixedSize ? kFixedSize : kMaxNumBytesPerValue;
 
   // No CTOR - objects will be created in TLS.
 

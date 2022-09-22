@@ -58,15 +58,26 @@ class ExecutionResult {
   FeatureVec& mutable_features() { return features_; }
   const Stats& stats() const { return stats_; }
   Stats& stats() { return stats_; }
+  const std::vector<uint8_t>& cmp_args() const { return cmp_args_; }
+  std::vector<uint8_t>& cmp_args() { return cmp_args_; }
 
   // Clears the data, but doesn't deallocate the heap storage.
   void clear() {
     features_.clear();
+    cmp_args_.clear();
     stats_ = {};
   }
 
  private:
   FeatureVec features_;  // Features produced by the target on one input.
+
+  // CMP args are stored in one large ByteArray to minimize RAM consumption.
+  // One CMP arg pair is stored as
+  //  * `size` (1-byte value)
+  //  * `value0` (`size` bytes)
+  //  * `value1` (`size` bytes)
+  std::vector<uint8_t> cmp_args_;
+
   Stats stats_;          // Stats from executing one input.
 };
 
@@ -109,6 +120,12 @@ class BatchResult {
   // Writes unit execution stats.
   static bool WriteStats(const ExecutionResult::Stats& stats,
                          SharedMemoryBlobSequence& blobseq);
+  // Writes the data derived from tracing CMP instructions.
+  // `v0` and `v1` are both arrays of `size` bytes, representing two arguments
+  // of a CMP-like instruction.
+  // Returns true iff successful.
+  static bool WriteCmpArgs(const uint8_t* v0, const uint8_t* v1, size_t size,
+                           SharedMemoryBlobSequence& blobseq);
 
   // Reads everything written by the runner to `blobseq` into `this`.
   // Returns true iff successful.
