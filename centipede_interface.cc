@@ -27,6 +27,7 @@
 #include <vector>
 
 #include "absl/status/status.h"
+#include "absl/strings/str_join.h"
 #include "absl/strings/str_replace.h"
 #include "absl/types/span.h"
 #include "./blob_file.h"
@@ -111,6 +112,14 @@ void PrintExperimentStatsThread(const std::atomic<bool> &continue_running,
   }
 }
 
+// Loads corpora from work dirs provided in `env.args`, analyzes differences.
+// Returns EXIT_SUCCESS on success, EXIT_FAILURE otherwise.
+int Analyze(const Environment &env) {
+  // TODO(kcc): implement.
+  LOG(INFO) << "Analyze " << absl::StrJoin(env.args, ",");
+  return EXIT_SUCCESS;
+}
+
 }  // namespace
 
 int CentipedeMain(const Environment &env,
@@ -121,6 +130,8 @@ int CentipedeMain(const Environment &env,
     return Centipede::SaveCorpusToLocalDir(env, env.save_corpus_to_local_dir);
 
   if (!env.for_each_blob.empty()) return ForEachBlob(env);
+
+  if (env.analyze) return Analyze(env);
 
   // Just export the corpus from a local dir and exit.
   if (!env.export_corpus_from_local_dir.empty())

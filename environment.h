@@ -73,6 +73,7 @@ struct Environment {
   std::string function_filter;
   std::string for_each_blob;
   std::string experiment;
+  bool analyze;
   bool exit_on_crash;
   size_t max_num_crash_reports;
   size_t shmem_size_mb;

@@ -201,6 +201,11 @@ ABSL_FLAG(std::string, experiment, "",
           "tested. In example above: '--foo=1 --bar=10' ... "
           "'--foo=3 --bar=20'. The number of threads should be multiple of the "
           "number of flag combinations.");
+ABSL_FLAG(bool, analyze, false,
+          "If set, Centipede will read the corpora from the work dirs provided"
+          " as argv and analyze differences between those corpora."
+          " Used by the Centipede developers to improve the engine. "
+          " TODO(kcc) implement. ");
 ABSL_FLAG(std::string, dictionary, "",
           "A comma-separated list of paths to dictionary files. The dictionary "
           "file is either in AFL/libFuzzer plain text format or in the binary "
@@ -271,6 +276,7 @@ Environment::Environment(int argc, char **argv)
       function_filter(absl::GetFlag(FLAGS_function_filter)),
       for_each_blob(absl::GetFlag(FLAGS_for_each_blob)),
       experiment(absl::GetFlag(FLAGS_experiment)),
+      analyze(absl::GetFlag(FLAGS_analyze)),
       exit_on_crash(absl::GetFlag(FLAGS_exit_on_crash)),
       max_num_crash_reports(absl::GetFlag(FLAGS_num_crash_reports)),
       shmem_size_mb(absl::GetFlag(FLAGS_shmem_size_mb)),
