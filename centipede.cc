@@ -281,6 +281,7 @@ bool Centipede::RunBatch(const std::vector<ByteArray> &input_vec,
   num_runs_ += input_vec.size();
   bool batch_gained_new_coverage = false;
   for (size_t i = 0; i < input_vec.size(); i++) {
+    if (EarlyExitRequested()) break;
     FeatureVec &fv = batch_result.results()[i].mutable_features();
     bool function_filter_passed = function_filter_.filter(fv);
     bool input_gained_new_coverage =
@@ -350,6 +351,7 @@ void Centipede::Rerun(std::vector<ByteArray> &to_rerun) {
   // Re-run all inputs for which we don't know their features.
   // Run in batches of at most env_.batch_size inputs each.
   while (!to_rerun.empty()) {
+    if (EarlyExitRequested()) break;
     size_t batch_size = std::min(to_rerun.size(), env_.batch_size);
     std::vector<ByteArray> batch(to_rerun.end() - batch_size, to_rerun.end());
     to_rerun.resize(to_rerun.size() - batch_size);
