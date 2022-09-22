@@ -24,7 +24,11 @@ affect all its transitive dependencies as well.
 # https://clang.llvm.org/docs/SanitizerCoverage.html.
 def _sancov_transition_impl(settings, attr):
     features_to_strip = ["asan", "tsan", "msan"]
-    filtered_features = [x for x in settings["//command_line_option:features"] if x not in features_to_strip]
+    filtered_features = [
+        x
+        for x in settings["//command_line_option:features"]
+        if x not in features_to_strip
+    ]
 
     # some of the valid sancov flag combinations:
     # trace-pc-guard,pc-table
@@ -138,7 +142,9 @@ def centipede_fuzz_target(
             linkopts = [
                 "-ldl",
                 "-lrt",
-                "-lpthread"],
+                "-lpthread"
+            ],
+            testonly = True,
         )
 
     elif srcs:
