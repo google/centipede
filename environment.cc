@@ -27,6 +27,7 @@
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
+#include "absl/time/time.h"
 #include "./logging.h"
 #include "./util.h"
 
@@ -219,6 +220,10 @@ ABSL_FLAG(std::string, function_filter, "",
 ABSL_FLAG(size_t, shmem_size_mb, 1024,
           "Size of the shared memory regions used to communicate between the "
           "ending and the runner.");
+ABSL_FLAG(size_t, dump_stats_every_n_batches, 0,
+          "Dump updated versions of coverage report and corpus stats to new "
+          "files after processing this many batches. The default (0) is "
+          "special: updates are dumped after every 2^N-th processed batch.");
 
 namespace centipede {
 
@@ -279,6 +284,8 @@ Environment::Environment(int argc, char **argv)
       analyze(absl::GetFlag(FLAGS_analyze)),
       exit_on_crash(absl::GetFlag(FLAGS_exit_on_crash)),
       max_num_crash_reports(absl::GetFlag(FLAGS_num_crash_reports)),
+      dump_stats_every_n_batches(
+          absl::GetFlag(FLAGS_dump_stats_every_n_batches)),
       shmem_size_mb(absl::GetFlag(FLAGS_shmem_size_mb)),
       cmd(binary),
       binary_name(std::filesystem::path(coverage_binary).filename().string()),
@@ -333,10 +340,21 @@ std::string Environment::MakeDistilledPath() const {
       "distilled-%s.%0*d", binary_name, kDigitsInShardIndex, my_shard_index));
 }
 
-std::string Environment::MakeCoverageReportPath() const {
-  return std::filesystem::path(workdir).append(
-      absl::StrFormat("coverage-report-%s.%0*d.txt", binary_name,
-                      kDigitsInShardIndex, my_shard_index));
+std::string Environment::MakeCoverageReportPath(std::string_view annotation,
+                                                absl::Time timestamp) const {
+  std::string annotation_str;
+  if (!annotation.empty()) {
+    CHECK(!absl::StartsWith(annotation, ".")) << VV(annotation);
+    annotation_str = absl::StrCat(".", annotation);
+  }
+  std::string timestamp_str;
+  if (timestamp != absl::Time{}) {
+    timestamp_str = absl::FormatTime(".%Y-%m-%d-%H-%M-%S", timestamp,
+                                     absl::LocalTimeZone());
+  }
+  return std::filesystem::path(workdir).append(absl::StrFormat(
+      "coverage-report-%s.%0*d%s%s.txt", binary_name, kDigitsInShardIndex,
+      my_shard_index, timestamp_str, annotation_str));
 }
 
 std::string Environment::MakeCorpusStatsPath() const {

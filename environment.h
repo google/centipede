@@ -19,6 +19,8 @@
 #include <string>
 #include <vector>
 
+#include "absl/time/time.h"
+
 namespace centipede {
 
 // Fuzzing environment that is initialized at startup and doesn't change.
@@ -76,6 +78,7 @@ struct Environment {
   bool analyze;
   bool exit_on_crash;
   size_t max_num_crash_reports;
+  size_t dump_stats_every_n_batches;
   size_t shmem_size_mb;
 
   std::string experiment_name;  // Set by UpdateForExperiment.
@@ -105,8 +108,11 @@ struct Environment {
   // Returns true if we want to distill the corpus in this shard before fuzzing.
   bool DistillingInThisShard() const { return my_shard_index < distill_shards; }
   // Returns the path for the coverage report file for my_shard_index.
-  // The coverage report is generated before fuzzing begins.
-  std::string MakeCoverageReportPath() const;
+  // The coverage report is generated before fuzzing begins and after it ends.
+  // Non-default `annotation` and `timestamp` become part of the returned
+  // filename. `annotation` must not start with a '.'.
+  std::string MakeCoverageReportPath(std::string_view annotation = "",
+                                     absl::Time timestamp = {}) const;
   // Returns the path for the corpus stats report file for my_shard_index.
   // The corpus stats report is regenerated periodically during fuzzing.
   std::string MakeCorpusStatsPath() const;

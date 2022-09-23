@@ -98,7 +98,7 @@ class Centipede {
   // Uses coverage_logger_ and VLOG(coverage_logger_verbose_level_).
   void LogFeaturesAsSymbols(const FeatureVec &f);
   // Generates a coverage report file in workdir.
-  void GenerateCoverageReport();
+  void GenerateCoverageReport(std::string_view annotation);
   // Generates a corpus stats file in workdir.
   void GenerateCorpusStats();
   // Returns true if `input` passes env_.input_filter.

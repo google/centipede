@@ -68,7 +68,7 @@ function centipede::ensure_empty_dir() {
 function centipede::assert_regex_in_file() {
   local -r regex="$1"
   local -r file="$2"
-  if ! grep -q "${regex}" "${file}"; then
+  if ! egrep -q "${regex}" "${file}"; then
     echo
     echo ">>>>>>>>>> BEGIN ${file} >>>>>>>>>>"
     cat "${file}"

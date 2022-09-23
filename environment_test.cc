@@ -15,6 +15,7 @@
 #include "./environment.h"
 
 #include "googletest/include/gtest/gtest.h"
+#include "absl/time/civil_time.h"
 
 namespace centipede {
 
@@ -45,6 +46,18 @@ TEST(AppendFile, UpdateForExperiment) {
   Experiment(9, true, 10, "E10");
   Experiment(10, true, 20, "E11");
   Experiment(11, true, 30, "E12");
+}
+
+TEST(Environment, MakeCoverageReportPath) {
+  // TODO(ussuri): Environment is not test-friendly (initialized through
+  //  flags, which are hidden in the .cc). Fix.
+  EXPECT_EQ(Environment{}.MakeCoverageReportPath(),
+            "coverage-report-.000000.txt");
+  EXPECT_EQ(
+      Environment{}.MakeCoverageReportPath(
+          "initial", absl::FromCivil(absl::CivilSecond{2022, 2, 3, 4, 5, 6},
+                                     absl::LocalTimeZone())),
+      "coverage-report-.000000.2022-02-03-04-05-06.initial.txt");
 }
 
 }  // namespace centipede

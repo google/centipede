@@ -58,6 +58,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/time/clock.h"
 #include "absl/types/span.h"
 #include "./blob_file.h"
 #include "./coverage.h"
@@ -361,7 +362,7 @@ void Centipede::Rerun(std::vector<ByteArray> &to_rerun) {
   }
 }
 
-void Centipede::GenerateCoverageReport() {
+void Centipede::GenerateCoverageReport(std::string_view annotation) {
   if (pc_table_.empty()) return;
   if (!env_.GeneratingCoverageReportInThisShard()) return;
   auto pci_vec = fs_.ToCoveragePCs();
@@ -372,7 +373,7 @@ void Centipede::GenerateCoverageReport() {
   // TODO(kcc): [impl] may want to introduce RemoteFileAppend(f, std::string).
   std::string str = out.str();
   ByteArray bytes(str.begin(), str.end());
-  auto report_path = env_.MakeCoverageReportPath();
+  auto report_path = env_.MakeCoverageReportPath(annotation, absl::Now());
   LOG(INFO) << "GenerateCoverageReport: " << report_path;
   auto f = RemoteFileOpen(report_path, "w");
   CHECK(f);
@@ -477,7 +478,7 @@ void Centipede::FuzzingLoop() {
               << " distilled_size: " << corpus_.NumActive();
   }
 
-  GenerateCoverageReport();
+  GenerateCoverageReport("initial");
 
   // num_runs / batch_size, rounded up.
   size_t number_of_batches = env_.num_runs / env_.batch_size;
@@ -508,7 +509,12 @@ void Centipede::FuzzingLoop() {
       Log("pulse", 1);  // log if batch_index is a power of two.
     }
 
-    if (batch_is_power_of_two) {
+    bool need_to_dump_stats =
+        (env_.dump_stats_every_n_batches != 0)
+            ? (batch_index % env_.dump_stats_every_n_batches == 0)
+            : batch_is_power_of_two;
+    if (need_to_dump_stats) {
+      GenerateCoverageReport(absl::StrCat("batch_", batch_index));
       GenerateCorpusStats();
     }
 
@@ -519,7 +525,7 @@ void Centipede::FuzzingLoop() {
       size_t other_shard_index =
           (env_.my_shard_index + 1 + rand) % env_.total_shards;
       CHECK_NE(other_shard_index, env_.my_shard_index);
-      LoadShard(env_, other_shard_index, /*rerun=*/ false);
+      LoadShard(env_, other_shard_index, /*rerun=*/false);
     }
 
     // Prune if we added enough new elements since last prune.
@@ -531,7 +537,10 @@ void Centipede::FuzzingLoop() {
       corpus_size_at_last_prune = corpus_.NumActive();
     }
   }
+
   Log("end-fuzz", 0);  // Tests rely on this line being present at the end.
+
+  GenerateCoverageReport("final");
 }
 
 void Centipede::ReportCrash(std::string_view binary,
