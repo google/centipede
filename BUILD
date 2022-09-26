@@ -77,7 +77,7 @@ cc_library(
         "util.cc",
     ],
     hdrs = ["util.h"],
-    linkopts = ["-lcrypto"],
+    linkopts = ["-Wl,-Bstatic -lcrypto -Wl,-Bdynamic -ldl"],
     deps = [
         ":defs",
         ":feature",
