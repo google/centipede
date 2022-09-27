@@ -85,21 +85,21 @@ class CentipedeMock : public CentipedeCallbacks {
     return true;
   }
   // Makes predictable mutants:
-  // first 255 mutations are 1-byte sequences {1} ... {255}.
-  // (the value {0} is produced by DummyValidInput()).
+  // first 256 mutations are 1-byte sequences {0} ... {255}.
   // Next 65536 mutations are 2-byte sequences {0,0} ... {255, 255}.
   // Then repeat 2-byte sequences.
   void Mutate(const std::vector<ByteArray> &inputs, size_t num_mutants,
               std::vector<ByteArray> &mutants) override {
     mutants.resize(num_mutants);
+    constexpr size_t kFirstTwoByteMutation = 257;
     for (auto &mutant : mutants) {
       num_mutations_++;
-      if (num_mutations_ < 256) {
+      if (num_mutations_ < kFirstTwoByteMutation) {
         mutant = {static_cast<uint8_t>(num_mutations_)};
         continue;
       }
-      uint8_t byte0 = (num_mutations_ - 256) / 256;
-      uint8_t byte1 = (num_mutations_ - 256) % 256;
+      uint8_t byte0 = (num_mutations_ - kFirstTwoByteMutation) / 256;
+      uint8_t byte1 = (num_mutations_ - kFirstTwoByteMutation) % 256;
       mutant = {byte0, byte1};
     }
   }

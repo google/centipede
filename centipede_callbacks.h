@@ -71,7 +71,7 @@ class CentipedeCallbacks {
                                          Coverage::PCTable &pc_table);
 
   // Returns some simple non-empty valid input.
-  virtual ByteArray DummyValidInput() { return {0}; }
+  virtual ByteArray DummyValidInput() { return {' '}; }  // ASCII space.
 
  protected:
   // Helpers that the user-defined class may use if needed.
