@@ -31,11 +31,11 @@ struct DictEntry {
   static constexpr uint8_t kMaxEntrySize = 15;
 
  public:
-  DictEntry(const uint8_t *bytes, uint8_t size)
+  explicit DictEntry(ByteSpan bytes)
       : bytes_{},  // initialize bytes_ to all zeros
-        size_(size) {
-    if (size_ > kMaxEntrySize) __builtin_trap();
-    memcpy(bytes_, bytes, size);
+        size_(bytes.size()) {
+    if (size_ > kMaxEntrySize || size_ == 0) __builtin_trap();
+    memcpy(bytes_, bytes.data(), bytes.size());
   }
   const uint8_t *begin() const { return bytes_; }
   const uint8_t *end() const { return bytes_ + size_; }

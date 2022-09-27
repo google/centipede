@@ -15,10 +15,13 @@
 #ifndef THIRD_PARTY_CENTIPEDE_DEFS_H_
 #define THIRD_PARTY_CENTIPEDE_DEFS_H_
 // Only simple definitions here. No code, no dependencies.
+// span.h is an exception as it's header-only and very simple.
 
 #include <cstdint>
 #include <random>
 #include <vector>
+
+#include "absl/types/span.h"
 
 namespace centipede {
 
@@ -26,6 +29,7 @@ namespace centipede {
 using Rng = std::mt19937_64;
 
 using ByteArray = std::vector<uint8_t>;
+using ByteSpan = absl::Span<const uint8_t>;
 
 // Macro used to allow tests to access protected or private members of a class.
 #define FRIEND_TEST(test_case_name, test_name) \

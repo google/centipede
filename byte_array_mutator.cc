@@ -121,7 +121,7 @@ void ByteArrayMutator::AddToDictionary(
     const std::vector<ByteArray> &dict_entries) {
   for (const ByteArray &entry : dict_entries) {
     if (entry.size() > DictEntry::kMaxEntrySize) continue;
-    dictionary_.emplace_back(entry.data(), entry.size());
+    dictionary_.emplace_back(entry);
   }
 }
 

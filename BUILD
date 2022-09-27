@@ -63,10 +63,11 @@ cc_library(
     ],
 )
 
-# simple definitions only, no code, no deps.
+# simple definitions only, no code, no deps other than span.
 cc_library(
     name = "defs",
     hdrs = ["defs.h"],
+    deps = ["@com_google_absl//absl/types:span"],
 )
 
 # Various utilities.
@@ -162,8 +163,7 @@ cc_library(
     name = "byte_array_mutator",
     srcs = ["byte_array_mutator.cc"],
     hdrs = ["byte_array_mutator.h"],
-    # Avoid dependencies here, as this library will be linked to target
-    # binaries.
+    # Avoid dependencies here, as this library will be linked to target binaries.
     deps = [
         ":defs",
     ],
@@ -453,6 +453,7 @@ cc_library(
     ],
     # NOTE: Centipede's own sources must never be sancov-instrumented.
     copts = ["-fsanitize-coverage=0"],
+    deps = ["@com_google_absl//absl/types:span"],  # WARNING: be careful with more deps.
 )
 
 ################################################################################
