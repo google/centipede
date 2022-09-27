@@ -216,6 +216,7 @@ TEST(Centipede, RandomWeightedSubset) {
     std::vector<std::vector<size_t>> ordered_results;
     std::map<size_t, std::vector<size_t>> freq_to_res;
     for (const auto &it : results) freq_to_res[it.second] = it.first;
+    ordered_results.reserve(freq_to_res.size());
     for (const auto &it : freq_to_res) ordered_results.push_back(it.second);
     return ordered_results;
   };

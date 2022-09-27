@@ -58,7 +58,7 @@ void PrintExperimentStatsForOneStatValue(absl::Span<const Stats> stats_vec,
     os << "max:\t" << stat_values.back() << "\t";
     os << "avg:\t"
        << (std::accumulate(stat_values.begin(), stat_values.end(), 0.) /
-           stat_values.size())
+           static_cast<double>(stat_values.size()))
        << "\t";
     os << "--";
     for (const auto value : stat_values) {

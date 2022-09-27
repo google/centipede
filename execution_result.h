@@ -34,8 +34,9 @@ class ExecutionResult {
   ExecutionResult(ExecutionResult&& other) = default;
   ExecutionResult& operator=(ExecutionResult&& other) = default;
 
-  ExecutionResult() {}
-  explicit ExecutionResult(const FeatureVec& features) : features_(features) {}
+  ExecutionResult() = default;
+  explicit ExecutionResult(FeatureVec features)
+      : features_(std::move(features)) {}
 
   // Execution statistics.
   struct Stats {
@@ -92,7 +93,7 @@ class BatchResult {
   // If BatchResult is used in a hot loop, define it outside the loop and
   // use ClearAndResize() on every iteration.
   // This will reduce the number of mallocs.
-  BatchResult() {}
+  BatchResult() = default;
 
   // Not movable.
   BatchResult(BatchResult&& other) = delete;

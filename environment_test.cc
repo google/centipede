@@ -18,7 +18,7 @@
 
 namespace centipede {
 
-TEST(AppendFile, UpdateForExperiment) {
+TEST(Environment, UpdateForExperiment) {
   Environment env;
   env.num_threads = 12;
   env.experiment = "use_cmp_features=false,true:path_level=10,20,30";

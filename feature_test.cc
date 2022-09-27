@@ -227,11 +227,11 @@ TEST(Feature, ForEachNonZeroByte) {
       std::vector<std::pair<size_t, uint8_t>> v1, v2;
       TrivialForEachNonZeroByte(test_data + offset, size,
                                 [&](size_t idx, uint8_t value) {
-                                  v1.push_back({idx, value});
+                                  v1.emplace_back(idx, value);
                                 });
       ForEachNonZeroByte(test_data + offset, size,
                          [&](size_t idx, uint8_t value) {
-                           v2.push_back({idx, value});
+                           v2.emplace_back(idx, value);
                          });
       EXPECT_EQ(v1, v2);
     }

@@ -96,7 +96,7 @@ cc_library(
     hdrs = ["stats.h"],
     deps = [
         ":environment",
-        "@centipede//:logging",
+        ":logging",
         "@com_google_absl//absl/types:span",
     ],
 )

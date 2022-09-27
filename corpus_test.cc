@@ -81,8 +81,8 @@ TEST(FeatureSet, CountUnseenAndPruneFrequentFeatures_IncrementFrequencies) {
   auto CountUnseenAndPrune = [&]() -> size_t {
     return feature_set.CountUnseenAndPruneFrequentFeatures(features);
   };
-  auto Increment = [&](const FeatureVec features) {
   // Shorthand for IncrementFrequencies.
+  auto Increment = [&](const FeatureVec& features) {
     feature_set.IncrementFrequencies(features);
   };
 

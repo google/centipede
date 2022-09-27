@@ -39,22 +39,23 @@ SharedMemoryBlobSequence::SharedMemoryBlobSequence(const char *name,
   fd_ = shm_open(name, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
   name_to_unlink_ = strdup(name);  // Using raw C strings to avoid dependencies.
   ErrorOnFailure(fd_ < 0, "shm_open() failed");
-  ErrorOnFailure(ftruncate(fd_, size_), "ftruncate() failed)");
+  ErrorOnFailure(ftruncate(fd_, static_cast<__off_t>(size_)),
+                 "ftruncate() failed)");
   MmapData();
 }
 
 SharedMemoryBlobSequence::SharedMemoryBlobSequence(const char *name) {
   fd_ = shm_open(name, O_RDWR, 0);
   ErrorOnFailure(fd_ < 0, "shm_open() failed");
-  struct stat statbuf;
+  struct stat statbuf = {};
   ErrorOnFailure(fstat(fd_, &statbuf), "fstat() failed");
   size_ = statbuf.st_size;
   MmapData();
 }
 
 void SharedMemoryBlobSequence::MmapData() {
-  data_ =
-      (uint8_t *)mmap(NULL, size_, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0);
+  data_ = static_cast<uint8_t *>(
+      mmap(nullptr, size_, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0));
   ErrorOnFailure(data_ == MAP_FAILED, "mmap() failed");
 }
 

@@ -180,7 +180,7 @@ static std::string GetLLVMSymbolizerPath() {
 // A simple CentipedeCallbacks derivative for this test.
 class TestCallbacks : public CentipedeCallbacks {
  public:
-  TestCallbacks(const Environment &env) : CentipedeCallbacks(env) {}
+  explicit TestCallbacks(const Environment &env) : CentipedeCallbacks(env) {}
   bool Execute(std::string_view binary, const std::vector<ByteArray> &inputs,
                BatchResult &batch_result) override {
     int result =
@@ -202,8 +202,7 @@ static std::vector<FeatureVec> RunInputsAndCollectCoverage(
   // Repackage string inputs into ByteArray inputs.
   std::vector<ByteArray> byte_array_inputs;
   for (auto &string_input : inputs) {
-    byte_array_inputs.push_back(
-        ByteArray(string_input.begin(), string_input.end()));
+    byte_array_inputs.emplace_back(string_input.begin(), string_input.end());
   }
   BatchResult batch_result;
   // Run.

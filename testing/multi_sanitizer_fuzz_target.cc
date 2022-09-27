@@ -19,7 +19,7 @@
 #include <cstring>
 #include <thread>  // NOLINT
 
-static volatile void *sink;
+[[maybe_unused]] static volatile void *sink;
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
   if (size != 3) return 0;  // Make bugs easy to discover.

@@ -56,7 +56,7 @@ struct ThreadCreateArgs {
 // Performs custom actions before and after start_routine().
 // `arg` is a `ThreadCreateArgs *` with the actual pthread_create() args.
 void *MyThreadStart(void *arg) {
-  ThreadCreateArgs *args = static_cast<ThreadCreateArgs *>(arg);
+  auto *args = static_cast<ThreadCreateArgs *>(arg);
   tls.OnThreadStart();
   void *retval = args->start_routine(args->arg);
   tls.OnThreadStop();
@@ -75,8 +75,8 @@ static auto memcmp_orig =
 // Fallback for the case memcmp_orig is null.
 // Will be executed several times at process startup, if at all.
 static int memcmp_fallback(const void *s1, const void *s2, size_t n) {
-  const uint8_t *p1 = static_cast<const uint8_t *>(s1);
-  const uint8_t *p2 = static_cast<const uint8_t *>(s2);
+  const auto *p1 = static_cast<const uint8_t *>(s1);
+  const auto *p2 = static_cast<const uint8_t *>(s2);
   for (size_t i = 0; i < n; ++i) {
     int diff = p1[i] - p2[i];
     if (diff) return diff;
@@ -91,8 +91,7 @@ extern "C" int memcmp(const void *s1, const void *s2, size_t n) {
   if (n <= sizeof(a) && state.run_time_flags.use_cmp_features) {
     memcpy(&a, s1, n);
     memcpy(&b, s2, n);
-    uintptr_t caller_pc =
-        reinterpret_cast<uintptr_t>(__builtin_return_address(0));
+    auto caller_pc = reinterpret_cast<uintptr_t>(__builtin_return_address(0));
     uintptr_t pc_offset = caller_pc - state.main_object_start_address;
     uintptr_t hash =
         centipede::Hash64Bits(pc_offset) ^ tls.path_ring_buffer.hash();
@@ -116,7 +115,7 @@ extern "C" int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
       FuncAddr<int (*)(pthread_t *, const pthread_attr_t *, void *(*)(void *),
                        void *)>("pthread_create");
   // Wrap the arguments. Will be deleted in MyThreadStart.
-  ThreadCreateArgs *wrapped_args = new ThreadCreateArgs{start_routine, arg};
+  auto *wrapped_args = new ThreadCreateArgs{start_routine, arg};
   // Run the actual pthread_create.
   return pthread_create_orig(thread, attr, MyThreadStart, wrapped_args);
 }

@@ -152,7 +152,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
   // depending on XYZ but not using any control flow for that.
   if (size == 6 && data[0] == 'p' && data[1] == 't' && data[2] == 'h') {
     [[maybe_unused]] static volatile int sink;
-    using func_type = void (*)(void);
+    using func_type = void (*)();
     func_type funcs[4] = {[]() { sink = 0; }, []() { sink = 1; },
                           []() { sink = 2; }, []() { sink = 3; }};
     size_t idx0 = data[3] % 4;

@@ -319,7 +319,7 @@ class HashedRingBuffer {
 template <size_t kSizeInBits>
 class ConcurrentBitSet {
  public:
-static_assert((kSizeInBits % 512) == 0);
+  static_assert((kSizeInBits % 512) == 0);
   // Constructs an empty bit set.
   ConcurrentBitSet() { clear(); }
 

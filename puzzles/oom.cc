@@ -21,9 +21,9 @@
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
   if (size == 3 && data[0] == 'O' && data[1] == 'O' && data[2] == 'M') {
-    size_t size = (4ULL << 30) + (1ULL << 20);  // 4Gb + 1Mb
-    char *ptr = new char[size];  // OOM here or one line below.
-    memset(ptr, 42, size);
+    size_t huge_mem_size = (4ULL << 30) + (1ULL << 20);  // 4Gb + 1Mb
+    char *ptr = new char[huge_mem_size];  // OOM here or one line below.
+    memset(ptr, 42, huge_mem_size);
     fprintf(stderr, "%p\n", ptr);  // so that ptr it's not optimized away.
   }
   return 0;

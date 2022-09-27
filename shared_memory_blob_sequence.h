@@ -75,7 +75,7 @@ class SharedMemoryBlobSequence {
 
   // Opens an existing shared blob sequence named `name`.
   // Aborts on any failure.
-  SharedMemoryBlobSequence(const char *name);
+  explicit SharedMemoryBlobSequence(const char *name);
 
   // Releases all resources.
   ~SharedMemoryBlobSequence();
@@ -92,7 +92,7 @@ class SharedMemoryBlobSequence {
     using size_and_tag_type = size_t;
     Blob(size_and_tag_type tag, size_and_tag_type size, const uint8_t *data)
         : tag(tag), size(size), data(data) {}
-    Blob() {}  // Construct an invalid Blob.
+    Blob() = default;  // Construct an invalid Blob.
     bool IsValid() const { return tag != 0; }
     const size_and_tag_type tag = 0;
     const size_and_tag_type size = 0;
@@ -136,6 +136,7 @@ class SharedMemoryBlobSequence {
  private:
   // mmaps `size_` bytes from `fd_`, assigns to `data_`. Crashes on error.
   void MmapData();
+
   // Copy of `name` passed to CTOR.
   // If non-null, DTOR calls shm_unlink on it and frees it.
   char *name_to_unlink_ = nullptr;

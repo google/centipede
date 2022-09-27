@@ -37,7 +37,7 @@ std::string Hash(absl::Span<const uint8_t> span) {
     sha1_hex_text[i * 2 + 0] = hex[sha1[i] / 16];
     sha1_hex_text[i * 2 + 1] = hex[sha1[i] % 16];
   }
-  return std::string(sha1_hex_text, sha1_hex_text + kHashLen);
+  return {sha1_hex_text, sha1_hex_text + kHashLen};
 }
 
 std::string Hash(std::string_view str) {

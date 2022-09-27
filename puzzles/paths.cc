@@ -53,7 +53,7 @@ struct TableCtor {
   }
 };
 
-static TableCtor table_ctor;
+[[maybe_unused]] static TableCtor table_ctor;
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
   if (size != 3) return -1;

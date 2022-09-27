@@ -23,9 +23,7 @@
 #include "./defs.h"
 #include "./shared_memory_blob_sequence.h"
 
-namespace centipede {
-
-namespace execution_request {
+namespace centipede::execution_request {
 
 // Sends a request (via `blobseq`) to execute `inputs`.
 // Returns the number of sent inputs, which would normally be inputs.size().
@@ -54,8 +52,6 @@ bool IsNumMutants(SharedMemoryBlobSequence::Blob blob, size_t &num_mutants);
 // Returns true iff `blob` indicates a data input.
 bool IsDataInput(SharedMemoryBlobSequence::Blob blob);
 
-}  // namespace execution_request
-
-}  // namespace centipede
+}  // namespace centipede::execution_request
 
 #endif  // THIRD_PARTY_CENTIPEDE_EXECUTION_REQUEST_H_

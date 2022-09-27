@@ -31,7 +31,7 @@ namespace centipede {
 
 // TODO(kcc): [impl] add tests.
 Coverage::PCIndexVec FeatureSet::ToCoveragePCs() const {
-  return Coverage::PCIndexVec(pc_index_set_.begin(), pc_index_set_.end());
+  return {pc_index_set_.begin(), pc_index_set_.end()};
 }
 
 size_t FeatureSet::CountFeatures(FeatureDomains::Domain domain) {
@@ -168,7 +168,7 @@ const ByteArray &Corpus::UniformRandom(size_t random) const {
 
 void Corpus::PrintStats(std::ostream &out, const FeatureSet &fs) {
   out << "{ \"corpus_stats\": [\n";
-  std::string before_record = "";
+  std::string before_record;
   for (auto &record : records_) {
     out << before_record;
     before_record = ",\n";
@@ -176,7 +176,7 @@ void Corpus::PrintStats(std::ostream &out, const FeatureSet &fs) {
     out << "\"size\": " << record.data.size() << ", ";
     {
       out << "\"frequencies\": [";
-      std::string before_feature = "";
+      std::string before_feature;
       for (auto feature : record.features) {
         out << before_feature;
         before_feature = ", ";
@@ -265,7 +265,7 @@ size_t CoverageFrontier::Compute(const Corpus &corpus) {
   // Iterate all functions, set frontier_[] depending on whether the function
   // is partially covered or not.
   num_functions_in_frontier_ = 0;
-  IteratePcTableFunctions(pc_table_, [&](size_t beg, size_t end) {
+  IteratePcTableFunctions(pc_table_, [this](size_t beg, size_t end) {
     auto frontier_begin = frontier_.begin() + beg;
     auto frontier_end = frontier_.begin() + end;
     size_t cov_size_in_this_func =
