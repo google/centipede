@@ -88,6 +88,7 @@ class Centipede {
   // Runs all inputs from `to_rerun`, adds their features to the features file
   // of env_.my_shard_index, adds interesting inputs to the corpus.
   void Rerun(std::vector<ByteArray> &to_rerun);
+
   // Prints one logging line with `log_type` in it
   // if `min_log_level` is not greater than `env_.log_level`.
   void Log(std::string_view log_type, size_t min_log_level);
@@ -98,11 +99,14 @@ class Centipede {
   // Uses coverage_logger_ and VLOG(coverage_logger_verbose_level_).
   void LogFeaturesAsSymbols(const FeatureVec &f);
   // Generates a coverage report file in workdir.
-  void GenerateCoverageReport(std::string_view annotation);
+  void GenerateCoverageReport(std::string_view annotation, size_t batch_index);
   // Generates a corpus stats file in workdir.
-  void GenerateCorpusStats(std::string_view annotation);
-  // Generates all report and stats files in workdir.
-  void GenerateAllReportsAndStats(std::string_view annotation);
+  void GenerateCorpusStats(std::string_view annotation, size_t batch_index);
+  // Generates all the report and stats files in workdir if this shard is
+  // assigned to do that and if `batch_index` is 0 or satisfies the criteria set
+  // via the flags.
+  void MaybeGenerateTelemetry(std::string_view annotation, size_t batch_index);
+
   // Returns true if `input` passes env_.input_filter.
   bool InputPassesFilter(const ByteArray &input);
   // Executes `binary` with `input_vec` and `batch_result` as input/output.

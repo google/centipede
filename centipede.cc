@@ -365,43 +365,48 @@ void Centipede::Rerun(std::vector<ByteArray> &to_rerun) {
   }
 }
 
-void Centipede::GenerateCoverageReport(std::string_view annotation) {
-  if (env_.GeneratingCoverageReportInThisShard() && !pc_table_.empty()) {
-    auto pci_vec = fs_.ToCoveragePCs();
-    Coverage coverage(pc_table_, pci_vec);
-    std::stringstream out;
-    coverage.Print(symbols_, out);
-    // Repackage the output as ByteArray for RemoteFileAppend's consumption.
-    // TODO(kcc): [impl] may want to introduce RemoteFileAppend(f, std::string).
-    std::string str = out.str();
-    ByteArray bytes(str.begin(), str.end());
-    auto coverage_path = env_.MakeCoverageReportPath(annotation);
-    LOG(INFO) << "Generate coverage report: " << coverage_path;
-    auto f = RemoteFileOpen(coverage_path, "w");
-    CHECK(f);
-    RemoteFileAppend(f, bytes);
-    RemoteFileClose(f);
-  }
+void Centipede::GenerateCoverageReport(std::string_view annotation,
+                                       size_t batch_index) {
+  if (pc_table_.empty()) return;
+
+  auto pci_vec = fs_.ToCoveragePCs();
+  Coverage coverage(pc_table_, pci_vec);
+  std::stringstream out;
+  coverage.Print(symbols_, out);
+  // Repackage the output as ByteArray for RemoteFileAppend's consumption.
+  // TODO(kcc): [impl] may want to introduce RemoteFileAppend(f, std::string).
+  std::string str = out.str();
+  ByteArray bytes(str.begin(), str.end());
+  auto coverage_path = env_.MakeCoverageReportPath(annotation);
+  LOG(INFO) << "Generate coverage report: " << VV(batch_index)
+            << VV(coverage_path);
+  auto f = RemoteFileOpen(coverage_path, "w");
+  CHECK(f);
+  RemoteFileAppend(f, bytes);
+  RemoteFileClose(f);
 }
 
-void Centipede::GenerateCorpusStats(std::string_view annotation) {
-  if (env_.GeneratingCorpusStatsInThisShard()) {
-    std::ostringstream os;
-    corpus_.PrintStats(os, fs_);
-    std::string str = os.str();
-    ByteArray bytes(str.begin(), str.end());
-    auto stats_path = env_.MakeCorpusStatsPath(annotation);
-    LOG(INFO) << "Generate corpus stats: " << stats_path;
-    auto *f = RemoteFileOpen(stats_path, "w");
-    CHECK(f);
-    RemoteFileAppend(f, bytes);
-    RemoteFileClose(f);
-  }
+void Centipede::GenerateCorpusStats(std::string_view annotation,
+                                    size_t batch_index) {
+  std::ostringstream os;
+  corpus_.PrintStats(os, fs_);
+  std::string str = os.str();
+  ByteArray bytes(str.begin(), str.end());
+  auto stats_path = env_.MakeCorpusStatsPath(annotation);
+  LOG(INFO) << "Generate corpus stats: " << VV(batch_index) << VV(stats_path);
+  auto *f = RemoteFileOpen(stats_path, "w");
+  CHECK(f);
+  RemoteFileAppend(f, bytes);
+  RemoteFileClose(f);
 }
 
-void Centipede::GenerateAllReportsAndStats(std::string_view annotation) {
-  GenerateCoverageReport(annotation);
-  GenerateCorpusStats(annotation);
+void Centipede::MaybeGenerateTelemetry(std::string_view annotation,
+                                       size_t batch_index) {
+  if (env_.DumpTelemetryInThisShard() &&
+      env_.DumpTelemetryForThisBatch(batch_index)) {
+    GenerateCoverageReport(annotation, batch_index);
+    GenerateCorpusStats(annotation, batch_index);
+  }
 }
 
 void Centipede::MergeFromOtherCorpus(std::string_view merge_from_dir,
@@ -488,11 +493,13 @@ void Centipede::FuzzingLoop() {
               << " distilled_size: " << corpus_.NumActive();
   }
 
-  // Dump the initial telemetry files. For a brand-new run, these will be empty.
-  // For a bootstrapped run (the workdir already has data), these may or may not
-  // coincide with the final "latest" report of the previous run, depending on
-  // how the runs are configured (the same number of shards, for example).
-  GenerateAllReportsAndStats("initial");
+  // Dump the initial telemetry files. For a brand-new run, these will be
+  // functionally empty, e.g. the coverage report will list all target functions
+  // as not covered (NONE). For a bootstrapped run (the workdir already has
+  // data), these may or may not coincide with the final "latest" report of the
+  // previous run, depending on how the runs are configured (the same number of
+  // shards, for example).
+  MaybeGenerateTelemetry("initial", /*batch_index=*/0);
 
   // num_runs / batch_size, rounded up.
   size_t number_of_batches = env_.num_runs / env_.batch_size;
@@ -521,18 +528,14 @@ void Centipede::FuzzingLoop() {
         RunBatch(mutants, corpus_file.get(), features_file.get(), nullptr);
     new_runs += mutants.size();
 
-    bool batch_is_power_of_two = ((batch_index - 1) & batch_index) == 0;
-
     if (gained_new_coverage) {
       Log("new-feature", 1);
-    } else if (batch_is_power_of_two) {
+    } else if (((batch_index - 1) & batch_index) == 0) {
       Log("pulse", 1);  // log if batch_index is a power of two.
     }
 
     // Dump the intermediate telemetry files.
-    if (batch_is_power_of_two) {
-      GenerateAllReportsAndStats("latest");
-    }
+    MaybeGenerateTelemetry("latest", batch_index);
 
     if (env_.load_other_shard_frequency != 0 &&
         (batch_index % env_.load_other_shard_frequency) == 0 &&
@@ -554,9 +557,9 @@ void Centipede::FuzzingLoop() {
     }
   }
 
-  // Dump the final telemetry files, possibly overwriting the intermediate ones
-  // dumped inside the loop.
-  GenerateAllReportsAndStats("latest");
+  // Dump the final telemetry files, possibly overwriting the last intermediate
+  // version dumped inside the loop.
+  MaybeGenerateTelemetry("latest", number_of_batches);
 
   Log("end-fuzz", 0);  // Tests rely on this line being present at the end.
 }
