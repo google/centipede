@@ -62,7 +62,7 @@ struct Environment {
   size_t use_pcpair_features;
   size_t feature_frequency_threshold;
   bool require_pc_table;
-  bool generate_corpus_stats;
+  int telemetry_every_n_batches;
   size_t distill_shards;
   std::string save_corpus_to_local_dir;
   std::string export_corpus_from_local_dir;
@@ -112,13 +112,19 @@ struct Environment {
   // Returns the path for the corpus stats report file for my_shard_index.
   // The corpus stats report is regenerated periodically during fuzzing.
   std::string MakeCorpusStatsPath(std::string_view annotation = "") const;
-  // Returns true if we want to generate a coverage report in this shard.
-  bool GeneratingCoverageReportInThisShard() const {
-    return my_shard_index == 0;
-  }
-  // Returns true if we want to generate a corpus stats file in this shard.
-  bool GeneratingCorpusStatsInThisShard() const {
-    return generate_corpus_stats && my_shard_index == 0;
+  // Returns true if we want to update the telemetry files (the coverage report,
+  // the corpus stats, etc.) in this shard.
+  bool UpdateTelemetryInThisShard() const { return my_shard_index == 0; }
+  // Returns true if we want to generate (update) the telemetry data (pulse
+  // logging, the coverage report, the corpus stats, etc.) after processing the
+  // `batch_index`-th batch.
+  bool UpdateTelemetryForThisBatch(size_t batch_index) const {
+    return ((telemetry_every_n_batches == 0) &&
+            // Special mode: dump when batch_index is a power-of-two:
+            ((batch_index - 1) & batch_index) == 0) ||
+           ((telemetry_every_n_batches > 0) &&
+            // Normal mode: dump when requested number of batches get processed:
+            (batch_index % telemetry_every_n_batches == 0));
   }
 
   // Sets flag 'name' to `value`. CHECK-fails on invalid name/value combination.

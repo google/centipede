@@ -101,8 +101,11 @@ class Centipede {
   void GenerateCoverageReport(std::string_view annotation);
   // Generates a corpus stats file in workdir.
   void GenerateCorpusStats(std::string_view annotation);
-  // Generates all report and stats files in workdir.
-  void GenerateAllReportsAndStats(std::string_view annotation);
+  // Maybe generates (updates) all the report and stats files in workdir if this
+  // shard is assigned that task and if `batch_index` is 0 or satisfies the
+  // criteria set via the flags.
+  void MaybeGenerateAllReportsAndStats(size_t batch_index,
+                                       std::string_view annotation);
   // Returns true if `input` passes env_.input_filter.
   bool InputPassesFilter(const ByteArray &input);
   // Executes `binary` with `input_vec` and `batch_result` as input/output.
