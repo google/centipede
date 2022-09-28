@@ -303,9 +303,22 @@ Environment::Environment(int argc, char **argv)
 }
 
 namespace {
+
 // Max number of decimal digits in a shard index given `total_shards`. Used to
 // pad indices with 0's in output file names so the names are sorted by index.
 inline constexpr int kDigitsInShardIndex = 6;
+
+// If `annotation` is empty, returns an empty string. Otherwise, verifies that
+// it does not start with a dot and returns it with a dot prepended.
+std::string NormalizeAnnotation(std::string_view annotation) {
+  std::string ret;
+  if (!annotation.empty()) {
+    CHECK_NE(annotation.front(), '.');
+    ret = absl::StrCat(".", annotation);
+  }
+  return ret;
+}
+
 }  // namespace
 
 std::string Environment::MakeCoverageDirPath() const {
@@ -333,10 +346,11 @@ std::string Environment::MakeDistilledPath() const {
       "distilled-%s.%0*d", binary_name, kDigitsInShardIndex, my_shard_index));
 }
 
-std::string Environment::MakeCoverageReportPath() const {
-  return std::filesystem::path(workdir).append(
-      absl::StrFormat("coverage-report-%s.%0*d.txt", binary_name,
-                      kDigitsInShardIndex, my_shard_index));
+std::string Environment::MakeCoverageReportPath(
+    std::string_view annotation) const {
+  return std::filesystem::path(workdir).append(absl::StrFormat(
+      "coverage-report-%s.%0*d%s.txt", binary_name, kDigitsInShardIndex,
+      my_shard_index, NormalizeAnnotation(annotation)));
 }
 
 std::string Environment::MakeCorpusStatsPath() const {

@@ -361,7 +361,7 @@ void Centipede::Rerun(std::vector<ByteArray> &to_rerun) {
   }
 }
 
-void Centipede::GenerateCoverageReport() {
+void Centipede::GenerateCoverageReport(std::string_view annotation) {
   if (pc_table_.empty()) return;
   if (!env_.GeneratingCoverageReportInThisShard()) return;
   auto pci_vec = fs_.ToCoveragePCs();
@@ -372,7 +372,7 @@ void Centipede::GenerateCoverageReport() {
   // TODO(kcc): [impl] may want to introduce RemoteFileAppend(f, std::string).
   std::string str = out.str();
   ByteArray bytes(str.begin(), str.end());
-  auto report_path = env_.MakeCoverageReportPath();
+  auto report_path = env_.MakeCoverageReportPath(annotation);
   LOG(INFO) << "GenerateCoverageReport: " << report_path;
   auto f = RemoteFileOpen(report_path, "w");
   CHECK(f);
@@ -477,7 +477,7 @@ void Centipede::FuzzingLoop() {
               << " distilled_size: " << corpus_.NumActive();
   }
 
-  GenerateCoverageReport();
+  GenerateCoverageReport("initial");
 
   // num_runs / batch_size, rounded up.
   size_t number_of_batches = env_.num_runs / env_.batch_size;
