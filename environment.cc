@@ -353,10 +353,11 @@ std::string Environment::MakeCoverageReportPath(
       my_shard_index, NormalizeAnnotation(annotation)));
 }
 
-std::string Environment::MakeCorpusStatsPath() const {
-  return std::filesystem::path(workdir).append(
-      absl::StrFormat("corpus-stats-%s.%0*d.json", binary_name,
-                      kDigitsInShardIndex, my_shard_index));
+std::string Environment::MakeCorpusStatsPath(
+    std::string_view annotation) const {
+  return std::filesystem::path(workdir).append(absl::StrFormat(
+      "corpus-stats-%s.%0*d%s.json", binary_name, kDigitsInShardIndex,
+      my_shard_index, NormalizeAnnotation(annotation)));
 }
 
 // Returns true if `value` is one of "1", "true".

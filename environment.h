@@ -111,7 +111,7 @@ struct Environment {
   std::string MakeCoverageReportPath(std::string_view annotation = "") const;
   // Returns the path for the corpus stats report file for my_shard_index.
   // The corpus stats report is regenerated periodically during fuzzing.
-  std::string MakeCorpusStatsPath() const;
+  std::string MakeCorpusStatsPath(std::string_view annotation = "") const;
   // Returns true if we want to generate a coverage report in this shard.
   bool GeneratingCoverageReportInThisShard() const {
     return my_shard_index == 0;

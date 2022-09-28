@@ -23,8 +23,8 @@
 #include <vector>
 
 #include "./blob_file.h"
-#include "./command.h"
 #include "./centipede_callbacks.h"
+#include "./command.h"
 #include "./corpus.h"
 #include "./coverage.h"
 #include "./defs.h"
@@ -100,7 +100,9 @@ class Centipede {
   // Generates a coverage report file in workdir.
   void GenerateCoverageReport(std::string_view annotation);
   // Generates a corpus stats file in workdir.
-  void GenerateCorpusStats();
+  void GenerateCorpusStats(std::string_view annotation);
+  // Generates all report and stats files in workdir.
+  void GenerateAllReportsAndStats(std::string_view annotation);
   // Returns true if `input` passes env_.input_filter.
   bool InputPassesFilter(const ByteArray &input);
   // Executes `binary` with `input_vec` and `batch_result` as input/output.
