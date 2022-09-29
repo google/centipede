@@ -51,11 +51,12 @@ void CentipedeDefaultCallbacks::Mutate(const std::vector<ByteArray> &inputs,
                                        size_t num_mutants,
                                        std::vector<ByteArray> &mutants) {
   mutants.resize(num_mutants);
-  if (custom_mutator_is_usable_ &&
-      MutateViaExternalBinary(env_.binary, inputs, mutants)) {
+  if (custom_mutator_is_usable_) {
+    CHECK(MutateViaExternalBinary(env_.binary, inputs, mutants))
+        << "Custom mutator in " << env_.binary << " failed, aborting";
     return;
   }
-  // Either no custom mutator, or it failed for some reason.
+  // No custom mutator.
   byte_array_mutator_.MutateMany(inputs, num_mutants, env_.crossover_level,
                                  mutants);
 }
