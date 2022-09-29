@@ -372,6 +372,7 @@ void Centipede::GenerateCoverageReport(std::string_view annotation,
   auto pci_vec = fs_.ToCoveragePCs();
   Coverage coverage(pc_table_, pci_vec);
   std::stringstream out;
+  out << "# Last batch: " << batch_index << "\n\n";
   coverage.Print(symbols_, out);
   // Repackage the output as ByteArray for RemoteFileAppend's consumption.
   // TODO(kcc): [impl] may want to introduce RemoteFileAppend(f, std::string).
@@ -389,6 +390,7 @@ void Centipede::GenerateCoverageReport(std::string_view annotation,
 void Centipede::GenerateCorpusStats(std::string_view annotation,
                                     size_t batch_index) {
   std::ostringstream os;
+  os << "# Last batch: " << batch_index << "\n\n";
   corpus_.PrintStats(os, fs_);
   std::string str = os.str();
   ByteArray bytes(str.begin(), str.end());
