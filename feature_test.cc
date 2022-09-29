@@ -54,7 +54,7 @@ TEST(Feature, Convert8bitCounterToFeature) {
 
   for (size_t pc_index = 0; pc_index < 10; pc_index++) {
     for (int counter = 1; counter < 256; counter++) {
-      auto feature = FeatureDomains::k8bitCounters.ConvertToMe(
+      auto feature = feature_domains::k8bitCounters.ConvertToMe(
           Convert8bitCounterToNumber(pc_index, counter));
       EXPECT_EQ(Convert8bitCounterFeatureToPcIndex(feature), pc_index);
     }

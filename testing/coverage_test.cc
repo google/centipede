@@ -243,7 +243,7 @@ TEST(Coverage, CoverageFeatures) {
     size_t single_edge_func_num_edges = 0;
     size_t multi_edge_func_num_edges = 0;
     for (auto feature : features[input_idx]) {
-      if (!FeatureDomains::k8bitCounters.Contains(feature)) continue;
+      if (!feature_domains::k8bitCounters.Contains(feature)) continue;
       auto pc_index = Convert8bitCounterFeatureToPcIndex(feature);
       single_edge_func_num_edges += symbols.func(pc_index) == "SingleEdgeFunc";
       multi_edge_func_num_edges += symbols.func(pc_index) == "MultiEdgeFunc";
@@ -264,7 +264,7 @@ TEST(Coverage, CoverageFeatures) {
 }
 
 static FeatureVec ExtractDomainFeatures(const FeatureVec &features,
-                                        const FeatureDomains::Domain &domain) {
+                                        const feature_domains::Domain &domain) {
   FeatureVec result;
   for (auto feature : features) {
     if (domain.Contains(feature)) {
@@ -283,12 +283,12 @@ TEST(Coverage, DataFlowFeatures) {
   for (auto &features : {features_g, features_c}) {
     EXPECT_EQ(features.size(), 2);
     // Dataflow features should be different.
-    EXPECT_NE(ExtractDomainFeatures(features[0], FeatureDomains::kDataFlow),
-              ExtractDomainFeatures(features[1], FeatureDomains::kDataFlow));
+    EXPECT_NE(ExtractDomainFeatures(features[0], feature_domains::kDataFlow),
+              ExtractDomainFeatures(features[1], feature_domains::kDataFlow));
     // But control flow features should be the same.
     EXPECT_EQ(
-        ExtractDomainFeatures(features[0], FeatureDomains::k8bitCounters),
-        ExtractDomainFeatures(features[1], FeatureDomains::k8bitCounters));
+        ExtractDomainFeatures(features[0], feature_domains::k8bitCounters),
+        ExtractDomainFeatures(features[1], feature_domains::k8bitCounters));
   }
 }
 
@@ -300,11 +300,11 @@ TEST(Coverage, CMPFeatures) {
       RunInputsAndCollectCoverage(env, {"cmpAAAAAAAA", "cmpAAAABBBB"});
   EXPECT_EQ(features.size(), 2);
   // CMP features should be different.
-  EXPECT_NE(ExtractDomainFeatures(features[0], FeatureDomains::kCMP),
-            ExtractDomainFeatures(features[1], FeatureDomains::kCMP));
+  EXPECT_NE(ExtractDomainFeatures(features[0], feature_domains::kCMP),
+            ExtractDomainFeatures(features[1], feature_domains::kCMP));
   // But control flow features should be the same.
-  EXPECT_EQ(ExtractDomainFeatures(features[0], FeatureDomains::k8bitCounters),
-            ExtractDomainFeatures(features[1], FeatureDomains::k8bitCounters));
+  EXPECT_EQ(ExtractDomainFeatures(features[0], feature_domains::k8bitCounters),
+            ExtractDomainFeatures(features[1], feature_domains::k8bitCounters));
 }
 
 // Tests memcmp interceptor.
@@ -315,11 +315,11 @@ TEST(Coverage, CMPFeaturesFromMemcmp) {
       RunInputsAndCollectCoverage(env, {"mcmpAAAAAAAA", "mcmpAAAABBBB"});
   EXPECT_EQ(features.size(), 2);
   // CMP features should be different.
-  EXPECT_NE(ExtractDomainFeatures(features[0], FeatureDomains::kCMP),
-            ExtractDomainFeatures(features[1], FeatureDomains::kCMP));
+  EXPECT_NE(ExtractDomainFeatures(features[0], feature_domains::kCMP),
+            ExtractDomainFeatures(features[1], feature_domains::kCMP));
   // But control flow features should be the same.
-  EXPECT_EQ(ExtractDomainFeatures(features[0], FeatureDomains::k8bitCounters),
-            ExtractDomainFeatures(features[1], FeatureDomains::k8bitCounters));
+  EXPECT_EQ(ExtractDomainFeatures(features[0], feature_domains::k8bitCounters),
+            ExtractDomainFeatures(features[1], feature_domains::k8bitCounters));
 }
 
 TEST(Coverage, PathFeatures) {
@@ -331,11 +331,11 @@ TEST(Coverage, PathFeatures) {
   auto features = RunInputsAndCollectCoverage(env, {"pth123", "pth321"});
   EXPECT_EQ(features.size(), 2);
   // Path features should be different.
-  EXPECT_NE(ExtractDomainFeatures(features[0], FeatureDomains::kBoundedPath),
-            ExtractDomainFeatures(features[1], FeatureDomains::kBoundedPath));
+  EXPECT_NE(ExtractDomainFeatures(features[0], feature_domains::kBoundedPath),
+            ExtractDomainFeatures(features[1], feature_domains::kBoundedPath));
   // But control flow features should be the same.
-  EXPECT_EQ(ExtractDomainFeatures(features[0], FeatureDomains::k8bitCounters),
-            ExtractDomainFeatures(features[1], FeatureDomains::k8bitCounters));
+  EXPECT_EQ(ExtractDomainFeatures(features[0], feature_domains::k8bitCounters),
+            ExtractDomainFeatures(features[1], feature_domains::k8bitCounters));
 }
 
 TEST(Coverage, FunctionFilter) {
@@ -403,11 +403,12 @@ TEST(Coverage, ThreadedTest) {
   for (size_t idx0 = 0; idx0 < 3; ++idx0) {
     for (size_t idx1 = idx0 + 1; idx1 < 4; ++idx1) {
       EXPECT_NE(
-          ExtractDomainFeatures(features[idx0], FeatureDomains::k8bitCounters),
-          ExtractDomainFeatures(features[idx1], FeatureDomains::k8bitCounters));
+          ExtractDomainFeatures(features[idx0], feature_domains::k8bitCounters),
+          ExtractDomainFeatures(features[idx1],
+                                feature_domains::k8bitCounters));
       EXPECT_NE(
-          ExtractDomainFeatures(features[idx0], FeatureDomains::kBoundedPath),
-          ExtractDomainFeatures(features[idx1], FeatureDomains::kBoundedPath));
+          ExtractDomainFeatures(features[idx0], feature_domains::kBoundedPath),
+          ExtractDomainFeatures(features[idx1], feature_domains::kBoundedPath));
     }
   }
 }

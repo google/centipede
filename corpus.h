@@ -56,7 +56,7 @@ class FeatureSet {
   Coverage::PCIndexVec ToCoveragePCs() const;
 
   // Returns the number of features in `this` from the given feature domain.
-  size_t CountFeatures(FeatureDomains::Domain domain);
+  size_t CountFeatures(feature_domains::Domain domain);
 
   // Returns the frequency associated with `feature`.
   size_t Frequency(feature_t feature) const {
@@ -74,7 +74,7 @@ class FeatureSet {
   // Rationale: the kPCPair features might be too numerous, we don't want to
   // store more than one of each such feature in the corpus.
   uint8_t FrequencyThreshold(feature_t feature) const {
-    if (FeatureDomains::kPCPair.Contains(feature)) return 1;
+    if (feature_domains::kPCPair.Contains(feature)) return 1;
     return frequency_threshold_;
   }
 
@@ -97,7 +97,7 @@ class FeatureSet {
   size_t num_features_ = 0;
 
   // Counts features in each domain.
-  size_t features_per_domain_[FeatureDomains::Domain::kLastDomain + 1] = {};
+  size_t features_per_domain_[feature_domains::Domain::kLastDomain + 1] = {};
 
   // Maintains the set of PC indices that correspond to added features.
   absl::flat_hash_set<Coverage::PCIndex> pc_index_set_;

@@ -69,7 +69,7 @@ inline uint64_t RotateLeft(uint64_t bits, uint64_t n) {
   return (bits << n) | (bits >> (64 - n));
 }
 
-namespace FeatureDomains {
+namespace feature_domains {
 
 // Feature domain is a subset of 64-bit integers dedicated to a certain
 // kind of fuzzing features.
@@ -148,7 +148,7 @@ constexpr Domain kPCPair = {Domain::kPCPair};
 // Don't put any domains after this one.
 constexpr Domain kLastDomain = {Domain::kLastDomain};
 
-}  // namespace FeatureDomains
+}  // namespace feature_domains
 
 // Converts an 8-bit coverage counter, i.e. a pair of {`pc_index`,
 // `counter_value` must not be zero.
@@ -204,7 +204,7 @@ inline void ForEachNonZeroByte(const uint8_t *bytes, size_t num_bytes,
 // Given the `feature` from the k8bitCounters domain, returns the feature's
 // pc_index. I.e. reverse of Convert8bitCounterToFeature.
 inline size_t Convert8bitCounterFeatureToPcIndex(feature_t feature) {
-  auto domain = FeatureDomains::k8bitCounters;
+  auto domain = feature_domains::k8bitCounters;
   if (!domain.Contains(feature)) __builtin_trap();
   return (feature - domain.begin()) / 8;
 }

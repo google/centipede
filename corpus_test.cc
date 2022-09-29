@@ -56,9 +56,9 @@ TEST(FeatureSet, ComputeWeightWithDifferentDomains) {
   FeatureSet feature_set(10);
   // Increment the feature frequencies such that the domain #1 is the rarest and
   // the domain #3 is the most frequent.
-  auto f1 = FeatureDomains::k8bitCounters.begin();
-  auto f2 = FeatureDomains::kCMP.begin();
-  auto f3 = FeatureDomains::kBoundedPath.begin();
+  auto f1 = feature_domains::k8bitCounters.begin();
+  auto f2 = feature_domains::kCMP.begin();
+  auto f3 = feature_domains::kBoundedPath.begin();
   feature_set.IncrementFrequencies(
       {/* one feature from domain #1 */ f1,
        /* two features from domain #2 */ f2, f2 + 1,
@@ -361,7 +361,7 @@ TEST(CoverageFrontier, Compute) {
   CoverageFrontier frontier(pc_table);
   FeatureVec pcs(pc_table.size());
   for (size_t i = 0; i < pc_table.size(); i++) {
-    pcs[i] = FeatureDomains::k8bitCounters.ConvertToMe(
+    pcs[i] = feature_domains::k8bitCounters.ConvertToMe(
         Convert8bitCounterToNumber(i, /*counter_value*/ 1));
   }
 
@@ -379,7 +379,7 @@ TEST(CoverageFrontier, Compute) {
   }
   // add some non-pc features.
   for (size_t x : {1, 2, 3, 4}) {
-    Add(FeatureDomains::kUnknown.ConvertToMe(x));
+    Add(feature_domains::kUnknown.ConvertToMe(x));
   }
 
   // Compute and check the frontier.

@@ -33,7 +33,7 @@ namespace centipede {
 // on every pair {input, features}.
 // If features are not found for a given input, callback's 2nd argument is {}.
 // If features are found for a given input but are empty,
-// then callback's 2n-d argument is {FeatureDomains::kNoFeature}.
+// then callback's 2n-d argument is {feature_domains::kNoFeature}.
 template <typename CallBack>
 void ReadShard(std::string_view corpus_path, std::string_view features_path,
                CallBack callback) {
@@ -56,7 +56,7 @@ void ReadShard(std::string_view corpus_path, std::string_view features_path,
       size_t num_feature_bytes = hash_and_features.size() - kHashLen;
       if (num_feature_bytes == 0) {
         // Special case: zero features.
-        hash_to_features[hash] = {FeatureDomains::kNoFeature};
+        hash_to_features[hash] = {feature_domains::kNoFeature};
         continue;
       }
       FeatureVec features(num_feature_bytes / sizeof(feature_t));

@@ -66,7 +66,7 @@ class CentipedeMock : public CentipedeCallbacks {
       FeatureVec features;
       ForEachNonZeroByte(
           counters.data(), counters.size(), [&](size_t idx, uint8_t value) {
-            features.push_back(FeatureDomains::k8bitCounters.ConvertToMe(
+            features.push_back(feature_domains::k8bitCounters.ConvertToMe(
                 Convert8bitCounterToNumber(idx, value)));
           });
       batch_result.results().emplace_back(ExecutionResult{features});
@@ -653,7 +653,7 @@ TEST(Centipede, ShardReader) {
   EXPECT_EQ(res[0].features, fv1);
   EXPECT_EQ(res[1].features, fv2);
   EXPECT_EQ(res[2].features, fv3);
-  EXPECT_EQ(res[3].features, FeatureVec{FeatureDomains::kNoFeature});
+  EXPECT_EQ(res[3].features, FeatureVec{feature_domains::kNoFeature});
   EXPECT_EQ(res[4].features, FeatureVec());
 }
 

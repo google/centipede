@@ -246,7 +246,7 @@ PostProcessCoverage(int target_return_value) {
         state.counter_array.data(), state.counter_array.size(),
         [](size_t idx, uint8_t value) {
           g_features.push_back(
-              centipede::FeatureDomains::k8bitCounters.ConvertToMe(
+              centipede::feature_domains::k8bitCounters.ConvertToMe(
                   centipede::Convert8bitCounterToNumber(idx, value)));
         });
   }
@@ -255,14 +255,14 @@ PostProcessCoverage(int target_return_value) {
   if (state.run_time_flags.use_dataflow_features) {
     state.data_flow_feature_set.ForEachNonZeroBit([](size_t idx) {
       g_features.push_back(
-          centipede::FeatureDomains::kDataFlow.ConvertToMe(idx));
+          centipede::feature_domains::kDataFlow.ConvertToMe(idx));
     });
   }
 
   // Convert cmp bit set to features.
   if (state.run_time_flags.use_cmp_features) {
     state.cmp_feature_set.ForEachNonZeroBit([](size_t idx) {
-      g_features.push_back(centipede::FeatureDomains::kCMP.ConvertToMe(idx));
+      g_features.push_back(centipede::feature_domains::kCMP.ConvertToMe(idx));
     });
   }
 
@@ -270,7 +270,7 @@ PostProcessCoverage(int target_return_value) {
   if (state.run_time_flags.path_level) {
     state.path_feature_set.ForEachNonZeroBit([](size_t idx) {
       g_features.push_back(
-          centipede::FeatureDomains::kBoundedPath.ConvertToMe(idx));
+          centipede::feature_domains::kBoundedPath.ConvertToMe(idx));
     });
   }
 
@@ -278,8 +278,9 @@ PostProcessCoverage(int target_return_value) {
   if (state.run_time_flags.use_pc_features &&
       !state.run_time_flags.use_counter_features) {
     state.pc_feature_set.ForEachNonZeroBit([](size_t idx) {
-      g_features.push_back(centipede::FeatureDomains::k8bitCounters.ConvertToMe(
-          centipede::Convert8bitCounterToNumber(idx, 1)));
+      g_features.push_back(
+          centipede::feature_domains::k8bitCounters.ConvertToMe(
+              centipede::Convert8bitCounterToNumber(idx, 1)));
     });
   }
 }

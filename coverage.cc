@@ -215,7 +215,7 @@ FunctionFilter::FunctionFilter(std::string_view functions_to_filter,
 bool FunctionFilter::filter(const FeatureVec &features) const {
   if (pcs_.empty()) return true;
   for (auto feature : features) {
-    if (!FeatureDomains::k8bitCounters.Contains(feature)) continue;
+    if (!feature_domains::k8bitCounters.Contains(feature)) continue;
     size_t idx = Convert8bitCounterFeatureToPcIndex(feature);
     // idx should normally be within the range. Ignore it if it's not.
     if (idx >= pcs_.size()) continue;

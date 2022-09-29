@@ -34,7 +34,7 @@ Coverage::PCIndexVec FeatureSet::ToCoveragePCs() const {
   return {pc_index_set_.begin(), pc_index_set_.end()};
 }
 
-size_t FeatureSet::CountFeatures(FeatureDomains::Domain domain) {
+size_t FeatureSet::CountFeatures(feature_domains::Domain domain) {
   return features_per_domain_[domain.domain_id];
 }
 
@@ -62,8 +62,8 @@ void FeatureSet::IncrementFrequencies(const FeatureVec &features) {
     auto &freq = frequencies_[Feature2Idx(f)];
     if (freq == 0) {
       ++num_features_;
-      ++features_per_domain_[FeatureDomains::Domain::FeatureToDomainId(f)];
-      if (FeatureDomains::k8bitCounters.Contains(f))
+      ++features_per_domain_[feature_domains::Domain::FeatureToDomainId(f)];
+      if (feature_domains::k8bitCounters.Contains(f))
         pc_index_set_.insert(Convert8bitCounterFeatureToPcIndex(f));
     }
     if (freq < FrequencyThreshold(f)) ++freq;
@@ -80,7 +80,7 @@ FeatureSet::ComputeWeight(const FeatureVec &features) const {
     // (frequency == 2) => (weight == 128)
     // and so on.
     // The less frequent is the domain, the more valuable are its features.
-    auto domain_id = FeatureDomains::Domain::FeatureToDomainId(feature);
+    auto domain_id = feature_domains::Domain::FeatureToDomainId(feature);
     auto features_in_domain = features_per_domain_[domain_id];
     CHECK_GT(features_in_domain, 0) << VV(feature) << VV(domain_id);
     auto domain_weight = num_features_ / features_in_domain;
@@ -100,7 +100,7 @@ static size_t ComputeWeight(const FeatureVec &fv, const FeatureSet &fs,
   size_t weight = fs.ComputeWeight(fv);
   size_t num_features_in_frontier = 0;
   for (const auto feature : fv) {
-    if (!FeatureDomains::k8bitCounters.Contains(feature)) continue;
+    if (!feature_domains::k8bitCounters.Contains(feature)) continue;
     const auto pc_index = Convert8bitCounterFeatureToPcIndex(feature);
     if (coverage_frontier.PcIndexIsFrontier(pc_index)) {
       ++num_features_in_frontier;
@@ -255,7 +255,7 @@ size_t CoverageFrontier::Compute(const Corpus &corpus) {
   // Use frontier_ as a scratch to record all PCs covered by corpus.
   for (const auto &record : corpus.records_) {
     for (auto feature : record.features) {
-      if (!FeatureDomains::k8bitCounters.Contains(feature)) continue;
+      if (!feature_domains::k8bitCounters.Contains(feature)) continue;
       size_t idx = Convert8bitCounterFeatureToPcIndex(feature);
       if (idx >= pc_table_.size()) continue;
       frontier_[idx] = true;
