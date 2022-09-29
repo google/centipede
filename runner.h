@@ -62,7 +62,8 @@ struct RunTimeFlags {
 struct ThreadLocalRunnerState {
   // Intrusive doubly-linked list of TLS objects.
   // Guarded by state.tls_list_mu.
-  ThreadLocalRunnerState *next, *prev;
+  ThreadLocalRunnerState *next = nullptr, *prev = nullptr;
+
   // The pthread_create() interceptor calls OnThreadStart()/OnThreadStop()
   // before/after the thread callback.
   // The main thread calls OnThreadStart().

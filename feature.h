@@ -282,6 +282,8 @@ inline size_t ConvertContextAndArgPairToNumber(uintptr_t a, uintptr_t b,
 template <size_t kSize>
 class HashedRingBuffer {
  public:
+  HashedRingBuffer() = default;
+
   // Adds `new_item` and returns the new hash of the entire collection.
   // Evicts an old item.
   // `ring_buffer_size` must be <= kSize and must be the same for all push()
@@ -308,9 +310,9 @@ class HashedRingBuffer {
   void clear() { memset(this, 0, sizeof(*this)); }
 
  private:
-  size_t buffer_[kSize];   // All elements.
-  size_t last_added_pos_;  // Position of the last added element.
-  size_t hash_;            // XOR of all elements in buffer_.
+  size_t buffer_[kSize] = {};  // All elements.
+  size_t last_added_pos_ = 0;  // Position of the last added element.
+  size_t hash_ = 0;            // XOR of all elements in buffer_.
 };
 
 // A fixed-size bitset with a lossy concurrent set() function.
@@ -320,8 +322,9 @@ template <size_t kSizeInBits>
 class ConcurrentBitSet {
  public:
   static_assert((kSizeInBits % 512) == 0);
+
   // Constructs an empty bit set.
-  ConcurrentBitSet() { clear(); }
+  ConcurrentBitSet() = default;
 
   // Clears the bit set.
   void clear() { memset(words_, 0, sizeof(words_)); }
@@ -363,7 +366,7 @@ class ConcurrentBitSet {
   using word_t = uintptr_t;
   static const size_t kBitsInWord = 8 * sizeof(word_t);
   static const size_t kSizeInWords = kSizeInBits / kBitsInWord;
-  word_t words_[kSizeInWords];
+  word_t words_[kSizeInWords] = {};
 };
 
 // A simple fixed-size byte array.
@@ -374,7 +377,7 @@ template <size_t kSize>
 class CounterArray {
  public:
   // Constructs an empty counter array.
-  CounterArray() { Clear(); }
+  CounterArray() = default;
 
   // Clears all counters.
   void Clear() { memset(data_, 0, sizeof(data_)); }
@@ -392,7 +395,7 @@ class CounterArray {
   size_t size() const { return kSize; }
 
  private:
-  uint8_t data_[kSize];
+  uint8_t data_[kSize] = {};
 };
 
 // A simple fixed-capacity array with push_back.
@@ -400,6 +403,9 @@ class CounterArray {
 template <size_t kSize>
 class FeatureArray {
  public:
+  // Constructs an empty feature array.
+  FeatureArray() = default;
+
   // pushes `feature` back if there is enough space.
   void push_back(feature_t feature) {
     if (num_features_ < kSize) {
@@ -417,6 +423,7 @@ class FeatureArray {
   size_t size() const { return num_features_; }
 
  private:
+  // NOTE: No initializer needed: object state is captured by `num_features_`.
   feature_t features_[kSize];
   size_t num_features_ = 0;
 };

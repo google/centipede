@@ -146,11 +146,11 @@ class SharedMemoryBlobSequence {
   // where size is 8 bytes and payload is size bytes.
   // After writing a blob, we also write 0 in place of the next blob's size,
   // if there is space left so that to overwrite any stale data left there.
-  uint8_t *data_;
+  uint8_t *data_ = nullptr;
   // offset_ points to the position in data_ after last Write (or last Read).
   size_t offset_ = 0;
-  size_t size_;  // size of the shared memory region.
-  int fd_;       // file descriptor used to mmap the shared memory region.
+  size_t size_ = 0;  // size of the shared memory region.
+  int fd_ = 0;       // file descriptor used to mmap the shared memory region.
   bool had_reads_after_reset_ = false;
   bool had_writes_after_reset_ = false;
 };
