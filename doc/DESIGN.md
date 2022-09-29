@@ -1,3 +1,10 @@
+<!--*
+# Document freshness: For more information, see go/fresh-source.
+freshness: { owner: 'sergeygs' reviewed: '2022-09-29' }
+*-->
+
+[TOC]
+
 # Centipede Design
 
 We are trying to build Centipede based on our experience with libFuzzer (and to
@@ -5,7 +12,7 @@ less extent, with AFL and others). We keep what worked well, change what didn't.
 
 See [README](../README.md) for user documentation and most of the terminology.
 
-# Execution Features
+## Execution Features
 
 Centipede reasons about execution feedback in terms of *features*. A feature is
 some unique behavior of the target on a given input. So, executing an input is a
@@ -25,7 +32,7 @@ The currently supported features (see [feature.h](feature.h) for details) are:
 However, the target may generate features of its own type, without having
 Centipede to support it explicitly.
 
-# Persistent state
+## Persistent state
 
 Centipede aims at large and slow targets, such that even a minimized corpus may
 consist of 100K-1M inputs, and executing every input takes 1ms-1s. We also aim
@@ -51,7 +58,7 @@ On startup, Centipede loads the corpus, and checks which corpus elements have
 their corresponding feature sets. Only when the feature set is not present for
 an input in the corpus, Centipede will recompute it.
 
-# Concurrent execution
+## Concurrent execution
 
 Centipede jobs run concurrently (in separate processes, potentially on different
 machines). They peek at each other's corpus (and feature sets) periodically.
@@ -60,13 +67,13 @@ state concurrently with that job writing to it.
 
 Centipede implements this via appendable storage format.
 
-# Storage format
+## Storage format
 
 Very simple and inefficient homebrewed appendable data format is currently used,
 see `PackBytesForAppendFile()` in [util.h](util.h). We may need to replace it
 with something more efficient when this one stops scaling.
 
-# Out-of-process target execution
+## Out-of-process target execution
 
 Centipede executes the target out of process. In order to minimize the process
 startup costs, it passes inputs to the target in batches, and receives features
@@ -80,7 +87,7 @@ It is possible to override the execution to do it in-process, but this way
 Centipede will lose the ability to set RAM and time limit, and it will not
 tolerate crashes in the target.
 
-# Instrumentation
+## Instrumentation
 
 Centipede is decoupled from the mechanism that collects the execution feedback.
 Any source of feedback can be used: compiler instrumentation, run-time
@@ -89,14 +96,14 @@ implementation in [runner_main.cc](runner_main.cc) and other `runner_*.cc` files
 relies on
 [SanitizerCoverage](https://clang.llvm.org/docs/SanitizerCoverage.html)
 
-# Mutations
+## Mutations
 
 Centipede is decoupled from Mutations - they are provided by the user via
 `CentipedeCallbacks::Mutate()`.
 
 Centipede provides a default implementation of mutations via `ByteArrayMutator`.
 
-# Corpus management
+## Corpus management
 
 One of the important heuristics during fuzzing is which corpus elements to
 mutate, and which to discard.
@@ -105,7 +112,7 @@ Centipede tries to mutate only those corpus elements that have *rare* features.
 
 TODO(kcc): [design] explain how this works.
 
-# Related reading
+## Related reading
 
 *   [Entropic] Boosting fuzzer efficiency: an information theoretic perspective.
     https://dl.acm.org/doi/abs/10.1145/3368089.3409748
