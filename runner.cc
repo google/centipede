@@ -161,6 +161,13 @@ extern "C" size_t LLVMFuzzerMutate(uint8_t *data, size_t size,
   // while centipede::ByteArray has a vector-based interface.
   // This incompatibility causes us to do extra allocate/copy per mutation.
   // It may not cause big problems in practice though.
+  if (max_size == 0) return 0;  // just in case, not expected to happen.
+  if (size == 0) {
+    // Don't mutate empty data, just return a 1-byte result.
+    data[0] = 0;
+    return 1;
+  }
+
   centipede::ByteArray array(data, data + size);
   state.byte_array_mutator->Mutate(array);
   if (array.size() > max_size) {
