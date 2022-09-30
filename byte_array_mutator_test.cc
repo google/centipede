@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 
+#include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/container/flat_hash_set.h"
 #include "./defs.h"
@@ -35,7 +36,54 @@ TEST(DictEntry, DictEntry) {
   EXPECT_EQ(memcmp(a_0_10.begin(), bytes, a_0_10.end() - a_0_10.begin()), 0);
 
   EXPECT_DEATH({ DictEntry a_0_10({bytes, 16}); }, "");
-  EXPECT_DEATH({ DictEntry a_0_10({bytes, 0}); }, "");
+  EXPECT_DEATH({ DictEntry a_0_10({bytes, 1}); }, "");
+}
+
+TEST(CmpDictionary, CmpDictionary) {
+  CmpDictionary dict;
+  ByteArray cmp_data = {
+      2,               // size
+      1,  2,           // a
+      3,  4,           // b
+      3,               // size
+      5,  6,  7,       // a
+      8,  9,  10,      // b
+      4,               // size
+      11, 12, 13, 14,  // a
+      15, 16, 17, 18,  // b
+      3,               // size
+      20, 21, 22,      // a
+      15, 16, 17,      // b
+  };
+
+  EXPECT_FALSE(dict.SetFromCmpData({3, 1, 2, 3}));  // malformed input.
+  EXPECT_FALSE(dict.SetFromCmpData({20}));          // malformed input.
+  EXPECT_TRUE(dict.SetFromCmpData(cmp_data));
+
+  using S = ByteSpan;
+
+  std::vector<ByteSpan> suggestions;
+  suggestions.reserve(5);
+
+  dict.SuggestReplacement({42, 43}, suggestions);
+  EXPECT_TRUE(suggestions.empty());
+
+  dict.SuggestReplacement({1, 2, 3}, suggestions);
+  EXPECT_THAT(suggestions, testing::ElementsAre(S({3, 4})));
+
+  dict.SuggestReplacement({5, 6, 7, 8}, suggestions);
+  EXPECT_THAT(suggestions, testing::ElementsAre(S({8, 9, 10})));
+
+  dict.SuggestReplacement({15, 16, 17, 18, 0, 0}, suggestions);
+  EXPECT_THAT(suggestions, testing::UnorderedElementsAre(S({11, 12, 13, 14}),
+                                                         S({20, 21, 22})));
+  // check that we don't exceed capacity.
+  std::vector<ByteSpan> capacity1;
+  capacity1.reserve(1);
+  EXPECT_EQ(capacity1.capacity(), 1);
+  dict.SuggestReplacement({15, 16, 17, 18, 0, 0}, capacity1);
+  EXPECT_EQ(capacity1.size(), 1);
+  EXPECT_EQ(capacity1.capacity(), 1);
 }
 
 // Tests that when alignment is not 1 byte, adding bytes to an input will result

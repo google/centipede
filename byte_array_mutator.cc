@@ -14,6 +14,7 @@
 
 #include "./byte_array_mutator.h"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -24,6 +25,55 @@
 
 namespace centipede {
 
+//============= CmpDictionary ===============
+bool CmpDictionary::SetFromCmpData(ByteSpan cmp_data) {
+  dictionary_.clear();
+  for (size_t i = 0; i < cmp_data.size();) {
+    auto size = cmp_data[i];
+    if (size > DictEntry::kMaxEntrySize) return false;
+    if (i + 2 * size > cmp_data.size()) return false;
+    ByteSpan a(cmp_data.begin() + i + 1, size);
+    ByteSpan b(cmp_data.begin() + i + size + 1, size);
+    // TODO(kcc): disregard boring CMP pairs, such as e.g. `1 CMP 0`.
+    dictionary_.emplace_back(a, b);
+    dictionary_.emplace_back(b, a);
+    i += 1 + 2 * size;
+  }
+  std::sort(dictionary_.begin(), dictionary_.end());
+  return true;
+}
+
+void CmpDictionary::SuggestReplacement(
+    ByteSpan bytes, std::vector<ByteSpan> &suggestions) const {
+  if (!suggestions.capacity()) return;
+  suggestions.clear();
+  if (bytes.size() < DictEntry::kMinEntrySize) return;
+  // Use binary search to find the first entry that starts with the
+  // same kMinEntrySize bytes as `bytes`.
+  // This is not supper efficient.
+  // We need to see the real usage before optimizing.
+  // TODO(kcc): investigate using absl/container/btree_map.h instead.
+  DictEntry prefix({bytes.begin(), DictEntry::kMinEntrySize});
+  auto iter = std::lower_bound(
+      dictionary_.begin(), dictionary_.end(), Pair{prefix, prefix},
+      [](const Pair &a, const Pair &b) { return a.first < b.first; });
+  // Iterate from the first entry that has the same first bytes as `bytes`
+  // to the last such entry.
+  for (; iter != dictionary_.end(); ++iter) {
+    const auto &a = iter->first;
+    const auto &b = iter->second;
+    if (bytes.size() < a.size()) break;
+    if (suggestions.size() == suggestions.capacity()) break;
+    if (!std::equal(bytes.begin(), bytes.begin() + DictEntry::kMinEntrySize,
+                    a.begin())) {
+      break;
+    }
+    if (std::equal(a.begin(), a.end(), bytes.begin()))
+      suggestions.emplace_back(b.begin(), b.size());
+  }
+}
+
+//============= ByteArrayMutator ===============
 size_t ByteArrayMutator::RoundUpToAdd(size_t curr_size, size_t to_add) {
   const size_t remainder = (curr_size + to_add) % size_alignment_;
   return (remainder == 0) ? to_add : (to_add + size_alignment_ - remainder);

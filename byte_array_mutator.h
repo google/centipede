@@ -26,15 +26,17 @@
 
 namespace centipede {
 
-// A simple class representing an array of up to kMaxEntrySize bytes.
-struct DictEntry {
-  static constexpr uint8_t kMaxEntrySize = 15;
-
+// A simple class representing an array of bytes, containing between
+// kMinEntrySize and kMaxEntrySize elements.
+class DictEntry {
  public:
+  static constexpr uint8_t kMaxEntrySize = 15;
+  static constexpr uint8_t kMinEntrySize = 2;
+
   explicit DictEntry(ByteSpan bytes)
       : bytes_{},  // initialize bytes_ to all zeros
         size_(bytes.size()) {
-    if (size_ > kMaxEntrySize || size_ == 0) __builtin_trap();
+    if (size_ > kMaxEntrySize || size_ < kMinEntrySize) __builtin_trap();
     memcpy(bytes_, bytes.data(), bytes.size());
   }
   const uint8_t *begin() const { return bytes_; }
@@ -47,7 +49,32 @@ struct DictEntry {
  private:
   // bytes_ must go first so that operator < is lexicographic.
   uint8_t bytes_[kMaxEntrySize];
-  uint8_t size_;  // between 1 and kMaxEntrySize.
+  uint8_t size_;  // between kMinEntrySize and kMaxEntrySize.
+};
+
+// Dictionary of CMP args.
+// Maintains an easy-to-query set of pairs {A,B}, such that
+// an instruction `A CMP B` has been observed.
+class CmpDictionary {
+ public:
+  CmpDictionary() = default;
+
+  // Sets the dictionary from raw data containing multiple CMP pairs.
+  // The input format is the same as in ExecutionResult:
+  //   1 byte of size, followed by `size` bytes of `A` and `size` bytes of `B`.
+  // Returns false on bad input, true otherwise.
+  bool SetFromCmpData(ByteSpan cmp_data);
+
+  // Clears `suggestions` on entry.
+  // For every observed `A CMP B` such that `A` is a prefix of `bytes`,
+  // adds `B` to `suggestions`.
+  // `suggestions`, is filled upto capacity(), but not more.
+  void SuggestReplacement(ByteSpan bytes,
+                          std::vector<ByteSpan> &suggestions) const;
+
+ private:
+  using Pair = std::pair<DictEntry, DictEntry>;
+  std::vector<Pair> dictionary_;
 };
 
 // This class allows to mutate a ByteArray in different ways.
