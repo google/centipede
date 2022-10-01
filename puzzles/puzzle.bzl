@@ -25,6 +25,7 @@ def puzzle(name):
 
     centipede_fuzz_target(
         name = name,
+        srcs = [name + ".cc"],
     )
 
     # We test every puzzle with two different seeds so that the result is more

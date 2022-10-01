@@ -118,8 +118,7 @@ def centipede_fuzz_target(
 
     Args:
       name: A unique name for this target
-      srcs: Test source(s); the default is [`name` + ".cc"]; mutually exclusive
-          with `fuzz_target`
+      srcs: Test source(s); mutually exclusive with `fuzz_target`
       fuzz_target: A fuzz target to wrap into sancov; by default, a new target
           named "_" + `name`, compiled from provided or default `srcs`, will be
           created
@@ -137,7 +136,7 @@ def centipede_fuzz_target(
         # to rebuild an instrumented binary using transition.
         native.cc_binary(
             name = fuzz_target,
-            srcs = srcs or [name + ".cc"],
+            srcs = srcs,
             deps = deps + ["@centipede//:centipede_runner"],
             linkopts = [
                 "-ldl",

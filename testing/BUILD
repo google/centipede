@@ -29,15 +29,18 @@ exports_files([
 
 centipede_fuzz_target(
     name = "abort_fuzz_target",
+    srcs = ["abort_fuzz_target.cc"],
 )
 
 centipede_fuzz_target(
     name = "empty_fuzz_target",
+    srcs = ["empty_fuzz_target.cc"],
 )
 
 # Simple fuzz target used for testing.
 centipede_fuzz_target(
     name = "test_fuzz_target",
+    srcs = ["test_fuzz_target.cc"],
 )
 
 # Target instrumented with -fsanitize-coverage=trace-pc.
@@ -50,6 +53,7 @@ centipede_fuzz_target(
 # Test fuzz target with lots of threads.
 centipede_fuzz_target(
     name = "threaded_fuzz_target",
+    srcs = ["threaded_fuzz_target.cc"],
     sancov = "trace-pc-guard",  # Only this instrumentation to ensure it works.
 )
 
@@ -60,6 +64,7 @@ centipede_fuzz_target(
 
 centipede_fuzz_target(
     name = "multi_sanitizer_fuzz_target",
+    srcs = ["multi_sanitizer_fuzz_target.cc"],
 )
 
 ################################################################################
