@@ -222,7 +222,7 @@ ABSL_FLAG(size_t, shmem_size_mb, 1024,
 
 namespace centipede {
 
-Environment::Environment(int argc, char **argv)
+Environment::Environment(std::vector<char *> argv)
     : binary(absl::GetFlag(FLAGS_binary)),
       coverage_binary(
           absl::GetFlag(FLAGS_coverage_binary).empty()
@@ -294,10 +294,10 @@ Environment::Environment(int argc, char **argv)
   CHECK_LE(num_threads, total_shards);
   CHECK_LE(my_shard_index + num_threads, total_shards)
       << VV(my_shard_index) << VV(num_threads);
-  if (argc > 0) {
+  if (!argv.empty()) {
     exec_name = argv[0];
-    for (int argno = 1; argno < argc; ++argno) {
-      args.emplace_back(argv[argno]);
+    for (char *arg : argv) {
+      args.emplace_back(arg);
     }
   }
 }
