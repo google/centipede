@@ -33,6 +33,7 @@
 #include "./blob_file.h"
 #include "./centipede_callbacks.h"
 #include "./centipede_interface.h"
+#include "./corpus.h"
 #include "./defs.h"
 #include "./environment.h"
 #include "./execution_result.h"

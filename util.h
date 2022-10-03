@@ -28,12 +28,6 @@
 
 namespace centipede {
 
-// Input data and features that correspond to that input.
-struct CorpusRecord {
-  ByteArray data;
-  FeatureVec features;
-};
-
 // Returns a printable hash of a byte array. Currently sha1 is used.
 std::string Hash(absl::Span<const uint8_t> span);
 // Same as above, but for std::string_view.

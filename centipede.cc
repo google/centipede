@@ -300,7 +300,8 @@ bool Centipede::RunBatch(const std::vector<ByteArray> &input_vec,
       batch_gained_new_coverage = true;
       CHECK_GT(fv.size(), 0UL);
       if (function_filter_passed) {
-        corpus_.Add(input_vec[i], fv, fs_, coverage_frontier_);
+        const auto &cmp_args = batch_result.results()[i].cmp_args();
+        corpus_.Add(input_vec[i], fv, cmp_args, fs_, coverage_frontier_);
       }
       if (corpus_file) {
         CHECK_OK(corpus_file->Append(input_vec[i]));
@@ -331,7 +332,8 @@ void Centipede::LoadShard(const Environment &load_env, size_t shard_index,
       LogFeaturesAsSymbols(features);
       if (fs_.CountUnseenAndPruneFrequentFeatures(features)) {
         fs_.IncrementFrequencies(features);
-        corpus_.Add(input, features, fs_, coverage_frontier_);
+        // TODO(kcc): cmp_args are currently not saved to disk and not reloaded.
+        corpus_.Add(input, features, {}, fs_, coverage_frontier_);
         added_to_corpus++;
       }
     }
@@ -461,7 +463,8 @@ void Centipede::FuzzingLoop() {
   CHECK_OK(features_file->Open(env_.MakeFeaturesPath(env_.my_shard_index)));
 
   if (corpus_.NumTotal() == 0)
-    corpus_.Add(user_callbacks_.DummyValidInput(), {}, fs_, coverage_frontier_);
+    corpus_.Add(user_callbacks_.DummyValidInput(), {}, {}, fs_,
+                coverage_frontier_);
 
   Log("init-done", 0);
   // Clear timer_ and num_runs_, so that the pre-init work doesn't affect them.

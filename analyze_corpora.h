@@ -15,7 +15,7 @@
 #ifndef THIRD_PARTY_CENTIPEDE_ANALYZE_CORPORA_H
 #define THIRD_PARTY_CENTIPEDE_ANALYZE_CORPORA_H
 
-#include "./util.h"
+#include "./corpus.h"
 
 namespace centipede {
 

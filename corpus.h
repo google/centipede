@@ -153,14 +153,23 @@ class WeightedDistribution {
 
 class CoverageFrontier;  // Forward decl, used in Corpus.
 
+// Input data and metadata.
+struct CorpusRecord {
+  ByteArray data;
+  FeatureVec features;
+  ByteArray cmp_args;
+};
+
 // Maintains the corpus of inputs.
 // Allows to prune (forget) inputs that become uninteresting.
 class Corpus {
  public:
-  // Adds a corpus element, consisting of 'data' (the input bytes, non-empty)
-  // and 'fv' (the features associated with this input).
+  // Adds a corpus element, consisting of 'data' (the input bytes, non-empty),
+  // 'fv' (the features associated with this input),
+  // and `cmp_args` (arguments of CMP instructions).
   // `fs` is used to compute weights of `fv`.
-  void Add(const ByteArray &data, const FeatureVec &fv, const FeatureSet &fs,
+  void Add(const ByteArray &data, const FeatureVec &fv,
+           const ByteArray &cmp_args, const FeatureSet &fs,
            const CoverageFrontier &coverage_frontier);
   // Returns the total number of inputs added.
   size_t NumTotal() const { return num_pruned_ + NumActive(); }
@@ -184,6 +193,8 @@ class Corpus {
   const ByteArray &UniformRandom(size_t random) const;
   // Returns the element with index 'idx', where `idx` < NumActive().
   const ByteArray &Get(size_t idx) const { return records_[idx].data; }
+  // Returns the cmp_args for the element `idx`, `idx` < NumActive().
+  ByteSpan GetCmpArgs(size_t idx) const { return records_[idx].cmp_args; }
   // Removes elements that contain only frequent features, according to 'fs'.
   // Also randomly removes elements to reduce the size to <= `max_corpus_size`.
   // `max_corpus_size` should be positive.

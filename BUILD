@@ -107,7 +107,7 @@ cc_library(
     srcs = ["analyze_corpora.cc"],
     hdrs = ["analyze_corpora.h"],
     deps = [
-        ":util",
+        ":corpus",
         "@centipede//:logging",
     ],
 )

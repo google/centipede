@@ -150,6 +150,19 @@ TEST(FeatureSet, CountUnseenAndPruneFrequentFeatures_IncrementFrequencies) {
   EXPECT_EQ(features, FeatureVec({}));
 }
 
+TEST(Corpus, GetCmpArgs) {
+  Coverage::PCTable pc_table(100);
+  CoverageFrontier coverage_frontier(pc_table);
+  FeatureSet fs(3);
+  Corpus corpus;
+  ByteArray cmp_args{2, 0, 1, 2, 3};
+  FeatureVec features1 = {10, 20, 30};
+  fs.IncrementFrequencies(features1);
+  corpus.Add({1}, features1, cmp_args, fs, coverage_frontier);
+  EXPECT_EQ(corpus.NumActive(), 1);
+  EXPECT_EQ(corpus.GetCmpArgs(0), cmp_args);
+}
+
 TEST(Corpus, PrintStats) {
   Coverage::PCTable pc_table(100);
   CoverageFrontier coverage_frontier(pc_table);
@@ -158,9 +171,9 @@ TEST(Corpus, PrintStats) {
   FeatureVec features1 = {10, 20, 30};
   FeatureVec features2 = {20, 40};
   fs.IncrementFrequencies(features1);
-  corpus.Add({1, 2, 3}, features1, fs, coverage_frontier);
+  corpus.Add({1, 2, 3}, features1, {}, fs, coverage_frontier);
   fs.IncrementFrequencies(features2);
-  corpus.Add({4, 5}, features2, fs, coverage_frontier);
+  corpus.Add({4, 5}, features2, {}, fs, coverage_frontier);
   std::ostringstream os;
   corpus.PrintStats(os, fs);
   EXPECT_EQ(os.str(),
@@ -180,7 +193,7 @@ TEST(Corpus, Prune) {
 
   auto Add = [&](const CorpusRecord &record) {
     fs.IncrementFrequencies(record.features);
-    corpus.Add(record.data, record.features, fs, coverage_frontier);
+    corpus.Add(record.data, record.features, {}, fs, coverage_frontier);
   };
 
   auto VerifyActiveInputs = [&](std::vector<ByteArray> expected_inputs) {
@@ -237,7 +250,7 @@ TEST(Corpus, PruneRegressionTest1) {
 
   auto Add = [&](const CorpusRecord &record) {
     fs.IncrementFrequencies(record.features);
-    corpus.Add(record.data, record.features, fs, coverage_frontier);
+    corpus.Add(record.data, record.features, {}, fs, coverage_frontier);
   };
 
   Add({{1}, {10, 20}});
@@ -370,7 +383,7 @@ TEST(CoverageFrontier, Compute) {
 
   auto Add = [&](feature_t feature) {
     fs.IncrementFrequencies({feature});
-    corpus.Add({42}, {feature}, fs, frontier);
+    corpus.Add({42}, {feature}, {}, fs, frontier);
   };
 
   // Add PC-based features.

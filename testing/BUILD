@@ -110,6 +110,7 @@ cc_test(
         "@centipede//:blob_file",
         "@centipede//:centipede_callbacks",
         "@centipede//:centipede_interface",
+        "@centipede//:corpus",
         "@centipede//:defs",
         "@centipede//:environment",
         "@centipede//:execution_result",
