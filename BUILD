@@ -92,6 +92,16 @@ cc_library(
 )
 
 cc_library(
+    name = "config_util",
+    srcs = ["config_util.cc"],
+    hdrs = ["config_util.h"],
+    deps = [
+        "@com_google_absl//absl/flags:reflection",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
     name = "stats",
     srcs = ["stats.cc"],
     hdrs = ["stats.h"],
@@ -496,6 +506,20 @@ cc_test(
         ":util",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "config_util_test",
+    srcs = ["config_util_test.cc"],
+    deps = [
+        # Include this just to get some flags external to the test itself.
+        ":environment",  # buildcleaner:keep
+        ":config_util",
+        ":logging",
+        "@com_google_googletest//:gtest_main",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/strings",
     ],
 )
 
