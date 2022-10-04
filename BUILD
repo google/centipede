@@ -102,6 +102,17 @@ cc_library(
 )
 
 cc_library(
+    name = "config_file",
+    srcs = ["config_file.cc"],
+    hdrs = ["config_file.h"],
+    deps = [
+        ":logging",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
     name = "stats",
     srcs = ["stats.cc"],
     hdrs = ["stats.h"],
@@ -524,6 +535,15 @@ cc_test(
         "@com_google_googletest//:gtest_main",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_test(
+    name = "config_file_test",
+    srcs = ["config_file_test.cc"],
+    deps = [
+        ":config_file",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
