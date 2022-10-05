@@ -31,6 +31,7 @@ bool CmpDictionary::SetFromCmpData(ByteSpan cmp_data) {
   for (size_t i = 0; i < cmp_data.size();) {
     auto size = cmp_data[i];
     if (size > DictEntry::kMaxEntrySize) return false;
+    if (size < DictEntry::kMinEntrySize) return false;
     if (i + 2 * size > cmp_data.size()) return false;
     ByteSpan a(cmp_data.begin() + i + 1, size);
     ByteSpan b(cmp_data.begin() + i + size + 1, size);
@@ -62,12 +63,16 @@ void CmpDictionary::SuggestReplacement(
   for (; iter != dictionary_.end(); ++iter) {
     const auto &a = iter->first;
     const auto &b = iter->second;
-    if (bytes.size() < a.size()) break;
+    // Check if `suggestions` is out of capacity.
     if (suggestions.size() == suggestions.capacity()) break;
+    // Check if the first kMinEntrySize bytes are still the same.
     if (!std::equal(bytes.begin(), bytes.begin() + DictEntry::kMinEntrySize,
                     a.begin())) {
       break;
     }
+    // Check if we have enough bytes to compare with `a`.
+    if (bytes.size() < a.size()) continue;
+    // If all bytes are the same as `a`, suggest `b`.
     if (std::equal(a.begin(), a.end(), bytes.begin()))
       suggestions.emplace_back(b.begin(), b.size());
   }

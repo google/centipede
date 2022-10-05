@@ -54,10 +54,14 @@ TEST(CmpDictionary, CmpDictionary) {
       3,               // size
       20, 21, 22,      // a
       15, 16, 17,      // b
+      3,               // size
+      15, 16, 20,      // a
+      30, 40, 50,      // b
   };
 
   EXPECT_FALSE(dict.SetFromCmpData({3, 1, 2, 3}));  // malformed input.
   EXPECT_FALSE(dict.SetFromCmpData({20}));          // malformed input.
+  EXPECT_FALSE(dict.SetFromCmpData({1, 3, 4}));     // malformed input.
   EXPECT_TRUE(dict.SetFromCmpData(cmp_data));
 
   using S = ByteSpan;
@@ -77,6 +81,10 @@ TEST(CmpDictionary, CmpDictionary) {
   dict.SuggestReplacement({15, 16, 17, 18, 0, 0}, suggestions);
   EXPECT_THAT(suggestions, testing::UnorderedElementsAre(S({11, 12, 13, 14}),
                                                          S({20, 21, 22})));
+
+  dict.SuggestReplacement({15, 16, 20}, suggestions);
+  EXPECT_THAT(suggestions, testing::UnorderedElementsAre(S({30, 40, 50})));
+
   // check that we don't exceed capacity.
   std::vector<ByteSpan> capacity1;
   capacity1.reserve(1);
