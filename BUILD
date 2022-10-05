@@ -118,7 +118,10 @@ cc_library(
     hdrs = ["analyze_corpora.h"],
     deps = [
         ":corpus",
+        ":coverage",
+        ":feature",
         "@centipede//:logging",
+        "@com_google_absl//absl/container:flat_hash_set",
     ],
 )
 

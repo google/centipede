@@ -116,7 +116,8 @@ void PrintExperimentStatsThread(const std::atomic<bool> &continue_running,
 
 // Loads corpora from work dirs provided in `env.args`, analyzes differences.
 // Returns EXIT_SUCCESS on success, EXIT_FAILURE otherwise.
-int Analyze(const Environment &env) {
+int Analyze(const Environment &env, const Coverage::PCTable &pc_table,
+            const SymbolTable &symbols) {
   LOG(INFO) << "Analyze " << absl::StrJoin(env.args, ",");
   CHECK_EQ(env.args.size(), 2) << "for now, Analyze supports only 2 work dirs";
   CHECK(!env.binary.empty()) << "--binary must be used";
@@ -142,7 +143,7 @@ int Analyze(const Environment &env) {
     LOG(INFO) << "corpus size " << corpus.size();
   }
   CHECK_EQ(corpora.size(), 2);
-  AnalyzeCorpora(corpora[0], corpora[1]);
+  AnalyzeCorpora(pc_table, symbols, corpora[0], corpora[1]);
   return EXIT_SUCCESS;
 }
 
@@ -156,8 +157,6 @@ int CentipedeMain(const Environment &env,
     return Centipede::SaveCorpusToLocalDir(env, env.save_corpus_to_local_dir);
 
   if (!env.for_each_blob.empty()) return ForEachBlob(env);
-
-  if (env.analyze) return Analyze(env);
 
   // Just export the corpus from a local dir and exit.
   if (!env.export_corpus_from_local_dir.empty())
@@ -180,6 +179,9 @@ int CentipedeMain(const Environment &env,
   SymbolTable symbols;
   one_time_callbacks->PopulateSymbolAndPcTables(symbols, pc_table);
   callbacks_factory.destroy(one_time_callbacks);
+
+  if (env.analyze) return Analyze(env, pc_table, symbols);
+
   if (env.use_pcpair_features) {
     CHECK(!pc_table.empty())
         << "use_pcpair_features requires non-empty pc_table";
