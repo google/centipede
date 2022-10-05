@@ -296,8 +296,8 @@ Environment::Environment(std::vector<char *> argv)
       << VV(my_shard_index) << VV(num_threads);
   if (!argv.empty()) {
     exec_name = argv[0];
-    for (char *arg : argv) {
-      args.emplace_back(arg);
+    for (size_t i = 1; i < argv.size(); ++i) {
+      args.emplace_back(argv[i]);
     }
   }
 }
