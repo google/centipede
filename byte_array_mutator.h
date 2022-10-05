@@ -72,6 +72,9 @@ class CmpDictionary {
   void SuggestReplacement(ByteSpan bytes,
                           std::vector<ByteSpan> &suggestions) const;
 
+  // Returns the number of dictionary entries.
+  size_t size() const { return dictionary_.size(); }
+
  private:
   using Pair = std::pair<DictEntry, DictEntry>;
   std::vector<Pair> dictionary_;
@@ -92,6 +95,12 @@ class ByteArrayMutator {
 
   // Adds `dict_entries` to an internal dictionary.
   void AddToDictionary(const std::vector<ByteArray> &dict_entries);
+
+  // Calls SetFromCmpData(cmp_data) on the internal CmpDictionary.
+  // Returns false on failure, true otherwise.
+  bool SetCmpDictionary(ByteSpan cmp_data) {
+    return cmp_dictionary_.SetFromCmpData(cmp_data);
+  }
 
   // Takes non-empty `inputs`, produces `num_mutants` mutations in `mutants`.
   // Old contents of `mutants` are discarded.
@@ -142,6 +151,10 @@ class ByteArrayMutator {
 
   // Overwrites a random part of `data` with a random dictionary entry.
   bool OverwriteFromDictionary(ByteArray &data);
+
+  // Overwrites a random part of `data` with an entry suggested by the internal
+  // CmpDictionary.
+  bool OverwriteFromCmpDictionary(ByteArray &data);
 
   // Inserts random bytes.
   bool InsertBytes(ByteArray &data);
@@ -202,6 +215,7 @@ class ByteArrayMutator {
 
   Rng rng_;
   std::vector<DictEntry> dictionary_;
+  CmpDictionary cmp_dictionary_;
 };
 
 }  // namespace centipede

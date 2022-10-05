@@ -97,10 +97,11 @@ bool ByteArrayMutator::Mutate(ByteArray &data) {
 }
 
 bool ByteArrayMutator::MutateSameSize(ByteArray &data) {
-  return ApplyOneOf<4>(
+  return ApplyOneOf<5>(
       {&ByteArrayMutator::FlipBit, &ByteArrayMutator::SwapBytes,
        &ByteArrayMutator::ChangeByte,
-       &ByteArrayMutator::OverwriteFromDictionary},
+       &ByteArrayMutator::OverwriteFromDictionary,
+       &ByteArrayMutator::OverwriteFromCmpDictionary},
       data);
 }
 
@@ -183,6 +184,30 @@ bool ByteArrayMutator::OverwriteFromDictionary(ByteArray &data) {
   size_t overwrite_pos = rng_() % (data.size() - dic_entry.size() + 1);
   std::copy(dic_entry.begin(), dic_entry.end(), data.begin() + overwrite_pos);
   return true;
+}
+
+bool ByteArrayMutator::OverwriteFromCmpDictionary(ByteArray &data) {
+  if (cmp_dictionary_.size() == 0) return false;
+  if (data.size() < DictEntry::kMinEntrySize) return false;
+  // Start with a random position in `data`, search though the entire `data`
+  // until some suggestion is found.
+  size_t search_start_idx = rng_() % data.size();
+  constexpr size_t kMaxNumSuggestions = 100;
+  std::vector<ByteSpan> suggestions;
+  suggestions.reserve(kMaxNumSuggestions);
+  for (size_t i = 0; i < data.size(); i++) {
+    size_t idx = (search_start_idx + i) % data.size();
+    if (idx + DictEntry::kMinEntrySize >= data.size()) continue;
+    ByteSpan tail{&data[idx], data.size() - idx};
+    cmp_dictionary_.SuggestReplacement(tail, suggestions);
+    if (suggestions.empty()) continue;
+    auto suggestion = suggestions[rng_() % suggestions.size()];
+    if (idx + suggestion.size() <= data.size()) {
+      std::copy(suggestion.begin(), suggestion.end(), data.begin() + idx);
+      return true;
+    }
+  }
+  return false;
 }
 
 bool ByteArrayMutator::InsertFromDictionary(ByteArray &data) {

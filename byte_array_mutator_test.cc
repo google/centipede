@@ -154,10 +154,11 @@ void TestMutatorFn(ByteArrayMutator::Fn fn, const ByteArray &seed,
                    const std::vector<ByteArray> &unexpected_mutants,
                    size_t size_alignment = 1,
                    const std::vector<ByteArray> &dictionary = {},
-                   size_t num_iterations = 100000000) {
+                   ByteSpan cmp_data = {}, size_t num_iterations = 100000000) {
   ByteArrayMutator mutator(1);
   mutator.set_size_alignment(size_alignment);
   mutator.AddToDictionary(dictionary);
+  mutator.SetCmpDictionary(cmp_data);
   absl::flat_hash_set<ByteArray> expected(expected_mutants.begin(),
                                           expected_mutants.end());
   absl::flat_hash_set<ByteArray> unexpected(unexpected_mutants.begin(),
@@ -505,6 +506,25 @@ TEST(ByteArrayMutator, OverwriteFromDictionary) {
                     {7, 8, 9},
                     {0, 6},
                 });
+}
+
+TEST(ByteArrayMutator, OverwriteFromCmpDictionary) {
+  TestMutatorFn(&ByteArrayMutator::OverwriteFromCmpDictionary,
+                {1, 2, 40, 50, 60},
+                /*expected_mutants=*/
+                {
+                    {3, 4, 40, 50, 60},
+                    {1, 2, 10, 20, 30},
+                },
+                /*unexpected_mutants=*/
+                {
+                    {3, 4, 10, 20, 30},
+                },
+                /*size_alignment=*/1,
+                /*dictionary=*/
+                {},
+                /*cmp_data=*/
+                {/*args1*/ 2, 1, 2, 3, 4, /*args2*/ 3, 10, 20, 30, 40, 50, 60});
 }
 
 TEST(ByteArrayMutator, InsertFromDictionary) {
