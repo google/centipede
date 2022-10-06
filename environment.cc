@@ -383,6 +383,7 @@ void Environment::SetFlag(std::string_view name, std::string_view value) {
   // Handle bool flags.
   absl::flat_hash_map<std::string, bool *> bool_flags{
       {"use_cmp_features", &use_cmp_features},
+      {"use_auto_dictionary", &use_auto_dictionary},
       {"use_coverage_frontier", &use_coverage_frontier}};
   auto bool_iter = bool_flags.find(name);
   if (bool_iter != bool_flags.end()) {
