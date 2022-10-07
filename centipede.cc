@@ -504,10 +504,16 @@ void Centipede::FuzzingLoop() {
     auto batch_size = std::min(env_.batch_size, remaining_runs);
     std::vector<ByteArray> inputs, mutants;
     inputs.resize(env_.mutate_batch_size);
-    for (auto &input : inputs) {
-      input = env_.use_corpus_weights ? corpus_.WeightedRandom(rng_())
+    for (size_t i = 0; i < env_.mutate_batch_size; i++) {
+      const auto &corpus_record = env_.use_corpus_weights
+                                      ? corpus_.WeightedRandom(rng_())
                                       : corpus_.UniformRandom(rng_());
+      inputs[i] = corpus_record.data;
+      // Use the cmp_args of the first input.
+      // See the related TODO around SetCmpDictionary.
+      if (i == 0) user_callbacks_.SetCmpDictionary(corpus_record.cmp_args);
     }
+
     user_callbacks_.Mutate(inputs, batch_size, mutants);
     bool gained_new_coverage =
         RunBatch(mutants, corpus_file.get(), features_file.get(), nullptr);
@@ -588,7 +594,7 @@ void Centipede::ReportCrash(std::string_view binary,
     RemoteMkdir(crash_dir);
     std::string file_path = std::filesystem::path(crash_dir).append(hash);
     LOG(INFO) << log_prefix << "Crash detected, saving input to " << file_path;
-    LOG(INFO) << "Input bytes: " << AsString(input);
+    LOG(INFO) << "Input bytes: " << AsString(input, /*max_len=*/32);
     LOG(INFO) << "Exit code: " << batch_result.exit_code();
     LOG(INFO) << "Failure description: " << batch_result.failure_description();
     auto file = RemoteFileOpen(file_path, "w");  // overwrites existing file.

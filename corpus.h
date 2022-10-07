@@ -186,11 +186,11 @@ class Corpus {
     }
     return {max, tot / records_.size()};
   }
-  // Returns a random active corpus element using weighted distribution.
+  // Returns a random active corpus record using weighted distribution.
   // See WeightedDistribution.
-  const ByteArray &WeightedRandom(size_t random) const;
-  // Returns a random active corpus element using uniform distribution.
-  const ByteArray &UniformRandom(size_t random) const;
+  const CorpusRecord &WeightedRandom(size_t random) const;
+  // Returns a random active corpus record using uniform distribution.
+  const CorpusRecord &UniformRandom(size_t random) const;
   // Returns the element with index 'idx', where `idx` < NumActive().
   const ByteArray &Get(size_t idx) const { return records_[idx].data; }
   // Returns the cmp_args for the element `idx`, `idx` < NumActive().

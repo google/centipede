@@ -73,6 +73,13 @@ class CentipedeCallbacks {
   // Returns some simple non-empty valid input.
   virtual ByteArray DummyValidInput() { return {0}; }
 
+  // Sets the internal CmpDictionary to `cmp_data`.
+  // TODO(kcc): this is pretty ugly. Instead we need to pass `cmp_data`
+  // to Mutate() alongside with the inputs.
+  bool SetCmpDictionary(ByteSpan cmp_data) {
+    return byte_array_mutator_.SetCmpDictionary(cmp_data);
+  }
+
  protected:
   // Helpers that the user-defined class may use if needed.
 

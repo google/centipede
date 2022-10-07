@@ -158,12 +158,12 @@ void Corpus::Add(const ByteArray &data, const FeatureVec &fv,
   weighted_distribution_.AddWeight(ComputeWeight(fv, fs, coverage_frontier));
 }
 
-const ByteArray &Corpus::WeightedRandom(size_t random) const {
-  return records_[weighted_distribution_.RandomIndex(random)].data;
+const CorpusRecord &Corpus::WeightedRandom(size_t random) const {
+  return records_[weighted_distribution_.RandomIndex(random)];
 }
 
-const ByteArray &Corpus::UniformRandom(size_t random) const {
-  return records_[random % records_.size()].data;
+const CorpusRecord &Corpus::UniformRandom(size_t random) const {
+  return records_[random % records_.size()];
 }
 
 void Corpus::PrintStats(std::ostream &out, const FeatureSet &fs) {
