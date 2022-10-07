@@ -106,7 +106,11 @@ cc_library(
     srcs = ["config_file.cc"],
     hdrs = ["config_file.h"],
     deps = [
+        ":config_util",
         ":logging",
+        ":remote_file",
+        ":util",
+        "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/strings",
     ],
