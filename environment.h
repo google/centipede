@@ -65,7 +65,7 @@ struct Environment {
   size_t use_pcpair_features;
   size_t feature_frequency_threshold;
   bool require_pc_table;
-  bool generate_corpus_stats;
+  int telemetry_frequency;
   size_t distill_shards;
   std::string save_corpus_to_local_dir;
   std::string export_corpus_from_local_dir;
@@ -116,13 +116,29 @@ struct Environment {
   // Returns the path for the corpus stats report file for my_shard_index.
   // The corpus stats report is regenerated periodically during fuzzing.
   std::string MakeCorpusStatsPath(std::string_view annotation = "") const;
-  // Returns true if we want to generate a coverage report in this shard.
-  bool GeneratingCoverageReportInThisShard() const {
-    return my_shard_index == 0;
-  }
-  // Returns true if we want to generate a corpus stats file in this shard.
-  bool GeneratingCorpusStatsInThisShard() const {
-    return generate_corpus_stats && my_shard_index == 0;
+  // Returns true if we want to generate the telemetry files (coverage report,
+  // corpus stats, etc.) in this shard.
+  bool DumpTelemetryInThisShard() const { return my_shard_index == 0; }
+  // Returns true if we want to generate the telemetry files (coverage report,
+  // the corpus stats, etc.) after processing `batch_index`-th batch.
+  bool DumpTelemetryForThisBatch(size_t batch_index) const {
+    // Always dump for batch 0 (i.e. at the beginning of execution).
+    if (batch_index == 0) {
+      return true;
+    }
+    // Special mode for negative --telemetry_frequency: dump when batch_index
+    // is a power-of-two and is >= than 2^abs(--telemetry_frequency).
+    if (((telemetry_frequency < 0) &&
+         batch_index >= std::pow(2, -telemetry_frequency) &&
+         ((batch_index - 1) & batch_index) == 0)) {
+      return true;
+    }
+    // Normal mode: dump when requested number of batches get processed.
+    if (((telemetry_frequency > 0) &&
+         (batch_index % telemetry_frequency == 0))) {
+      return true;
+    }
+    return false;
   }
 
   // Sets flag 'name' to `value`. CHECK-fails on invalid name/value combination.
