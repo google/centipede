@@ -23,6 +23,18 @@ function die() {
   exit 1
 }
 
+# Executes a command line specified in $@ with a file operation, e.g.
+# `rm <file>`. If a bundled executable `fileutil` is available, passed the
+# command to it for extended file handling capabilities. Otherwise, just
+# executes the command.
+function fileop() {
+  if [[ -x "${TEST_SRCDIR}/google3/file/util/fileutil" ]]; then
+    "$@"
+  else
+    "$@"
+  fi
+}
+
 # Returns the path to Centipede TEST_SRCDIR subdirectory.
 function centipede::get_centipede_test_srcdir() {
   set -u
@@ -60,29 +72,36 @@ function centipede::maybe_set_var_to_executable_path() {
   fi
 }
 
+# Makes sure that an empty directory "$1" exists. Works for local and CNS.
 function centipede::ensure_empty_dir() {
-  mkdir -p "$1"
-  rm -rf "${1:?}"/*
+  fileop mkdir -p "$1"
+  fileop rm -R -f "${1:?}/*"
 }
 
+# Makes sure that string "$1" exists in file "$2". Works for local and CNS.
 function centipede::assert_regex_in_file() {
   local -r regex="$1"
   local -r file="$2"
-  if ! grep -q "${regex}" "${file}"; then
+  set -o pipefail
+  if ! fileop ls "${file}"; then
+    die "Expected file ${file} doesn't exist"
+  fi
+  if ! grep -q -- "${regex}" <(fileop cat "${file}"); then
     echo
     echo ">>>>>>>>>> BEGIN ${file} >>>>>>>>>>"
-    cat "${file}"
+    fileop cat "${file}"
     echo "<<<<<<<<<< END ${file} <<<<<<<<<<"
     echo
     die "^^^ File ${file} doesn't contain expected regex /${regex}/"
   fi
+  set +o pipefail
 }
 
-function centipede::print_fuzzing_stats_from_log() {
-  echo "====== LOGS: $*"
-  for f in "init-done:" "end-fuzz:"; do
-    grep "centipede.*${f}" "$@"
-    echo
+# For each of the logs in "$@", asserts that fuzzing started and successfully
+# completed.
+function centipede::assert_fuzzing_success() {
+  for log in "$@"; do
+    centipede::assert_regex_in_file "centipede.*init-done:" "${log}"
+    centipede::assert_regex_in_file "centipede.*end-fuzz:" "${log}"
   done
 }
-
