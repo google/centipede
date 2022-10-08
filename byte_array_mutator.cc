@@ -31,8 +31,8 @@ bool CmpDictionary::SetFromCmpData(ByteSpan cmp_data) {
   for (size_t i = 0; i < cmp_data.size();) {
     auto size = cmp_data[i];
     if (size > DictEntry::kMaxEntrySize) return false;
-    if (size < DictEntry::kMinEntrySize) return false;
-    if (i + 2 * size > cmp_data.size()) return false;
+    if (size < kMinEntrySize) return false;
+    if (i + 2 * size + 1 > cmp_data.size()) return false;
     ByteSpan a(cmp_data.begin() + i + 1, size);
     ByteSpan b(cmp_data.begin() + i + size + 1, size);
     // TODO(kcc): disregard boring CMP pairs, such as e.g. `1 CMP 0`.
@@ -48,13 +48,13 @@ void CmpDictionary::SuggestReplacement(
     ByteSpan bytes, std::vector<ByteSpan> &suggestions) const {
   if (!suggestions.capacity()) return;
   suggestions.clear();
-  if (bytes.size() < DictEntry::kMinEntrySize) return;
+  if (bytes.size() < kMinEntrySize) return;
   // Use binary search to find the first entry that starts with the
   // same kMinEntrySize bytes as `bytes`.
   // This is not supper efficient.
   // We need to see the real usage before optimizing.
   // TODO(kcc): investigate using absl/container/btree_map.h instead.
-  DictEntry prefix({bytes.begin(), DictEntry::kMinEntrySize});
+  DictEntry prefix({bytes.begin(), kMinEntrySize});
   auto iter = std::lower_bound(
       dictionary_.begin(), dictionary_.end(), Pair{prefix, prefix},
       [](const Pair &a, const Pair &b) { return a.first < b.first; });
@@ -66,10 +66,8 @@ void CmpDictionary::SuggestReplacement(
     // Check if `suggestions` is out of capacity.
     if (suggestions.size() == suggestions.capacity()) break;
     // Check if the first kMinEntrySize bytes are still the same.
-    if (!std::equal(bytes.begin(), bytes.begin() + DictEntry::kMinEntrySize,
-                    a.begin())) {
+    if (!std::equal(bytes.begin(), bytes.begin() + kMinEntrySize, a.begin()))
       break;
-    }
     // Check if we have enough bytes to compare with `a`.
     if (bytes.size() < a.size()) continue;
     // If all bytes are the same as `a`, suggest `b`.
@@ -193,7 +191,7 @@ bool ByteArrayMutator::OverwriteFromDictionary(ByteArray &data) {
 
 bool ByteArrayMutator::OverwriteFromCmpDictionary(ByteArray &data) {
   if (cmp_dictionary_.size() == 0) return false;
-  if (data.size() < DictEntry::kMinEntrySize) return false;
+  if (data.size() < CmpDictionary::kMinEntrySize) return false;
   // Start with a random position in `data`, search though the entire `data`
   // until some suggestion is found.
   size_t search_start_idx = rng_() % data.size();
@@ -202,7 +200,7 @@ bool ByteArrayMutator::OverwriteFromCmpDictionary(ByteArray &data) {
   suggestions.reserve(kMaxNumSuggestions);
   for (size_t i = 0; i < data.size(); i++) {
     size_t idx = (search_start_idx + i) % data.size();
-    if (idx + DictEntry::kMinEntrySize >= data.size()) continue;
+    if (idx + CmpDictionary::kMinEntrySize >= data.size()) continue;
     ByteSpan tail{&data[idx], data.size() - idx};
     cmp_dictionary_.SuggestReplacement(tail, suggestions);
     if (suggestions.empty()) continue;

@@ -26,17 +26,15 @@
 
 namespace centipede {
 
-// A simple class representing an array of bytes, containing between
-// kMinEntrySize and kMaxEntrySize elements.
+// A simple class representing an array of up to kMaxEntrySize bytes.
 class DictEntry {
  public:
   static constexpr uint8_t kMaxEntrySize = 15;
-  static constexpr uint8_t kMinEntrySize = 2;
 
   explicit DictEntry(ByteSpan bytes)
       : bytes_{},  // initialize bytes_ to all zeros
         size_(bytes.size()) {
-    if (size_ > kMaxEntrySize || size_ < kMinEntrySize) __builtin_trap();
+    if (size_ > kMaxEntrySize) __builtin_trap();
     memcpy(bytes_, bytes.data(), bytes.size());
   }
   const uint8_t *begin() const { return bytes_; }
@@ -57,11 +55,14 @@ class DictEntry {
 // an instruction `A CMP B` has been observed.
 class CmpDictionary {
  public:
+  static constexpr size_t kMinEntrySize = 2;  // 1-byte entries won't be added.
+
   CmpDictionary() = default;
 
   // Sets the dictionary from raw data containing multiple CMP pairs.
   // The input format is the same as in ExecutionResult:
   //   1 byte of size, followed by `size` bytes of `A` and `size` bytes of `B`.
+  // All entries must be between DictEntry::kMaxEntrySize and kMinEntrySize.
   // Returns false on bad input, true otherwise.
   bool SetFromCmpData(ByteSpan cmp_data);
 

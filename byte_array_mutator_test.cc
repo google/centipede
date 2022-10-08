@@ -36,7 +36,6 @@ TEST(DictEntry, DictEntry) {
   EXPECT_EQ(memcmp(a_0_10.begin(), bytes, a_0_10.end() - a_0_10.begin()), 0);
 
   EXPECT_DEATH({ DictEntry a_0_10({bytes, 16}); }, "");
-  EXPECT_DEATH({ DictEntry a_0_10({bytes, 1}); }, "");
 }
 
 TEST(CmpDictionary, CmpDictionary) {
@@ -59,9 +58,20 @@ TEST(CmpDictionary, CmpDictionary) {
       30, 40, 50,      // b
   };
 
-  EXPECT_FALSE(dict.SetFromCmpData({3, 1, 2, 3}));  // malformed input.
-  EXPECT_FALSE(dict.SetFromCmpData({20}));          // malformed input.
-  EXPECT_FALSE(dict.SetFromCmpData({1, 3, 4}));     // malformed input.
+  // malformed input - not enough bytes.
+  EXPECT_FALSE(dict.SetFromCmpData({3, 1, 2, 3}));
+  // malformed input - not enough bytes.
+  EXPECT_FALSE(dict.SetFromCmpData({3, 1, 2, 3, 4, 5}));
+  // malformed input - size is too large.
+  EXPECT_FALSE(dict.SetFromCmpData({
+      16,                                                     // size
+      0,  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,  // a
+      0,  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,  // b
+  }));
+  // malformed input - entry size is too small.
+  EXPECT_FALSE(dict.SetFromCmpData({1, 3, 4}));
+
+  // Good input.
   EXPECT_TRUE(dict.SetFromCmpData(cmp_data));
 
   using S = ByteSpan;
@@ -500,6 +510,11 @@ TEST(ByteArrayMutator, OverwriteFromDictionary) {
                     {1, 2, 0, 6, 5},
                     {1, 0, 6, 4, 5},
                     {0, 6, 3, 4, 5},
+                    {42, 2, 3, 4, 5},
+                    {1, 42, 3, 4, 5},
+                    {1, 2, 42, 4, 5},
+                    {1, 2, 3, 42, 5},
+                    {1, 2, 3, 4, 42},
                 },
                 /*unexpected_mutants=*/
                 {
@@ -507,12 +522,14 @@ TEST(ByteArrayMutator, OverwriteFromDictionary) {
                     {8, 9, 3, 4, 5},
                     {6, 2, 3, 4, 5},
                     {1, 2, 3, 4, 0},
+                    {42, 42, 3, 4, 5},
                 },
                 /*size_alignment=*/1,
                 /*dictionary=*/
                 {
                     {7, 8, 9},
                     {0, 6},
+                    {42},
                 });
 }
 
