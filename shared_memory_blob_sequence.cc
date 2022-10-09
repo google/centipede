@@ -119,11 +119,11 @@ SharedMemoryBlobSequence::Blob SharedMemoryBlobSequence::Read() {
   had_reads_after_reset_ = true;
   if (offset_ + sizeof(Blob::size) + sizeof(Blob::tag) >= size_) return {};
   // Read blob_tag.
-  Blob::size_and_tag_type blob_tag = 0;
+  Blob::SizeAndTagT blob_tag = 0;
   memcpy(&blob_tag, data_ + offset_, sizeof(blob_tag));
   offset_ += sizeof(blob_tag);
   // Read blob_size.
-  Blob::size_and_tag_type blob_size = 0;
+  Blob::SizeAndTagT blob_size = 0;
   memcpy(&blob_size, data_ + offset_, sizeof(Blob::size));
   offset_ += sizeof(Blob::size);
   // Read blob_data.

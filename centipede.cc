@@ -586,7 +586,7 @@ void Centipede::ReportCrash(std::string_view binary,
   // Executes one input.
   // If it crashes, dumps the reproducer to disk and returns true.
   // Otherwise returns false.
-  auto TryOneInput = [&](const ByteArray &input) -> bool {
+  auto try_one_input = [&](const ByteArray &input) -> bool {
     BatchResult batch_result;
     if (user_callbacks_.Execute(binary, {input}, batch_result)) return false;
     auto hash = Hash(input);
@@ -612,13 +612,13 @@ void Centipede::ReportCrash(std::string_view binary,
     LOG(INFO) << log_prefix << "Executing input "
               << batch_result.num_outputs_read() << " out of "
               << input_vec.size();
-    if (TryOneInput(input_vec[batch_result.num_outputs_read()])) return;
+    if (try_one_input(input_vec[batch_result.num_outputs_read()])) return;
   }
   // Next, try all inputs one-by-one.
   LOG(INFO) << log_prefix
             << "executing inputs one-by-one, trying to find the reproducer";
   for (auto &input : input_vec) {
-    if (TryOneInput(input)) return;
+    if (try_one_input(input)) return;
   }
   LOG(INFO) << log_prefix
             << "crash was not observed when running inputs one-by-one";

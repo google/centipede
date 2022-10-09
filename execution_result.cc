@@ -23,7 +23,7 @@
 namespace centipede {
 
 namespace {
-enum Tags : SharedMemoryBlobSequence::Blob::size_and_tag_type {
+enum Tags : SharedMemoryBlobSequence::Blob::SizeAndTagT {
   kTagInvalid,  // 0 is an invalid tag.
   kTagFeatures,
   kTagInputBegin,

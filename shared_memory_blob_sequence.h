@@ -89,13 +89,14 @@ class SharedMemoryBlobSequence {
   // TODO(kcc): [impl] replace uses of (blob.size == 0) with (!blob.IsValid()).
   // TODO(kcc): [impl] consider making it a class.
   struct Blob {
-    using size_and_tag_type = size_t;
-    Blob(size_and_tag_type tag, size_and_tag_type size, const uint8_t *data)
+    using SizeAndTagT = size_t;
+    Blob(SizeAndTagT tag, SizeAndTagT size, const uint8_t *data)
         : tag(tag), size(size), data(data) {}
     Blob() = default;  // Construct an invalid Blob.
     bool IsValid() const { return tag != 0; }
-    const size_and_tag_type tag = 0;
-    const size_and_tag_type size = 0;
+
+    const SizeAndTagT tag = 0;
+    const SizeAndTagT size = 0;
     const uint8_t *data = nullptr;
   };
 
@@ -109,7 +110,7 @@ class SharedMemoryBlobSequence {
   // Writes `tag`/`value` as a blob. `T` should be a POD.
   // Returns true on success.
   template <typename T>
-  bool Write(Blob::size_and_tag_type tag, T value) {
+  bool Write(Blob::SizeAndTagT tag, T value) {
     static_assert(std::is_pod_v<T>, "T must be a POD");
     return Write(
         {tag, sizeof(value), reinterpret_cast<const uint8_t *>(&value)});
