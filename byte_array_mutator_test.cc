@@ -15,6 +15,7 @@
 #include "./byte_array_mutator.h"
 
 #include <cstddef>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -24,6 +25,65 @@
 #include "./defs.h"
 
 namespace centipede {
+
+// Tests that when alignment is not 1 byte, adding bytes to an input will result
+// in a size-aligned mutant (even if the input is not size-aligned).
+//
+// Note: This test cannot be in an anonymous namespace due to the FRIEND_TEST in
+// ByteArrayMutator.
+TEST(ByteArrayMutator, RoundUpToAddCorrectly) {
+  ByteArrayMutator mutator(/*seed=*/1);
+  EXPECT_TRUE(mutator.set_size_alignment(4));
+
+  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/0, /*to_add=*/0), 0);
+  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/4, /*to_add=*/0), 0);
+  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/4, /*to_add=*/3), 4);
+  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/5, /*to_add=*/0), 3);
+  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/5, /*to_add=*/2), 3);
+  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/5, /*to_add=*/18), 19);
+
+  // Check that max length is also respected.
+  EXPECT_TRUE(mutator.set_max_len(12));
+
+  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/5, /*to_add=*/0), 3);
+  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/5, /*to_add=*/2), 3);
+  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/5, /*to_add=*/18), 7);
+  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/11, /*to_add=*/5), 1);
+  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/12, /*to_add=*/5), 0);
+  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/13, /*to_add=*/5), 0);
+}
+
+// Tests that when alignment is not 1 byte, removing bytes from an input will
+// result in a size-aligned mutant (even if the input is not size-aligned).
+//
+// Note: This test cannot be in an anonymous namespace due to the FRIEND_TEST in
+// ByteArrayMutator.
+TEST(ByteArrayMutator, RoundDownToRemoveCorrectly) {
+  ByteArrayMutator mutator(/*seed=*/1);
+  EXPECT_TRUE(mutator.set_size_alignment(4));
+
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/0, /*to_remove=*/0), 0);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/0, /*to_remove=*/1), 0);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/1, /*to_remove=*/0), 0);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/1, /*to_remove=*/1), 0);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/4, /*to_remove=*/0), 0);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/4, /*to_remove=*/3), 0);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/5, /*to_remove=*/0), 1);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/5, /*to_remove=*/2), 1);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/7, /*to_remove=*/2), 3);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/23, /*to_remove=*/4), 7);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/23, /*to_remove=*/20), 19);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/23, /*to_remove=*/24), 19);
+
+  // Check that max length is also respected.
+  EXPECT_TRUE(mutator.set_max_len(12));
+
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/7, /*to_remove=*/2), 3);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/23, /*to_remove=*/4), 11);
+  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/23, /*to_remove=*/20), 19);
+}
+
+namespace {
 
 TEST(DictEntry, DictEntry) {
   uint8_t bytes[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
@@ -104,48 +164,6 @@ TEST(CmpDictionary, CmpDictionary) {
   EXPECT_EQ(capacity1.capacity(), 1);
 }
 
-// Tests that when alignment is not 1 byte, adding bytes to an input will result
-// in a size-aligned mutant (even if the input is not size-aligned).
-//
-// Note: This test cannot be in an anonymous namespace due to the FRIEND_TEST in
-// ByteArrayMutator.
-TEST(ByteArrayMutator, RoundUpToAddCorrectly) {
-  ByteArrayMutator mutator(/*seed=*/1);
-  mutator.set_size_alignment(4);
-
-  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/0, /*to_add=*/0), 0);
-  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/4, /*to_add=*/0), 0);
-  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/4, /*to_add=*/3), 4);
-  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/5, /*to_add=*/0), 3);
-  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/5, /*to_add=*/2), 3);
-  EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/5, /*to_add=*/18), 19);
-}
-
-// Tests that when alignment is not 1 byte, removing bytes from an input will
-// result in a size-aligned mutant (even if the input is not size-aligned).
-//
-// Note: This test cannot be in an anonymous namespace due to the FRIEND_TEST in
-// ByteArrayMutator.
-TEST(ByteArrayMutator, RoundDownToRemoveCorrectly) {
-  ByteArrayMutator mutator(/*seed=*/1);
-  mutator.set_size_alignment(4);
-
-  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/0, /*to_remove=*/0), 0);
-  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/0, /*to_remove=*/1), 0);
-  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/1, /*to_remove=*/0), 0);
-  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/1, /*to_remove=*/1), 0);
-  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/4, /*to_remove=*/0), 0);
-  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/4, /*to_remove=*/3), 0);
-  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/5, /*to_remove=*/0), 1);
-  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/5, /*to_remove=*/2), 1);
-  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/7, /*to_remove=*/2), 3);
-  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/23, /*to_remove=*/4), 7);
-  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/23, /*to_remove=*/20), 19);
-  EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/23, /*to_remove=*/24), 19);
-}
-
-namespace {
-
 // Tests that two mutators seeded with different rng seeds produce different
 // results.
 TEST(ByteArrayMutator, Randomness) {
@@ -163,6 +181,22 @@ TEST(ByteArrayMutator, Randomness) {
   EXPECT_NE(res[0], res[1]);
 }
 
+// Tests that max length is always a multiple of size alignment.
+TEST(ByteArrayMutator, CheckSizeAlignmentWithMaxLength) {
+  ByteArrayMutator mutator(1);
+
+  EXPECT_TRUE(mutator.set_size_alignment(1000));
+  EXPECT_TRUE(mutator.set_size_alignment(4));
+  EXPECT_TRUE(mutator.set_max_len(4));
+  EXPECT_TRUE(mutator.set_max_len(16));
+  EXPECT_FALSE(mutator.set_max_len(2));
+  EXPECT_FALSE(mutator.set_max_len(10));
+
+  EXPECT_TRUE(mutator.set_size_alignment(8));
+  EXPECT_FALSE(mutator.set_size_alignment(12));
+  EXPECT_FALSE(mutator.set_size_alignment(15));
+}
+
 // Tests a callback `fn`: mutations of `seed` are expected to eventually
 // match all of `expected_mutants`, but never any of `unexpected_mutants`.
 // Mutators that do a single-step can be tested for `unexpected_mutants`,
@@ -171,10 +205,12 @@ void TestMutatorFn(ByteArrayMutator::Fn fn, const ByteArray &seed,
                    const std::vector<ByteArray> &expected_mutants,
                    const std::vector<ByteArray> &unexpected_mutants,
                    size_t size_alignment = 1,
+                   size_t max_len = std::numeric_limits<size_t>::max(),
                    const std::vector<ByteArray> &dictionary = {},
                    ByteSpan cmp_data = {}, size_t num_iterations = 100000000) {
   ByteArrayMutator mutator(1);
-  mutator.set_size_alignment(size_alignment);
+  EXPECT_TRUE(mutator.set_size_alignment(size_alignment));
+  EXPECT_TRUE(mutator.set_max_len(max_len));
   mutator.AddToDictionary(dictionary);
   mutator.SetCmpDictionary(cmp_data);
   absl::flat_hash_set<ByteArray> expected(expected_mutants.begin(),
@@ -274,6 +310,24 @@ TEST(ByteArrayMutator, InsertBytesWithAlignment) {
                     {3, 4, 0, 1, 2},
                 },
                 /*size_alignment=*/4);
+}
+
+TEST(ByteArrayMutator, InsertBytesWithMaxLen) {
+  TestMutatorFn(&ByteArrayMutator::InsertBytes, {0, 1, 2},
+                /*expected_mutants=*/
+                {
+                    {0, 1, 2, 3},
+                    {0, 3, 1, 2},
+                    {3, 0, 1, 2},
+                },
+                /*unexpected_mutants=*/
+                {
+                    {0, 1, 2, 3, 4},
+                    {0, 3, 4, 1, 2},
+                    {3, 4, 0, 1, 2},
+                },
+                /*size_alignment=*/1,
+                /*max_len=*/4);
 }
 
 // Currently, same as for InsertBytes. Will change in future as we add more
@@ -436,6 +490,25 @@ TEST(ByteArrayMutator, MutateDecreaseSizeWithAlignment) {
                 /*size_alignment=*/4);
 }
 
+TEST(ByteArrayMutator, MutateDecreaseSizeWithAlignmentAndMaxLen) {
+  TestMutatorFn(&ByteArrayMutator::MutateDecreaseSize, {0, 1, 2, 3},
+                /*expected_mutants=*/
+                {
+                    {0, 1},
+                    {2, 3},
+                },
+                /*unexpected_mutants=*/
+                {
+                    {0},
+                    {1},
+                    {2},
+                    {1, 2},
+                    {0, 1, 2},
+                },
+                /*size_alignment=*/2,
+                /*max_len=*/2);
+}
+
 // Tests that MutateSameSize will eventually produce all possible mutants of
 // size 1 and 2. Also tests some of the 3-byte mutants.
 TEST(ByteArrayMutator, MutateSameSize) {
@@ -525,6 +598,7 @@ TEST(ByteArrayMutator, OverwriteFromDictionary) {
                     {42, 42, 3, 4, 5},
                 },
                 /*size_alignment=*/1,
+                /*max_len=*/std::numeric_limits<size_t>::max(),
                 /*dictionary=*/
                 {
                     {7, 8, 9},
@@ -546,6 +620,7 @@ TEST(ByteArrayMutator, OverwriteFromCmpDictionary) {
                     {3, 4, 10, 20, 30},
                 },
                 /*size_alignment=*/1,
+                /*max_len=*/std::numeric_limits<size_t>::max(),
                 /*dictionary=*/
                 {},
                 /*cmp_data=*/
@@ -571,6 +646,7 @@ TEST(ByteArrayMutator, InsertFromDictionary) {
                     {7, 8, 1, 2, 3},
                 },
                 /*size_alignment=*/1,
+                /*max_len=*/std::numeric_limits<size_t>::max(),
                 /*dictionary=*/
                 {
                     {4, 5},
@@ -586,7 +662,7 @@ void TestCrossOver(void (ByteArrayMutator::*fn)(ByteArray &, const ByteArray &),
                    const std::vector<ByteArray> &all_possible_mutants,
                    size_t size_alignment = 1) {
   ByteArrayMutator mutator(1);
-  mutator.set_size_alignment(size_alignment);
+  EXPECT_TRUE(mutator.set_size_alignment(size_alignment));
   absl::flat_hash_set<ByteArray> expected(all_possible_mutants.begin(),
                                           all_possible_mutants.end());
   absl::flat_hash_set<ByteArray> found;
@@ -794,7 +870,7 @@ TEST(ByteArrayMutator, FailedMutations) {
 TEST(ByteArrayMutator, MutateManyWithAlignedInputs) {
   constexpr size_t kSizeAlignment = 4;
   ByteArrayMutator mutator(/*seed=*/1);
-  mutator.set_size_alignment(kSizeAlignment);
+  EXPECT_TRUE(mutator.set_size_alignment(kSizeAlignment));
   constexpr size_t kNumMutantsToGenerate = 10000;
   std::vector<ByteArray> mutants;
 
@@ -815,7 +891,7 @@ TEST(ByteArrayMutator, MutateManyWithAlignedInputs) {
 TEST(ByteArrayMutator, MutateManyWithUnalignedInputs) {
   constexpr size_t kSizeAlignment = 4;
   ByteArrayMutator mutator(/*seed=*/1);
-  mutator.set_size_alignment(kSizeAlignment);
+  EXPECT_TRUE(mutator.set_size_alignment(kSizeAlignment));
   constexpr size_t kNumMutantsToGenerate = 10000;
   std::vector<ByteArray> mutants;
 
@@ -839,6 +915,52 @@ TEST(ByteArrayMutator, MutateManyWithUnalignedInputs) {
   for (const ByteArray &mutant : mutants) {
     if (mutant.size() % kSizeAlignment != 0) {
       EXPECT_LE(mutant.size(), 11);
+    }
+  }
+}
+
+TEST(ByteArrayMutator, MutateManyWithMaxLen) {
+  constexpr size_t kMaxLen = 4;
+  ByteArrayMutator mutator(/*seed=*/1);
+  EXPECT_TRUE(mutator.set_max_len(kMaxLen));
+  constexpr size_t kNumMutantsToGenerate = 10000;
+  std::vector<ByteArray> mutants;
+
+  const std::vector<ByteArray> inputs = {
+      {0},
+      {0, 1},
+      {0, 1, 2},
+      {0, 1, 2, 3},
+  };
+  mutator.MutateMany(inputs, kNumMutantsToGenerate,
+                     /*crossover_level=*/50, mutants);
+  EXPECT_EQ(mutants.size(), kNumMutantsToGenerate);
+
+  for (const ByteArray &mutant : mutants) {
+    EXPECT_LE(mutant.size(), kMaxLen);
+  }
+}
+
+TEST(ByteArrayMutator, MutateManyWithMaxLenWithStartingLargeInput) {
+  constexpr size_t kMaxLen = 4;
+  ByteArrayMutator mutator(/*seed=*/1);
+  EXPECT_TRUE(mutator.set_max_len(kMaxLen));
+  constexpr size_t kNumMutantsToGenerate = 10000;
+  std::vector<ByteArray> mutants;
+
+  const std::vector<ByteArray> large_input = {
+      {0, 1, 2, 3, 4, 5, 6, 7}, {0}, {0, 1}, {0, 1, 2}, {0, 1, 2, 3},
+  };
+  mutator.MutateMany(large_input, kNumMutantsToGenerate,
+                     /*crossover_level=*/50, mutants);
+  EXPECT_EQ(mutants.size(), kNumMutantsToGenerate);
+
+  for (const ByteArray &mutant : mutants) {
+    if (mutant.size() > kMaxLen) {
+      // The only mutant larger than max length should be the same large input
+      // that mutation originally started with. All other mutants should be
+      // within the maximum length specified.
+      EXPECT_EQ(mutant, large_input[0]);
     }
   }
 }

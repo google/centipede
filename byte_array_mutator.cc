@@ -78,8 +78,13 @@ void CmpDictionary::SuggestReplacement(
 
 //============= ByteArrayMutator ===============
 size_t ByteArrayMutator::RoundUpToAdd(size_t curr_size, size_t to_add) {
+  if (curr_size >= max_len_) return 0;
   const size_t remainder = (curr_size + to_add) % size_alignment_;
-  return (remainder == 0) ? to_add : (to_add + size_alignment_ - remainder);
+  if (remainder != 0) {
+    to_add = to_add + size_alignment_ - remainder;
+  }
+  if (curr_size + to_add > max_len_) return max_len_ - curr_size;
+  return to_add;
 }
 
 size_t ByteArrayMutator::RoundDownToRemove(size_t curr_size, size_t to_remove) {
@@ -89,10 +94,24 @@ size_t ByteArrayMutator::RoundDownToRemove(size_t curr_size, size_t to_remove) {
   size_t result_size = curr_size - to_remove;
   result_size -= (result_size % size_alignment_);
   to_remove = curr_size - result_size;
-  return (result_size == 0) ? to_remove - size_alignment_ : to_remove;
+  if (result_size == 0) {
+    to_remove -= size_alignment_;
+  }
+  if (result_size > max_len_) {
+    return curr_size - max_len_;
+  }
+  return to_remove;
 }
 
 bool ByteArrayMutator::Mutate(ByteArray &data) {
+  if (data.size() > max_len_) {
+    return MutateDecreaseSize(data);
+  }
+  if (data.size() == max_len_) {
+    return ApplyOneOf<2>({&ByteArrayMutator::MutateSameSize,
+                          &ByteArrayMutator::MutateDecreaseSize},
+                         data);
+  }
   return ApplyOneOf<3>(
       {&ByteArrayMutator::MutateSameSize, &ByteArrayMutator::MutateIncreaseSize,
        &ByteArrayMutator::MutateDecreaseSize},
@@ -253,7 +272,7 @@ void ByteArrayMutator::CrossOverOverwrite(ByteArray &data,
 }
 
 void ByteArrayMutator::CrossOver(ByteArray &data, const ByteArray &other) {
-  if (rng_() % 2) {
+  if (rng_() % 2 && data.size() < max_len_) {
     CrossOverInsert(data, other);
   } else {
     CrossOverOverwrite(data, other);
@@ -267,7 +286,7 @@ void ByteArrayMutator::MutateMany(const std::vector<ByteArray> &inputs,
   mutants.resize(num_mutants);
   for (auto &mutant : mutants) {
     mutant = inputs[rng_() % num_inputs];
-    if (rng_() % 100 < crossover_level) {
+    if ((rng_() % 100 < crossover_level) && (mutant.size() <= max_len_)) {
       // Perform crossover `crossover_level`% of the time.
       CrossOver(mutant, inputs[rng_() % num_inputs]);
     } else {

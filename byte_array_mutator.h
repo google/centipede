@@ -19,6 +19,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #include <string_view>
 #include <vector>
 
@@ -169,8 +170,29 @@ class ByteArrayMutator {
   // Set size alignment for mutants with modified sizes. Some mutators do not
   // change input size, but mutators that insert or erase bytes will produce
   // mutants with aligned sizes (if possible).
-  void set_size_alignment(size_t size_alignment) {
+  //
+  // Returns true if new size alignment was accepted. Returns false if max
+  // length is not a multiple of the specified size alignment.
+  bool set_size_alignment(size_t size_alignment) {
+    if ((max_len_ != std::numeric_limits<size_t>::max()) &&
+        (max_len_ % size_alignment != 0)) {
+      return false;
+    }
     size_alignment_ = size_alignment;
+    return true;
+  }
+
+  // Set max length in bytes for mutants with modified sizes.
+  //
+  // Returns true if new max length was accepted. Returns false if specified max
+  // length is not a multiple of size alignment.
+  bool set_max_len(size_t max_len) {
+    if ((max_len != std::numeric_limits<size_t>::max()) &&
+        (max_len % size_alignment_ != 0)) {
+      return false;
+    }
+    max_len_ = max_len;
+    return true;
   }
 
  private:
@@ -194,6 +216,9 @@ class ByteArrayMutator {
   //
   // If the original to_add would result in an unaligned input size, we round up
   // to the next larger aligned size.
+  //
+  // This function respects `max_len_` and will return 0 if curr_size is already
+  // greater than or equal to `max_len_`.
   size_t RoundUpToAdd(size_t curr_size, size_t to_add);
 
   // Given a current size and a number of bytes to remove, returns the number of
@@ -205,6 +230,9 @@ class ByteArrayMutator {
   // However, we never return a number of bytes to remove that would result in a
   // 0 size. In this case, the resulting size will be the smaller of
   // curr_size and size_alignment_.
+  //
+  // This function respects `max_len_` and may return a larger number necessary
+  // to get the mutant's size to below `max_len_`.
   size_t RoundDownToRemove(size_t curr_size, size_t to_remove);
 
   // Size alignment in bytes to generate mutants.
@@ -213,6 +241,9 @@ class ByteArrayMutator {
   // number of bytes. If size_alignment_ is 4, generated mutants will have sizes
   // that are 4-byte aligned.
   size_t size_alignment_ = 1;
+
+  // Max length of a generated mutant in bytes.
+  size_t max_len_ = std::numeric_limits<size_t>::max();
 
   Rng rng_;
   std::vector<DictEntry> dictionary_;
