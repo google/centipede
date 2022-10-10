@@ -68,5 +68,9 @@ TEST(ConfigFileTest, AugmentedArgv) {
   }
 }
 
+// TODO(ussuri): The rest of the module is tested by calling Centipede with
+//  the new flags in centipede_main_cns_test.sh. Consider adding proper C++
+//  tests here too.
+
 }  // namespace
 }  // namespace centipede::config

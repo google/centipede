@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_CENTIPEDE_GOOGLE_CONFIG_FILE_H_
 #define THIRD_PARTY_CENTIPEDE_GOOGLE_CONFIG_FILE_H_
 
+#include <filesystem>  // NOLINT
 #include <functional>
 #include <string>
 #include <utility>
@@ -77,6 +78,26 @@ class AugmentedArgvWithCleanup final {
   bool was_augmented_;
   BackingResourcesCleanup cleanup_;
 };
+
+// Replaces any --config=<config_file> in `argv` (or any alternative form of
+// that flag) with a --flagfile=<possibly_localized_config_file>, where
+// localization means that a remote <config_file> is copied to a temporary local
+// mirror. If <config_file> is already local, it is used as-is.
+//
+// The remote file contents is additionally checked for possible nested
+// --config, --save_config and --flagfile: such usage is currently unsupported.
+//
+// The returned AugmentedArgvWithCleanup deletes the localized files (if any) in
+// dtor.
+AugmentedArgvWithCleanup LocalizeConfigFilesInArgv(
+    const std::vector<std::string>& argv);
+
+// If --save_config=<path> was passed on the command line, saves _all_
+// Centipede flags (i.e. those specified on the command line AND the defaulted
+// ones) to <path> in the format compatible with --config (defined by
+// Centipede), as well as --flagfile (defined by Abseil Flags), and returns
+// <path>. Otherwise, returns an empty string.
+std::filesystem::path MaybeSaveConfigToFile();
 
 }  // namespace centipede::config
 
