@@ -19,20 +19,31 @@
 #include "absl/log/initialize.h"
 #include "./centipede_default_callbacks.h"
 #include "./centipede_interface.h"
+#include "./config_file.h"
 #include "./environment.h"
 
-int main(int argc, char **argv) {
-  // By default, log everything to stderr. Explicit --stderrthreshold=N on the
-  // command line takes precedence.
-  // NB: The invocation order is important here.
-  absl::SetStderrThreshold(absl::LogSeverityAtLeast::kInfo);
-  // Parse the command line.
-  std::vector<char *> args = absl::ParseCommandLine(argc, argv);
-  // Initialize the logging subsystem.
-  absl::InitializeLog();
+int main(int argc, char** argv) {
+  const centipede::config::MainRuntimeInit runtime_init =
+      [](int argc, char** argv) -> std::vector<std::string> {
+    // NB: The invocation order is important here.
+    // By default, log everything to stderr. Explicit --stderrthreshold=N on the
+    // command line takes precedence.
+    absl::SetStderrThreshold(absl::LogSeverityAtLeast::kInfo);
+    // Perform the initial command line parsing.
+    std::vector<std::string> leftover_argv =
+        centipede::config::CastArgv(absl::ParseCommandLine(argc, argv));
+    // Initialize the logging subsystem.
+    absl::InitializeLog();
+    return leftover_argv;
+  };
+
+  // Resolve any possible config-related flags in the command line and reparse
+  // it if any augmentations had to be made.
+  const auto leftover_argv =
+      centipede::config::InitCentipede(argc, argv, runtime_init);
 
   // Reads flags; must happen after ParseCommandLine().
-  centipede::Environment env(args.size(), args.data());
+  centipede::Environment env{leftover_argv};
   centipede::DefaultCallbacksFactory<centipede::CentipedeDefaultCallbacks>
       callbacks;
   return CentipedeMain(env, callbacks);

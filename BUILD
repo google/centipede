@@ -35,6 +35,7 @@ cc_binary(
     deps = [
         ":centipede_default_callbacks",
         ":centipede_interface",
+        ":config_file",
         ":environment",
         "@com_google_absl//absl/flags:parse",
         "@com_google_absl//absl/log:flags",
@@ -111,6 +112,7 @@ cc_library(
         ":remote_file",
         ":util",
         "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/flags:parse",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/strings",
     ],
@@ -548,6 +550,8 @@ cc_test(
     deps = [
         ":config_file",
         "@com_google_googletest//:gtest_main",
+        # Defines FLAGS_flagfile.
+        "@com_google_absl//absl/flags:parse",  # buildcleaner:keep
     ],
 )
 

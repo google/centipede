@@ -222,7 +222,7 @@ ABSL_FLAG(size_t, shmem_size_mb, 1024,
 
 namespace centipede {
 
-Environment::Environment(std::vector<char *> argv)
+Environment::Environment(const std::vector<std::string>& argv)
     : binary(absl::GetFlag(FLAGS_binary)),
       coverage_binary(
           absl::GetFlag(FLAGS_coverage_binary).empty()

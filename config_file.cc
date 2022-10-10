@@ -22,6 +22,7 @@
 
 #include "absl/flags/declare.h"
 #include "absl/flags/flag.h"
+#include "absl/flags/parse.h"
 #include "absl/log/check.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
@@ -224,6 +225,48 @@ std::filesystem::path MaybeSaveConfigToFile() {
   }
 
   return path;
+}
+
+std::vector<std::string> InitCentipede(
+    int argc, char** argv, const MainRuntimeInit& main_runtime_init) {
+  std::vector<std::string> leftover_argv;
+
+  // main_runtime_init() is allowed to remove recognized flags from `argv`, so
+  // we need a copy.
+  const std::vector<std::string> saved_argv = CastArgv(argc, argv);
+
+  // Among other things, this should perform the initial command line parsing.
+  leftover_argv = main_runtime_init(argc, argv);
+
+  // If --config=<path> was passed, replace it with the Abseil Flags' built-in
+  // --flagfile=<localized_path> and reparse the command line. NOTE: It would be
+  // incorrect to just parse the contents of <path>, because --config (and
+  // --flagfile for that matter) are position-sensitive, i.e. they may override
+  // flags that come before on the command line, and vice versa.
+  const AugmentedArgvWithCleanup localized_argv =
+      LocalizeConfigFilesInArgv(saved_argv);
+  if (localized_argv.was_augmented()) {
+    LOG(INFO) << "Command line was augmented; reparsing";
+    leftover_argv = CastArgv(absl::ParseCommandLine(
+        localized_argv.argc(), CastArgv(localized_argv.argv()).data()));
+  }
+
+  // Log the final resolved config.
+  const FlagInfosPerSource flags = GetFlagsPerSource("third_party/centipede/");
+  const std::string flags_str = FormatFlagfileString(
+      flags, DefaultedFlags::kIncluded, FlagComments::kNone);
+  LOG(INFO) << "Final resolved config:\n" << flags_str;
+
+  // If --save_config was passed, save the final resolved flags to the requested
+  // file and exit the program.
+  const auto path = MaybeSaveConfigToFile();
+  if (!path.empty()) {
+    LOG(INFO) << "Config written to file: " << VV(path);
+    LOG(INFO) << "Nothing left to do; exiting";
+    exit(EXIT_SUCCESS);
+  }
+
+  return leftover_argv;
 }
 
 }  // namespace centipede::config

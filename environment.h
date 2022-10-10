@@ -27,10 +27,10 @@ namespace centipede {
 // Users or tests can override any of the non-const fields after the object
 // is constructed, but before it is passed to CentipedeMain.
 struct Environment {
-  explicit Environment(std::vector<char *> argv = {});
+  explicit Environment(const std::vector<std::string>& argv = {});
 
   Environment(int argc, char **argv)
-      : Environment(std::vector<char *>{argv, argv + argc}) {}
+      : Environment(std::vector<std::string>{argv, argv + argc}) {}
 
   std::string binary;
   std::string coverage_binary;
