@@ -152,9 +152,15 @@ ABSL_FLAG(size_t, feature_frequency_threshold, 100,
           "weights. Valid values are 1 - 255.");
 ABSL_FLAG(bool, require_pc_table, true,
           "If true, Centipede will exit if the --pc_table is not found.");
-ABSL_FLAG(bool, generate_corpus_stats, false,
-          "If true, a file workdir/corpus-stats-BINARY.json containing corpus "
-          "stats will be generated periodically.");
+ABSL_FLAG(int, telemetry_frequency, 0,
+          "Dumping frequency for intermediate telemetry files, i.e. coverage "
+          "report (workdir/coverage-report-BINARY.*.txt), corpus stats "
+          "(workdir/corpus-stats-*.json), etc. Positive value N means dump "
+          "every N batches. Negative N means start dumping after 2^N processed "
+          "batches with exponential 2x back-off (e.g. for "
+          "--telemetry_frequency=-5, dump on batches 32, 64, 128,...). Zero "
+          "means no telemetry. Note that the before-fuzzing and after-fuzzing "
+          "telemetry are always dumped.");
 ABSL_FLAG(std::string, save_corpus_to_local_dir, "",
           "Save the remote corpus from working to the given directory, one "
           "file per corpus.");
@@ -262,7 +268,7 @@ Environment::Environment(const std::vector<std::string>& argv)
       feature_frequency_threshold(
           absl::GetFlag(FLAGS_feature_frequency_threshold)),
       require_pc_table(absl::GetFlag(FLAGS_require_pc_table)),
-      generate_corpus_stats(absl::GetFlag(FLAGS_generate_corpus_stats)),
+      telemetry_frequency(absl::GetFlag(FLAGS_telemetry_frequency)),
       distill_shards(absl::GetFlag(FLAGS_distill_shards)),
       save_corpus_to_local_dir(absl::GetFlag(FLAGS_save_corpus_to_local_dir)),
       export_corpus_from_local_dir(
