@@ -144,7 +144,9 @@ int Centipede::ExportCorpusFromLocalDir(const Environment &env,
     }
     // Add inputs to the current shard, if the shard doesn't have them already.
     auto appender = DefaultBlobFileAppenderFactory();
-    CHECK_OK(appender->Open(env.MakeCorpusPath(shard)));
+    std::string corpus_path = env.MakeCorpusPath(shard);
+    CHECK_OK(appender->Open(corpus_path))
+        << "Failed to open corpus file: " << corpus_path;
     ByteArray shard_data;
     for (const auto &path : sharded_paths[shard]) {
       ByteArray input;
