@@ -19,6 +19,7 @@
 #include <numeric>
 #include <string>
 
+#include "absl/container/flat_hash_set.h"
 #include "absl/types/span.h"
 #include "./environment.h"
 #include "./logging.h"
@@ -80,6 +81,12 @@ void PrintExperimentStats(absl::Span<const Stats> stats_vec,
   os << "Corpus size:\n";
   PrintExperimentStatsForOneStatValue(stats_vec, env_vec, os,
                                       &Stats::corpus_size);
+  os << "Flags:\n";
+  absl::flat_hash_set<std::string> printed_names;
+  for (const auto &env : env_vec) {
+    if (!printed_names.insert(env.experiment_name).second) continue;
+    os << env.experiment_name << ": " << env.experiment_flags << "\n";
+  }
 }
 
 }  // namespace centipede

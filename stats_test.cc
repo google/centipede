@@ -37,9 +37,13 @@ TEST(Stats, PrintExperimentStats) {
 
   std::vector<Environment> env_vec(4);
   env_vec[0].experiment_name = "Experiment A";
+  env_vec[0].experiment_flags = "AAA";
   env_vec[1].experiment_name = "Experiment B";
+  env_vec[1].experiment_flags = "BBB";
   env_vec[2].experiment_name = "Experiment A";
+  env_vec[2].experiment_flags = "AAA";
   env_vec[3].experiment_name = "Experiment B";
+  env_vec[3].experiment_flags = "BBB";
 
   PrintExperimentStats(stats_vec, env_vec, ss);
   LOG(INFO) << "\n" << ss.str();
@@ -49,7 +53,10 @@ TEST(Stats, PrintExperimentStats) {
       "Experiment B: min:\t15\tmax:\t40\tavg:\t27.5\t--\t15\t40\n"
       "Corpus size:\n"
       "Experiment A: min:\t1000\tmax:\t3000\tavg:\t2000\t--\t1000\t3000\n"
-      "Experiment B: min:\t2000\tmax:\t4000\tavg:\t3000\t--\t2000\t4000\n";
+      "Experiment B: min:\t2000\tmax:\t4000\tavg:\t3000\t--\t2000\t4000\n"
+      "Flags:\n"
+      "Experiment A: AAA\n"
+      "Experiment B: BBB\n";
 
   EXPECT_THAT(ss.str(), testing::StrEq(expected));
 }

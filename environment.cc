@@ -431,10 +431,10 @@ void Environment::UpdateForExperiment() {
       << VV(num_threads) << VV(num_combinations);
 
   // Update the flags for the current shard and compute experiment_name.
-  // TODO(kcc): add and populate a field "experiment_values", like foo=1:bar=20.
   CHECK_LT(my_shard_index, num_threads);
   size_t my_combination_num = my_shard_index % num_combinations;
   experiment_name.clear();
+  experiment_flags.clear();
   // Reverse the flags.
   // This way, the flag combinations will go in natural order.
   // E.g. for --experiment='foo=1,2,3:bar=10,20' the order of combinations is
@@ -448,6 +448,8 @@ void Environment::UpdateForExperiment() {
     SetFlag(exp.flag_name, exp.flag_values[idx]);
     my_combination_num /= exp.flag_values.size();
     experiment_name = std::to_string(idx) + experiment_name;
+    experiment_flags =
+        exp.flag_name + "=" + exp.flag_values[idx] + ":" + experiment_flags;
   }
   experiment_name = "E" + experiment_name;
   load_other_shard_frequency = 0;  // The experiments should be independent.

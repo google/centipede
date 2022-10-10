@@ -81,7 +81,8 @@ struct Environment {
   size_t max_num_crash_reports;
   size_t shmem_size_mb;
 
-  std::string experiment_name;  // Set by UpdateForExperiment.
+  std::string experiment_name;   // Set by UpdateForExperiment.
+  std::string experiment_flags;  // Set by UpdateForExperiment.
 
   // Set to zero to reduce logging in tests.
   size_t log_level = 1;
