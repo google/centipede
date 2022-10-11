@@ -401,6 +401,7 @@ void Environment::SetFlag(std::string_view name, std::string_view value) {
   absl::flat_hash_map<std::string, size_t *> int_flags{
       {"path_level", &path_level},
       {"max_corpus_size", &max_corpus_size},
+      {"max_len", &max_len},
       {"mutate_batch_size", &mutate_batch_size}};
   auto int_iter = int_flags.find(name);
   if (int_iter != int_flags.end()) {
