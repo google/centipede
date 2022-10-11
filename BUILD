@@ -53,6 +53,7 @@ cc_library(
     name = "feature",
     srcs = ["feature.cc"],
     hdrs = ["feature.h"],
+    copts = ["-fsanitize-coverage=0"],
 )
 
 cc_library(
@@ -68,6 +69,7 @@ cc_library(
 cc_library(
     name = "defs",
     hdrs = ["defs.h"],
+    copts = ["-fsanitize-coverage=0"],
     deps = ["@com_google_absl//absl/types:span"],
 )
 
@@ -161,6 +163,7 @@ cc_library(
     name = "shared_memory_blob_sequence",
     srcs = ["shared_memory_blob_sequence.cc"],
     hdrs = ["shared_memory_blob_sequence.h"],
+    copts = ["-fsanitize-coverage=0"],
     linkopts = ["-lrt"],  # for shm_open.
     # don't add any dependencies.
 )
@@ -169,6 +172,7 @@ cc_library(
     name = "execution_result",
     srcs = ["execution_result.cc"],
     hdrs = ["execution_result.h"],
+    copts = ["-fsanitize-coverage=0"],
     deps = [
         # This target must have a minimal set of dependencies since it is
         # used in fuzz_target_runner.
@@ -182,6 +186,7 @@ cc_library(
     name = "execution_request",
     srcs = ["execution_request.cc"],
     hdrs = ["execution_request.h"],
+    copts = ["-fsanitize-coverage=0"],
     deps = [
         # This target must have a minimal set of dependencies since it is
         # used in fuzz_target_runner.
@@ -194,6 +199,7 @@ cc_library(
     name = "byte_array_mutator",
     srcs = ["byte_array_mutator.cc"],
     hdrs = ["byte_array_mutator.h"],
+    copts = ["-fsanitize-coverage=0"],
     # Avoid dependencies here, as this library will be linked to target binaries.
     deps = [
         ":defs",
@@ -396,17 +402,20 @@ cc_library(
 cc_library(
     name = "runner_fork_server",
     srcs = ["runner_fork_server.cc"],
+    copts = ["-fsanitize-coverage=0"],
     alwayslink = 1,  # Otherwise the linker drops the fork server.
 )
 
 cc_library(
     name = "runner_interface",
     hdrs = ["runner_interface.h"],
+    copts = ["-fsanitize-coverage=0"],
 )
 
 cc_library(
     name = "runner_cmp_trace",
     hdrs = ["runner_cmp_trace.h"],
+    copts = ["-fsanitize-coverage=0"],
 )
 
 # A fuzz target needs to link with this library in order to run with Centipede.
@@ -647,6 +656,7 @@ cc_test(
 cc_binary(
     name = "command_test_helper",
     srcs = ["command_test_helper.cc"],
+    copts = ["-fsanitize-coverage=0"],
     deps = [":runner_fork_server"],
 )
 

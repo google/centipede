@@ -22,8 +22,8 @@ set -eu
 
 source "$(dirname "$0")/../test_util.sh"
 
-# Max allowed PC table size. Set to the current de facto value.
-ALLOWED_SIZE=1200
+# Max allowed PC table size is 16 bytes, i.e. one entry.
+ALLOWED_SIZE=16
 
 target="$(centipede::get_centipede_test_srcdir)/testing/empty_fuzz_target"
 pc_table="${TEST_TMPDIR}/pc_table"
