@@ -182,6 +182,9 @@ ABSL_FLAG(size_t, distill_shards, 0,
           "shards. Note that every shard will produce its own variant of "
           "distilled corpus. Distillation will work properly only if all "
           "shards already have their feature files computed.");
+ABSL_FLAG(size_t, log_features_shards, 0,
+          "The first --log_features_shards shards will log newly observed "
+          "features as symbols. In most cases you don't need this to be >= 2.");
 ABSL_FLAG(bool, exit_on_crash, false,
           "If true, Centipede will exit on the first crash of the target.");
 ABSL_FLAG(size_t, num_crash_reports, 5, "report this many crashes per shard.");
@@ -228,7 +231,7 @@ ABSL_FLAG(size_t, shmem_size_mb, 1024,
 
 namespace centipede {
 
-Environment::Environment(const std::vector<std::string>& argv)
+Environment::Environment(const std::vector<std::string> &argv)
     : binary(absl::GetFlag(FLAGS_binary)),
       coverage_binary(
           absl::GetFlag(FLAGS_coverage_binary).empty()
@@ -270,6 +273,7 @@ Environment::Environment(const std::vector<std::string>& argv)
       require_pc_table(absl::GetFlag(FLAGS_require_pc_table)),
       telemetry_frequency(absl::GetFlag(FLAGS_telemetry_frequency)),
       distill_shards(absl::GetFlag(FLAGS_distill_shards)),
+      log_features_shards(absl::GetFlag(FLAGS_log_features_shards)),
       save_corpus_to_local_dir(absl::GetFlag(FLAGS_save_corpus_to_local_dir)),
       export_corpus_from_local_dir(
           absl::GetFlag(FLAGS_export_corpus_from_local_dir)),

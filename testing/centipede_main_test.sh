@@ -73,6 +73,52 @@ test_crashing_target() {
   centipede::assert_regex_in_file "I AM ABOUT TO ABORT" "${LOG}"
 }
 
+# Creates workdir ($1) and tests how the debug symbols are shown in the output.
+test_debug_symbols() {
+  FUNC="${FUNCNAME[0]}"
+  WD="${TEST_TMPDIR}/${FUNC}/WD"
+  TMPCORPUS="${TEST_TMPDIR}/${FUNC}/C"
+  LOG="${TEST_TMPDIR}/${FUNC}/log"
+  centipede::ensure_empty_dir "${WD}"
+  centipede::ensure_empty_dir "${TMPCORPUS}"
+
+  echo -n "func1" > "${TMPCORPUS}/func1"  # induces a call to SingleEdgeFunc.
+  echo -n "func2-A" > "${TMPCORPUS}/func2-A"  # induces a call to MultiEdgeFunc.
+
+  echo "============ ${FUNC}: run for the first time, with empty seed corpus, with feature logging"
+  test_fuzz --log_features_shards=1 --workdir="${WD}" --seed=1 --num_runs=1000 \
+    --symbolizer_path="${LLVM_SYMBOLIZER}" | tee "${LOG}"
+  centipede::assert_regex_in_file 'Custom mutator detected in the target, will use it' "${LOG}"
+  # Note: the test assumes LLVMFuzzerTestOneInput is defined on a specific line.
+  centipede::assert_regex_in_file "FUNC: LLVMFuzzerTestOneInput third_party/centipede/testing/test_fuzz_target.cc:53" "${LOG}"
+  centipede::assert_regex_in_file "EDGE: LLVMFuzzerTestOneInput third_party/centipede/testing/test_fuzz_target.cc" "${LOG}"
+
+  echo "============ ${FUNC}: add func1/func2-A inputs to the corpus."
+  test_fuzz --workdir="${WD}" --export_corpus_from_local_dir="${TMPCORPUS}"
+
+  echo "============ ${FUNC}: run again, append to the same LOG file."
+  test_fuzz --log_features_shards=1 --workdir="${WD}" --seed=1 --num_runs=0 \
+    --symbolizer_path="${LLVM_SYMBOLIZER}" 2>&1 | tee -a "${LOG}"
+  centipede::assert_regex_in_file "FUNC: SingleEdgeFunc" "${LOG}"
+  centipede::assert_regex_in_file "FUNC: MultiEdgeFunc" "${LOG}"
+  centipede::assert_regex_in_file "EDGE: MultiEdgeFunc" "${LOG}"
+
+  echo "============ ${FUNC}: checking the coverage report"
+  for COV_REPORT_TYPE in "initial" "latest"; do
+    COV_REPORT="${WD}/coverage-report-$(basename "${TEST_TARGET_BINARY}").000000.${COV_REPORT_TYPE}.txt"
+    centipede::assert_regex_in_file "Generate coverage report:.*${COV_REPORT}" "${LOG}"
+    centipede::assert_regex_in_file "FULL: SingleEdgeFunc" "${COV_REPORT}"
+    centipede::assert_regex_in_file "PARTIAL: LLVMFuzzerTestOneInput" "${COV_REPORT}"
+  done
+
+  echo "============ ${FUNC}: run w/o the symbolizer, everything else should still work."
+  centipede::ensure_empty_dir "${WD}"
+  test_fuzz --workdir="${WD}" --seed=1 --num_runs=1000 \
+    --symbolizer_path=/dev/null | tee "${LOG}"
+  centipede::assert_regex_in_file "Symbolizer unspecified: debug symbols will not be used" "${LOG}"
+  centipede::assert_regex_in_file "end-fuzz:" "${LOG}"
+}
+
 # Creates workdir ($1) and tests how dictionaries are loaded.
 test_dictionary() {
   FUNC="${FUNCNAME[0]}"

@@ -67,6 +67,7 @@ struct Environment {
   bool require_pc_table;
   int telemetry_frequency;
   size_t distill_shards;
+  size_t log_features_shards;
   std::string save_corpus_to_local_dir;
   std::string export_corpus_from_local_dir;
   std::vector<std::string> corpus_dir;
@@ -108,6 +109,10 @@ struct Environment {
   std::string MakeDistilledPath() const;
   // Returns true if we want to distill the corpus in this shard before fuzzing.
   bool DistillingInThisShard() const { return my_shard_index < distill_shards; }
+  // Returns true if we want to log features as symbols in this shard.
+  bool LogFeaturesInThisShard() const {
+    return my_shard_index < log_features_shards;
+  }
   // Returns the path for the coverage report file for my_shard_index.
   // The coverage report is generated before fuzzing begins and after it ends.
   // Non-default `annotation` becomes a part of the returned filename.

@@ -193,13 +193,14 @@ void Centipede::Log(std::string_view log_type, size_t min_log_level) {
 }
 
 void Centipede::LogFeaturesAsSymbols(const FeatureVec &fv) {
+  if (!env_.LogFeaturesInThisShard()) return;
   auto feature_domain = feature_domains::k8bitCounters;
   for (auto feature : fv) {
     if (!feature_domain.Contains(feature)) continue;
     Coverage::PCIndex pc_index = Convert8bitCounterFeatureToPcIndex(feature);
     auto description = coverage_logger_.ObserveAndDescribeIfNew(pc_index);
     if (description.empty()) continue;
-    VLOG(coverage_logger_verbose_level_) << description;
+    LOG(INFO) << description;
   }
 }
 
@@ -479,7 +480,6 @@ void Centipede::FuzzingLoop() {
   // Clear timer_ and num_runs_, so that the pre-init work doesn't affect them.
   timer_ = Timer();
   num_runs_ = 0;
-  coverage_logger_verbose_level_ = 1;  // log coverage with --v=1.
 
   if (env_.DistillingInThisShard()) {
     auto distill_to_path = env_.MakeDistilledPath();

@@ -96,7 +96,7 @@ class Centipede {
   // (PCIndex), then prints one logging line for every
   // FUNC/EDGE observed for the first time.
   // If symbolization failed, prints a simpler logging line.
-  // Uses coverage_logger_ and VLOG(coverage_logger_verbose_level_).
+  // Uses coverage_logger_.
   void LogFeaturesAsSymbols(const FeatureVec &f);
   // Generates a coverage report file in workdir.
   void GenerateCoverageReport(std::string_view annotation, size_t batch_index);
@@ -154,10 +154,6 @@ class Centipede {
   // Ensures every coverage location is reported at most once.
   // This object is shared with other threads, it is thread-safe.
   CoverageLogger &coverage_logger_;
-  // Newly discovered coverage is logged
-  // * with --v=2 (or higher) before "init-done".
-  // * with --v=1 (or higher) after "init-done".
-  int coverage_logger_verbose_level_ = 2;
 
   // Statistics of the current run.
   Stats &stats_;
