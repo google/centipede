@@ -29,7 +29,7 @@ function die() {
 # executes the command.
 function fileop() {
   if [[ -x "${TEST_SRCDIR}/google3/file/util/fileutil" ]]; then
-    "$@"
+    "${TEST_SRCDIR}/google3/file/util/fileutil" "$@"
   else
     "$@"
   fi
