@@ -48,6 +48,10 @@ using centipede::tls;
 // https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html.
 #define ENFORCE_INLINE __attribute__((always_inline)) inline
 
+// Use this attribute for functions that must not be instrumented even if
+// the runner is built with sanitizers (asan, etc).
+#define NO_SANITIZE __attribute__((no_sanitize("all")))
+
 // NOTE: Enforce inlining so that `__builtin_return_address` works.
 ENFORCE_INLINE static void TraceLoad(void *addr) {
   if (!state.run_time_flags.use_dataflow_features) return;
@@ -77,50 +81,58 @@ ENFORCE_INLINE static void TraceCmp(uint64_t Arg1, uint64_t Arg2) {
 //------------------------------------------------------------------------------
 
 extern "C" {
+NO_SANITIZE void __sanitizer_cov_load1(uint8_t *addr) { TraceLoad(addr); }
+NO_SANITIZE void __sanitizer_cov_load2(uint16_t *addr) { TraceLoad(addr); }
+NO_SANITIZE void __sanitizer_cov_load4(uint32_t *addr) { TraceLoad(addr); }
+NO_SANITIZE void __sanitizer_cov_load8(uint64_t *addr) { TraceLoad(addr); }
+NO_SANITIZE void __sanitizer_cov_load16(__uint128_t *addr) { TraceLoad(addr); }
 
-void __sanitizer_cov_load1(uint8_t *addr) { TraceLoad(addr); }
-void __sanitizer_cov_load2(uint16_t *addr) { TraceLoad(addr); }
-void __sanitizer_cov_load4(uint32_t *addr) { TraceLoad(addr); }
-void __sanitizer_cov_load8(uint64_t *addr) { TraceLoad(addr); }
-void __sanitizer_cov_load16(__uint128_t *addr) { TraceLoad(addr); }
-
+NO_SANITIZE
 void __sanitizer_cov_trace_const_cmp1(uint8_t Arg1, uint8_t Arg2) {
   TraceCmp(Arg1, Arg2);
 }
+NO_SANITIZE
 void __sanitizer_cov_trace_const_cmp2(uint16_t Arg1, uint16_t Arg2) {
   TraceCmp(Arg1, Arg2);
   if (Arg1 != Arg2 && state.run_time_flags.use_auto_dictionary)
     tls.cmp_trace2.Capture(Arg1, Arg2);
 }
+NO_SANITIZE
 void __sanitizer_cov_trace_const_cmp4(uint32_t Arg1, uint32_t Arg2) {
   TraceCmp(Arg1, Arg2);
   if (Arg1 != Arg2 && state.run_time_flags.use_auto_dictionary)
     tls.cmp_trace4.Capture(Arg1, Arg2);
 }
+NO_SANITIZE
 void __sanitizer_cov_trace_const_cmp8(uint64_t Arg1, uint64_t Arg2) {
   TraceCmp(Arg1, Arg2);
   if (Arg1 != Arg2 && state.run_time_flags.use_auto_dictionary)
     tls.cmp_trace8.Capture(Arg1, Arg2);
 }
+NO_SANITIZE
 void __sanitizer_cov_trace_cmp1(uint8_t Arg1, uint8_t Arg2) {
   TraceCmp(Arg1, Arg2);
 }
+NO_SANITIZE
 void __sanitizer_cov_trace_cmp2(uint16_t Arg1, uint16_t Arg2) {
   TraceCmp(Arg1, Arg2);
   if (Arg1 != Arg2 && state.run_time_flags.use_auto_dictionary)
     tls.cmp_trace2.Capture(Arg1, Arg2);
 }
+NO_SANITIZE
 void __sanitizer_cov_trace_cmp4(uint32_t Arg1, uint32_t Arg2) {
   TraceCmp(Arg1, Arg2);
   if (Arg1 != Arg2 && state.run_time_flags.use_auto_dictionary)
     tls.cmp_trace4.Capture(Arg1, Arg2);
 }
+NO_SANITIZE
 void __sanitizer_cov_trace_cmp8(uint64_t Arg1, uint64_t Arg2) {
   TraceCmp(Arg1, Arg2);
   if (Arg1 != Arg2 && state.run_time_flags.use_auto_dictionary)
     tls.cmp_trace8.Capture(Arg1, Arg2);
 }
 // TODO(kcc): [impl] handle switch.
+NO_SANITIZE
 void __sanitizer_cov_trace_switch(uint64_t Val, uint64_t *Cases) {}
 
 // https://clang.llvm.org/docs/SanitizerCoverage.html#pc-table
@@ -144,6 +156,7 @@ void __sanitizer_cov_trace_pc_guard_init(uint32_t *start, uint32_t *stop) {
 }
 
 // This function is called on every instrumented edge.
+NO_SANITIZE
 void __sanitizer_cov_trace_pc_guard(uint32_t *guard) {
   // `guard` is in [pc_guard_start, pc_guard_stop), which gives us the offset.
   uintptr_t offset = guard - state.pc_guard_start;
