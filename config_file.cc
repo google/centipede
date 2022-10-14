@@ -254,7 +254,7 @@ std::vector<std::string> InitCentipede(
   // Log the final resolved config.
   const FlagInfosPerSource flags = GetFlagsPerSource("third_party/centipede/");
   const std::string flags_str = FormatFlagfileString(
-      flags, DefaultedFlags::kIncluded, FlagComments::kNone);
+      flags, DefaultedFlags::kCommentedOut, FlagComments::kNone);
   LOG(INFO) << "Final resolved config:\n" << flags_str;
 
   // If --save_config was passed, save the final resolved flags to the requested
