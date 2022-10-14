@@ -177,18 +177,10 @@ extern "C" size_t LLVMFuzzerMutate(uint8_t *data, size_t size,
   return array.size();
 }
 
-// TODO(ussuri): Move all these globals into GlobalRunnerState.
-
 // An arbitrary large size for input data.
 static const size_t kMaxDataSize = 1 << 20;
-// Input data.
-// Every input is stored in `g_input_data` and then passed to the target.
-// We allocate `g_input_data` from heap at startup to avoid malloc in a loop.
-// We don't make it a global because it will make data flow instrumentation
-// treat every input byte touched as a separate feature, which will cause
-// arbitrary growth of input size.
-static uint8_t *g_input_data = (uint8_t *)malloc(kMaxDataSize);
 
+// TODO(ussuri): Move g_features into GlobalRunnerState.
 // An arbitrary large size.
 static const size_t kMaxFeatures = 1 << 20;
 // FeatureArray used to accumulate features from all sources.
@@ -316,10 +308,17 @@ ReadOneInputExecuteItAndDumpCoverage(
   // Read the input.
   FILE *input_file = fopen(input_path, "r");
   PrintErrorAndExitIf(!input_file, "can't open the input file");
-  auto num_bytes_read = fread(g_input_data, 1, kMaxDataSize, input_file);
+  PrintErrorAndExitIf(fseek(input_file, 0, SEEK_END) != 0, "fseek failed");
+  auto size = ftell(input_file);
+  PrintErrorAndExitIf(size < 0, "ftell failed");
+  PrintErrorAndExitIf(fseek(input_file, 0, SEEK_SET) != 0, "fseek failed");
+  std::vector<uint8_t> data(size);
+
+  auto num_bytes_read = fread(data.data(), 1, data.size(), input_file);
+  PrintErrorAndExitIf(num_bytes_read != data.size(), "read failed");
   fclose(input_file);
 
-  RunOneInput(g_input_data, num_bytes_read, test_one_input_cb);
+  RunOneInput(data.data(), data.size(), test_one_input_cb);
 
   // Dump features to a file.
   char features_file_path[PATH_MAX];
@@ -368,12 +367,12 @@ static int ExecuteInputsFromShmem(
     // TODO(kcc): [impl] handle sizes larger than kMaxDataSize.
     size_t size = std::min(kMaxDataSize, blob.size);
     // Copy from blob to data so that to not pass the shared memory further.
-    memcpy(g_input_data, blob.data, size);
+    std::vector<uint8_t> data(blob.data, blob.data + size);
 
     // Starting execution of one more input.
     if (!centipede::BatchResult::WriteInputBegin(feature_blobseq)) break;
 
-    RunOneInput(g_input_data, size, test_one_input_cb);
+    RunOneInput(data.data(), data.size(), test_one_input_cb);
 
     // Copy features to shared memory.
     if (!centipede::BatchResult::WriteOneFeatureVec(
@@ -506,9 +505,10 @@ static int MutateInputsFromShmem(
     inputs.emplace_back(blob.data, blob.data + blob.size);
   }
 
-  // Use `g_input_data` as a scratch to produce mutants.
-  uint8_t *mutant = g_input_data;
+  // Use a fixed-sized vector as a scratch.
   constexpr size_t kMaxMutantSize = kMaxDataSize;
+  ByteArray mutant(kMaxMutantSize);
+
   constexpr size_t kAverageMutationAttempts = 2;
 
   // Produce mutants.
@@ -519,20 +519,22 @@ static int MutateInputsFromShmem(
     const auto &input = inputs[rand_r(&seed) % num_inputs];
 
     size_t size = std::min(input.size(), kMaxMutantSize);
-    memcpy(mutant, input.data(), size);
+    mutant.assign(input.data(), input.data() + size);
     size_t new_size = 0;
     if (custom_crossover_cb &&
         rand_r(&seed) % 100 < state.run_time_flags.crossover_level) {
       // Perform crossover `crossover_level`% of the time.
       const auto &other = inputs[rand_r(&seed) % num_inputs];
       new_size = custom_crossover_cb(input.data(), input.size(), other.data(),
-                                     other.size(), mutant, kMaxMutantSize,
-                                     rand_r(&seed));
+                                     other.size(), mutant.data(),
+                                     kMaxMutantSize, rand_r(&seed));
     } else {
-      new_size = custom_mutator_cb(mutant, size, kMaxDataSize, rand_r(&seed));
+      new_size =
+          custom_mutator_cb(mutant.data(), size, kMaxMutantSize, rand_r(&seed));
     }
     if (new_size == 0) continue;
-    if (!outputs_blobseq.Write({1 /*unused tag*/, new_size, mutant})) break;
+    if (!outputs_blobseq.Write({1 /*unused tag*/, new_size, mutant.data()}))
+      break;
     ++num_outputs;
   }
   return EXIT_SUCCESS;
