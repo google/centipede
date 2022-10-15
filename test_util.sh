@@ -28,7 +28,8 @@ function die() {
 # command to it for extended file handling capabilities. Otherwise, just
 # executes the command.
 function fileop() {
-  if [[ -x "${TEST_SRCDIR}/google3/file/util/fileutil" ]]; then
+  if [[ -n "${TEST_SRCDIR+x}" ]] &&
+     [[ -x "${TEST_SRCDIR}/google3/file/util/fileutil" ]]; then
     "${TEST_SRCDIR}/google3/file/util/fileutil" "$@"
   else
     "$@"
@@ -72,6 +73,25 @@ function centipede::maybe_set_var_to_executable_path() {
   fi
 }
 
+# Same as centipede::maybe_set_var_to_executable_path(), but "$2" should be
+# a command line that builds the executable and prints its path to stdout.
+# TODO(ussuri): Reduce code duplication with the above.
+function centipede::maybe_set_var_to_built_executable_path() {
+  local var_name="$1"
+  # NOTE: `local -n` creates a reference to the var named "$1".
+  local -n var_ref="$1"
+  local bazel_build_cmd="$2"
+  if [[ -n "${var_ref+x}" ]]; then
+    echo "Not overriding ${var_name} -- already set to '${var_ref}'" >&2
+  else
+    echo "Setting ${var_name} to output of '${bazel_build_cmd}'" >&2
+    var_ref="$(${bazel_build_cmd})"
+  fi
+  if ! [[ -x "${var_ref}" ]]; then
+    die "Path '${var_ref}' doesn't exist or is not executable"
+  fi
+}
+
 # Makes sure that an empty directory "$1" exists. Works for local and CNS.
 function centipede::ensure_empty_dir() {
   fileop mkdir -p "$1"
@@ -83,7 +103,7 @@ function centipede::assert_regex_in_file() {
   local -r regex="$1"
   local -r file="$2"
   set -o pipefail
-  if ! fileop ls "${file}"; then
+  if ! fileop ls "${file}" > /dev/null; then
     die "Expected file ${file} doesn't exist"
   fi
   if ! grep -q -- "${regex}" <(fileop cat "${file}"); then
