@@ -63,7 +63,7 @@ ABSL_FLAG(size_t, max_len, 4096, "Max length of mutants. Passed to mutator.");
 ABSL_FLAG(size_t, batch_size, 1000,
           "The number of inputs given to the target at one time. Batches of "
           "more than 1 input are used to amortize the process start-up cost.");
-ABSL_FLAG(size_t, mutate_batch_size, 20,
+ABSL_FLAG(size_t, mutate_batch_size, 2,
           "Mutate this many inputs to produce batch_size mutants");
 ABSL_FLAG(size_t, load_other_shard_frequency, 10,
           "Load a random other shard after processing this many batches. Use 0 "

@@ -61,7 +61,7 @@ function Run() {
     --workdir "${workdir}" \
     --binary "${puzzle_path}" \
     --seed="${seed}" \
-    --num_runs=1000000 \
+    --num_runs=2000000 \
     --timeout=10 \
     --exit_on_crash \
     "$@" \
