@@ -85,7 +85,7 @@ function centipede::maybe_set_var_to_built_executable_path() {
     echo "Not overriding ${var_name} -- already set to '${var_ref}'" >&2
   else
     echo "Setting ${var_name} to output of '${bazel_build_cmd}'" >&2
-    var_ref="$(${bazel_build_cmd})"
+    var_ref="$(set -e; ${bazel_build_cmd})"
   fi
   if ! [[ -x "${var_ref}" ]]; then
     die "Path '${var_ref}' doesn't exist or is not executable"
