@@ -100,6 +100,7 @@ cc_test(
 
 cc_test(
     name = "centipede_test",
+    timeout = "long",
     srcs = ["centipede_test.cc"],
     data = [
         ":abort_fuzz_target",
@@ -129,6 +130,7 @@ cc_test(
 # Runs common Centipede scenarios with local files.
 sh_test(
     name = "centipede_main_test",
+    timeout = "long",
     srcs = ["centipede_main_test.sh"],
     data = [
         ":abort_fuzz_target",
