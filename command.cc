@@ -14,7 +14,6 @@
 
 #include "./command.h"
 
-#include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -25,6 +24,7 @@
 #include <string>
 #include <string_view>
 
+#include "absl/log/check.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
@@ -36,6 +36,15 @@ namespace centipede {
 // See the definition of --fork_server flag.
 inline constexpr std::string_view kCommandLineSeparator(" \\\n");
 inline constexpr std::string_view kNoForkServerRequestPrefix("%f");
+
+Command::Command(std::string_view path, std::vector<std::string> args,
+                 std::vector<std::string> env, std::string_view out,
+                 std::string_view err)
+    : path_(path),
+      args_(std::move(args)),
+      env_(std::move(env)),
+      out_(out),
+      err_(err) {}
 
 std::string Command::ToString() const {
   std::vector<std::string> ss;
@@ -83,13 +92,14 @@ bool Command::StartForkServer(std::string_view temp_dir_path,
                       .append(absl::StrCat(prefix, "_FIFO1"));
   (void)std::filesystem::create_directory(temp_dir_path);  // it may not exist.
   for (int i = 0; i < 2; ++i) {
-    CHECK_EQ(mkfifo(fifo_path_[i].c_str(), 0600), 0)
-        << VV(errno) << VV(fifo_path_[i]);
+    PCHECK(mkfifo(fifo_path_[i].c_str(), 0600) == 0)
+        << VV(i) << VV(fifo_path_[i]);
   }
+
   const std::string command = absl::StrCat(
       "CENTIPEDE_FORK_SERVER_FIFO0=", fifo_path_[0], kCommandLineSeparator,
       "CENTIPEDE_FORK_SERVER_FIFO1=", fifo_path_[1], kCommandLineSeparator,
-      full_command_string_, " &");
+      command_line_, " &");
   LOG(INFO) << "Fork server command:\n" << command;
   int ret = system(command.c_str());
   CHECK_EQ(ret, 0) << "Failed to start fork server using command:\n" << command;
@@ -123,7 +133,7 @@ int Command::Execute() {
     CHECK_EQ(sizeof(exit_code), read(pipe_[1], &exit_code, sizeof(exit_code)));
   } else {
     // No fork server, use system().
-    exit_code = system(full_command_string_.c_str());
+    exit_code = system(command_line_.c_str());
   }
   if (WIFSIGNALED(exit_code) && (WTERMSIG(exit_code) == SIGINT))
     RequestEarlyExit(EXIT_FAILURE);

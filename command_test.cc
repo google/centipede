@@ -28,7 +28,7 @@
 namespace centipede {
 namespace {
 
-TEST(Command, ToString) {
+TEST(CommandTest, ToString) {
   EXPECT_EQ(Command("x").ToString(), "x");
   EXPECT_EQ(Command("path", {"arg1", "arg2"}).ToString(),
             "path \\\narg1 \\\narg2");
@@ -42,7 +42,7 @@ TEST(Command, ToString) {
             "x \\\n> out \\\n2>&1");
 }
 
-TEST(Command, Execute) {
+TEST(CommandTest, Execute) {
   // Check for default exit code.
   Command echo("echo");
   EXPECT_EQ(echo.Execute(), 0);
@@ -52,7 +52,10 @@ TEST(Command, Execute) {
   Command exit7("bash -c 'exit 7'");
   EXPECT_EQ(exit7.Execute(), 7);
   EXPECT_FALSE(EarlyExitRequested());
+}
 
+TEST(CommandDeathTest, Execute) {
+  GTEST_FLAG_SET(death_test_style, "threadsafe");
   // Test for interrupt handling.
   const auto self_sigint_lambda = []() {
     Command self_sigint("bash -c 'kill -SIGINT $$'");
@@ -65,33 +68,31 @@ TEST(Command, Execute) {
   EXPECT_DEATH(self_sigint_lambda(), "Early exit requested");
 }
 
-TEST(Command, ForkServer) {
-  Command bad_command("/dev/null");
-  // TODO(kcc): [impl] currently a bad command will hang. Make it return false.
-
+TEST(CommandTest, ForkServer) {
+  const std::string test_tmpdir = GetTestTempDir(test_info_->name());
   const std::string helper = GetDataDependencyFilepath("command_test_helper");
 
   {
     Command ret0(helper);
-    EXPECT_TRUE(ret0.StartForkServer(GetTestTempDir(), "ForkServer"));
+    EXPECT_TRUE(ret0.StartForkServer(test_tmpdir, "ForkServer"));
     EXPECT_EQ(ret0.Execute(), EXIT_SUCCESS);
   }
 
   {
     Command fail(helper, {"fail"});
-    EXPECT_TRUE(fail.StartForkServer(GetTestTempDir(), "ForkServer"));
+    EXPECT_TRUE(fail.StartForkServer(test_tmpdir, "ForkServer"));
     EXPECT_EQ(fail.Execute(), EXIT_FAILURE);
   }
 
   {
     Command ret7(helper, {"ret42"});
-    EXPECT_TRUE(ret7.StartForkServer(GetTestTempDir(), "ForkServer"));
+    EXPECT_TRUE(ret7.StartForkServer(test_tmpdir, "ForkServer"));
     EXPECT_EQ(ret7.Execute(), 42);
   }
 
   {
     Command abrt(helper, {"abort"});
-    EXPECT_TRUE(abrt.StartForkServer(GetTestTempDir(), "ForkServer"));
+    EXPECT_TRUE(abrt.StartForkServer(test_tmpdir, "ForkServer"));
     EXPECT_EQ(WTERMSIG(abrt.Execute()), SIGABRT);
   }
 
