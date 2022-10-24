@@ -25,12 +25,18 @@
 
 namespace centipede {
 
-// Returns a temp dir for use inside tests. The dir is chosen in the following
-// order of precedence:
+// Returns a temp dir for use inside tests. The base dir is chosen in the
+// following order of precedence:
 // - $TEST_TMPDIR (highest)
 // - $TMPDIR
 // - /tmp
-std::string GetTestTempDir();
+//
+// An optional `subdir` can be appended to the base dir chosen as above. One
+// useful value always available inside a TEST macro (and its variations) is
+// `test_into_->name()`, which returns the name of the test case.
+//
+// If the final dir doesn't exist, it gets created.
+std::string GetTestTempDir(std::string_view subdir = "");
 
 // Returns the root directory filepath for a test's "runfiles".
 std::filesystem::path GetTestRunfilesDir();

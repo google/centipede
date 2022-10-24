@@ -20,10 +20,18 @@
 
 namespace centipede {
 
-std::string GetTestTempDir() {
-  if (auto* path = std::getenv("TEST_TMPDIR"); path != nullptr) return path;
-  if (auto* path = std::getenv("TMPDIR"); path != nullptr) return path;
-  return "/tmp";
+std::string GetTestTempDir(std::string_view subdir = "") {
+  std::filesystem::path dir;
+  dir = std::getenv("TEST_TMPDIR");
+  if (dir.empty()) dir = std::getenv("TMPDIR");
+  if (dir.empty()) dir = "/tmp";
+  dir.append(subdir);
+  if (!std::filesystem::exists(dir)) {
+    std::error_code error;
+    std::filesystem::create_directories(dir, error);
+    CHECK(!error) << "Failed to create dir: " VV(dir) << error.message();
+  }
+  return dir;
 }
 
 std::filesystem::path GetTestRunfilesDir() {
