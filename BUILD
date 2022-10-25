@@ -53,7 +53,6 @@ cc_library(
     name = "feature",
     srcs = ["feature.cc"],
     hdrs = ["feature.h"],
-    copts = ["-fsanitize-coverage=0"],
 )
 
 cc_library(
@@ -69,7 +68,6 @@ cc_library(
 cc_library(
     name = "defs",
     hdrs = ["defs.h"],
-    copts = ["-fsanitize-coverage=0"],
     deps = ["@com_google_absl//absl/types:span"],
 )
 
@@ -163,7 +161,6 @@ cc_library(
     name = "shared_memory_blob_sequence",
     srcs = ["shared_memory_blob_sequence.cc"],
     hdrs = ["shared_memory_blob_sequence.h"],
-    copts = ["-fsanitize-coverage=0"],
     linkopts = ["-lrt"],  # for shm_open.
     # don't add any dependencies.
 )
@@ -172,7 +169,6 @@ cc_library(
     name = "execution_result",
     srcs = ["execution_result.cc"],
     hdrs = ["execution_result.h"],
-    copts = ["-fsanitize-coverage=0"],
     deps = [
         # This target must have a minimal set of dependencies since it is
         # used in fuzz_target_runner.
@@ -186,7 +182,6 @@ cc_library(
     name = "execution_request",
     srcs = ["execution_request.cc"],
     hdrs = ["execution_request.h"],
-    copts = ["-fsanitize-coverage=0"],
     deps = [
         # This target must have a minimal set of dependencies since it is
         # used in fuzz_target_runner.
@@ -199,7 +194,6 @@ cc_library(
     name = "byte_array_mutator",
     srcs = ["byte_array_mutator.cc"],
     hdrs = ["byte_array_mutator.h"],
-    copts = ["-fsanitize-coverage=0"],
     # Avoid dependencies here, as this library will be linked to target binaries.
     deps = [
         ":defs",
@@ -403,98 +397,91 @@ cc_library(
 cc_library(
     name = "runner_fork_server",
     srcs = ["runner_fork_server.cc"],
-    copts = ["-fsanitize-coverage=0"],
     alwayslink = 1,  # Otherwise the linker drops the fork server.
-)
-
-cc_library(
-    name = "runner_interface",
-    hdrs = ["runner_interface.h"],
-    copts = ["-fsanitize-coverage=0"],
 )
 
 cc_library(
     name = "runner_cmp_trace",
     hdrs = ["runner_cmp_trace.h"],
-    copts = ["-fsanitize-coverage=0"],
 )
+
+# The runner library is special:
+#   * It must not be instrumented with asan, sancov, etc.
+#   * It must not have heavy dependencies, and ideally not at all.
+#     Exceptions are STL and absl::span (temporarily, until we can switch to
+#     std::span).
+#   * The bazel rule :centipede_runner must produce a self-contained .a file
+#     with all
+#     objects in it, which means the build rule must not depend other .a rules.
+#
+#  Some of the .cc and .h files used by the runner are also used by the engine,
+#  e.g. feature.cc. These files are compiled by the engine and the runner
+#  separately, with different compiler flags.
+RUNNER_SOURCES_NO_MAIN = [
+    "byte_array_mutator.cc",
+    "byte_array_mutator.h",
+    "defs.h",
+    "execution_request.cc",
+    "execution_request.h",
+    "execution_result.cc",
+    "execution_result.h",
+    "feature.cc",
+    "feature.h",
+    "runner.cc",
+    "runner.h",
+    "runner_cmp_trace.h",
+    "runner_fork_server.cc",
+    "runner_interceptors.cc",
+    "runner_interface.h",
+    "runner_sancov.cc",
+    "shared_memory_blob_sequence.cc",
+    "shared_memory_blob_sequence.h",
+]
+
+RUNNER_SOURCES_WITH_MAIN = RUNNER_SOURCES_NO_MAIN + ["runner_main.cc"]
+
+# TODO(kcc): ensure asan/tsan/msan/ubsan instrumentation is disabled for runner.
+RUNNER_COPTS = ["-fsanitize-coverage=0"]
+
+RUNNER_LINKOPTS = [
+    "-ldl",  # for dlsym
+    "-lrt",  # for shm_open
+]
+
+RUNNER_DEPS = ["//third_party/absl/types:span"]  # WARNING: be careful with more deps.
 
 # A fuzz target needs to link with this library in order to run with Centipede.
 # The fuzz target must provide its own main().
 #
-# NOTE: This target's own sources must never be sancov-instrumented (unlike the
-# sources of a fuzz target to which it is being linked!).
+# See also comments above RUNNER_SOURCES_NO_MAIN.
 #
 cc_library(
     name = "fuzz_target_runner_no_main",
-    srcs = [
-        "runner.cc",
-        "runner_interceptors.cc",
-        "runner_sancov.cc",
-    ],
-    hdrs = ["runner.h"],
-    copts = ["-fsanitize-coverage=0"],
-    linkopts = ["-ldl"],  # for dlsym
-    deps = [
-        ":byte_array_mutator",
-        ":defs",
-        ":execution_request",
-        ":execution_result",
-        ":feature",
-        ":runner_cmp_trace",
-        ":runner_fork_server",
-        ":runner_interface",
-        ":shared_memory_blob_sequence",
-    ],
+    srcs = RUNNER_SOURCES_NO_MAIN,
+    copts = RUNNER_COPTS,
+    linkopts = RUNNER_LINKOPTS,
+    deps = RUNNER_DEPS,
 )
 
 # A fuzz target needs to link with this library (containing main()) in order to
 # run with Centipede.
-#
-# NOTE: This target's own sources must never be sancov-instrumented (unlike the
-# sources of a fuzz target to which it is being linked!).
-#
 cc_library(
     name = "fuzz_target_runner",
-    srcs = ["runner_main.cc"],
-    copts = ["-fsanitize-coverage=0"],
-    deps = [
-        ":fuzz_target_runner_no_main",  # buildcleaner: keep
-        ":runner_interface",
-    ],
+    srcs = RUNNER_SOURCES_WITH_MAIN,
+    copts = RUNNER_COPTS,
+    linkopts = RUNNER_LINKOPTS,
+    deps = RUNNER_DEPS,
 )
 
-# A full self-contained library archive that external clients should link to their
-# fuzz targets to make them compatible with the Centipede main binary (the
+# A full self-contained library archive that external clients should link to
+# their fuzz targets to make them compatible with the Centipede main binary (the
 # `:centipede` target in this BUILD).
-# TODO(ussuri): Find a way to merge this with fuzz_target_runner: the list of
-#  the inputs sources is identical.
 cc_library(
     name = "centipede_runner",
-    srcs = [
-        "byte_array_mutator.cc",
-        "byte_array_mutator.h",
-        "defs.h",
-        "execution_request.cc",
-        "execution_request.h",
-        "execution_result.cc",
-        "execution_result.h",
-        "feature.cc",
-        "feature.h",
-        "runner.cc",
-        "runner.h",
-        "runner_cmp_trace.h",
-        "runner_fork_server.cc",
-        "runner_interceptors.cc",
-        "runner_interface.h",
-        "runner_main.cc",
-        "runner_sancov.cc",
-        "shared_memory_blob_sequence.cc",
-        "shared_memory_blob_sequence.h",
-    ],
-    # NOTE: Centipede's own sources must never be sancov-instrumented.
-    copts = ["-fsanitize-coverage=0"],
-    deps = ["@com_google_absl//absl/types:span"],  # WARNING: be careful with more deps.
+    srcs = RUNNER_SOURCES_NO_MAIN,
+    copts = RUNNER_COPTS,
+    linkopts = RUNNER_LINKOPTS,
+    deps = RUNNER_DEPS,
 )
 
 ################################################################################
@@ -659,7 +646,6 @@ cc_test(
 cc_binary(
     name = "command_test_helper",
     srcs = ["command_test_helper.cc"],
-    copts = ["-fsanitize-coverage=0"],
     deps = [":runner_fork_server"],
 )
 
