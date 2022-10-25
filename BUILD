@@ -507,6 +507,7 @@ cc_library(
     hdrs = ["test_util.h"],
     deps = [
         ":logging",
+        "@com_google_absl//absl/strings",
     ],
 )
 

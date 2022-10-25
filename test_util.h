@@ -44,6 +44,9 @@ std::filesystem::path GetTestRunfilesDir();
 // Returns the filepath of a test's data dependency file.
 std::filesystem::path GetDataDependencyFilepath(std::string_view rel_path);
 
+// Resets the PATH envvar to "`dir`:$PATH".
+void PrependDirToPathEnvvar(std::string_view dir);
+
 }  // namespace centipede
 
 #endif  // THIRD_PARTY_CENTIPEDE_INTERNAL_TEST_UTIL_H_

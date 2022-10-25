@@ -16,6 +16,7 @@
 #include <filesystem>
 #include <string_view>
 
+#include "absl/strings/str_cat.h"
 #include "./logging.h"
 
 namespace centipede {
@@ -54,6 +55,12 @@ std::filesystem::path GetDataDependencyFilepath(std::string_view rel_path) {
   CHECK(std::filesystem::exists(path))  //
       << "No such path: " << VV(path) << VV(runfiles_dir) << VV(rel_path);
   return path;
+}
+
+void PrependDirToPathEnvvar(std::string_view dir) {
+  const std::string new_path_envvar = absl::StrCat(dir, ":", getenv("PATH"));
+  setenv("PATH", new_path_envvar.c_str(), /*replace*/ 1);
+  LOG(INFO) << "New PATH: " << new_path_envvar;
 }
 
 }  // namespace centipede
