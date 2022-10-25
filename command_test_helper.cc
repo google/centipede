@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <unistd.h>
+
 #include <cstdlib>
 #include <cstring>
 
@@ -21,4 +23,5 @@ int main(int argc, char **argv) {
   if (!strcmp(argv[1], "fail")) return EXIT_FAILURE;
   if (!strcmp(argv[1], "ret42")) return 42;
   if (!strcmp(argv[1], "abort")) abort();
+  if (!strcmp(argv[1], "hang")) sleep(100);
 }

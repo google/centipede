@@ -99,5 +99,19 @@ TEST(CommandTest, ForkServer) {
   // TODO(kcc): [impl] test what happens if the child is interrupted.
 }
 
+TEST(CommandDeathTest, ForkServerHangingBinary) {
+  GTEST_FLAG_SET(death_test_style, "threadsafe");
+  EXPECT_DEATH(
+      {
+        const std::string test_tmpdir = GetTestTempDir(test_info_->name());
+        const std::string helper =
+            GetDataDependencyFilepath("command_test_helper");
+        Command hang(helper, {"hang"});
+        ASSERT_TRUE(hang.StartForkServer(test_tmpdir, "ForkServer"));
+        hang.Execute();
+      },
+      "Timeout while waiting for fork server");
+}
+
 }  // namespace
 }  // namespace centipede

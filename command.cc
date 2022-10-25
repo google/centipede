@@ -17,6 +17,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <sys/poll.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -128,8 +129,37 @@ int Command::Execute() {
     // Wake up the fork server.
     char x = ' ';
     CHECK_EQ(1, write(pipe_[0], &x, 1));
-    // The fork server forks, the child is running.
-    // Block until we hear back from the fork server.
+
+    // The fork server forks, the child is running. Block until some readable
+    // data appears in the pipe (that is, after the fork server writes the
+    // execution result to it).
+    struct pollfd poll_fd = {
+        .fd = pipe_[1],    // The file descriptor to wait for.
+        .events = POLLIN,  // Wait until `fd` gets readable data written to it.
+    };
+    // TODO(ussuri): Parameterize the timeout.
+    constexpr int kPollTimeoutMs = 30'000;
+    const int poll_ret = poll(&poll_fd, 1, kPollTimeoutMs);
+    if (poll_ret != 1 || (poll_fd.revents & POLLIN) == 0) {
+      // The fork server errored out or timed out, or some other error occurred,
+      // e.g. the syscall was interrupted.
+      std::string fork_server_log = "<not dumped>";
+      if (!out_.empty()) {
+        ReadFromLocalFile(out_, fork_server_log);
+      }
+      if (poll_ret == 0) {
+        LOG(FATAL) << "Timeout while waiting for fork server: "
+                   << VV(kPollTimeoutMs) << VV(fork_server_log)
+                   << VV(command_line_);
+      } else {
+        PLOG(FATAL) << "Error or interrupt while waiting for fork server: "
+                    << VV(poll_ret) << VV(poll_fd.revents)
+                    << VV(fork_server_log) << VV(command_line_);
+      }
+      __builtin_unreachable();
+    }
+
+    // The fork server wrote the execution result to the pipe: read it.
     CHECK_EQ(sizeof(exit_code), read(pipe_[1], &exit_code, sizeof(exit_code)));
   } else {
     // No fork server, use system().
