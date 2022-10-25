@@ -112,7 +112,7 @@ def centipede_fuzz_target(
         name,
         fuzz_target = None,
         srcs = None,
-        # TODO: edit config=centipede too.
+        # TODO(navidem): edit --config=centipede too.
         sancov = "trace-pc-guard,pc-table,trace-loads,trace-cmp,control-flow",
         deps = []):
     """Generates a fuzz target target instrumented with sancov.
