@@ -535,6 +535,7 @@ cc_test(
     deps = [
         ":defs",
         ":logging",
+        ":test_util",
         ":util",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_googletest//:gtest_main",
