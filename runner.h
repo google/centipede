@@ -173,6 +173,7 @@ struct GlobalRunnerState {
   // State for SanitizerCoverage.
   // See https://clang.llvm.org/docs/SanitizerCoverage.html.
   const uintptr_t *pcs_beg, *pcs_end;
+  const uintptr_t *cfs_beg, *cfs_end;
   static const size_t kBitSetSize = 1 << 18;  // Arbitrary large size.
   ConcurrentBitSet<kBitSetSize> data_flow_feature_set;
 

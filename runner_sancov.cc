@@ -142,6 +142,13 @@ void __sanitizer_cov_pcs_init(const uintptr_t *beg, const uintptr_t *end) {
   state.pcs_end = end;
 }
 
+// https://clang.llvm.org/docs/SanitizerCoverage.html#tracing-control-flow
+// This function it called at the DSO init time.
+void __sanitizer_cov_cfs_init(const uintptr_t *beg, const uintptr_t *end) {
+  state.cfs_beg = beg;
+  state.cfs_end = end;
+}
+
 // TODO(kcc): [impl] actually implement this callback.
 // See https://clang.llvm.org/docs/SanitizerCoverage.html#tracing-pcs.
 // This instrumentation is redundant if other instrumentation
