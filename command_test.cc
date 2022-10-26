@@ -73,12 +73,17 @@ TEST(CommandTest, ForkServer) {
   const std::string test_tmpdir = GetTestTempDir(test_info_->name());
   const std::string helper = GetDataDependencyFilepath("command_test_helper");
 
+  // TODO(ussuri): Dedupe these testcases.
+
   {
     const std::string input = "success";
     const std::string log = std::filesystem::path{test_tmpdir} / input;
     Command cmd(helper, {input}, {}, log, log);
     EXPECT_TRUE(cmd.StartForkServer(test_tmpdir, "ForkServer"));
     EXPECT_EQ(cmd.Execute(), EXIT_SUCCESS);
+    std::string log_contents;
+    ReadFromLocalFile(log, log_contents);
+    EXPECT_EQ(log_contents, absl::Substitute("Got input: $0", input));
   }
 
   {
@@ -87,6 +92,9 @@ TEST(CommandTest, ForkServer) {
     Command cmd(helper, {input}, {}, log, log);
     EXPECT_TRUE(cmd.StartForkServer(test_tmpdir, "ForkServer"));
     EXPECT_EQ(cmd.Execute(), EXIT_FAILURE);
+    std::string log_contents;
+    ReadFromLocalFile(log, log_contents);
+    EXPECT_EQ(log_contents, absl::Substitute("Got input: $0", input));
   }
 
   {
@@ -95,6 +103,9 @@ TEST(CommandTest, ForkServer) {
     Command cmd(helper, {input}, {}, log, log);
     EXPECT_TRUE(cmd.StartForkServer(test_tmpdir, "ForkServer"));
     EXPECT_EQ(cmd.Execute(), 42);
+    std::string log_contents;
+    ReadFromLocalFile(log, log_contents);
+    EXPECT_EQ(log_contents, absl::Substitute("Got input: $0", input));
   }
 
   {
@@ -103,6 +114,9 @@ TEST(CommandTest, ForkServer) {
     Command cmd(helper, {input}, {}, log, log);
     EXPECT_TRUE(cmd.StartForkServer(test_tmpdir, "ForkServer"));
     EXPECT_EQ(WTERMSIG(cmd.Execute()), SIGABRT);
+    std::string log_contents;
+    ReadFromLocalFile(log, log_contents);
+    EXPECT_EQ(log_contents, absl::Substitute("Got input: $0", input));
   }
 
   // TODO(kcc): [impl] test what happens if the child is interrupted.
