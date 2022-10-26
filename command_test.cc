@@ -30,13 +30,15 @@ namespace centipede {
 namespace {
 
 TEST(CommandTest, ToString) {
-  EXPECT_EQ(Command("x").ToString(), "x");
+  EXPECT_EQ(Command("x").ToString(), "x \\\n> /dev/null \\\n2>&1");
   EXPECT_EQ(Command("path", {"arg1", "arg2"}).ToString(),
-            "path \\\narg1 \\\narg2");
+            "path \\\narg1 \\\narg2 \\\n> /dev/null \\\n2>&1");
   EXPECT_EQ(Command("x", {}, {"K1=V1", "K2=V2"}).ToString(),
-            "K1=V1 \\\nK2=V2 \\\nx");
-  EXPECT_EQ(Command("x", {}, {}, "out").ToString(), "x \\\n> out");
-  EXPECT_EQ(Command("x", {}, {}, "", "err").ToString(), "x \\\n2> err");
+            "K1=V1 \\\nK2=V2 \\\nx \\\n> /dev/null \\\n2>&1");
+  EXPECT_EQ(Command("x", {}, {}, "out").ToString(),
+            "x \\\n> out \\\n2> /dev/null");
+  EXPECT_EQ(Command("x", {}, {}, "", "err").ToString(),
+            "x \\\n> /dev/null \\\n2> err");
   EXPECT_EQ(Command("x", {}, {}, "out", "err").ToString(),
             "x \\\n> out \\\n2> err");
   EXPECT_EQ(Command("x", {}, {}, "out", "out").ToString(),

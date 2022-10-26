@@ -33,55 +33,69 @@
 #include "./util.h"
 
 namespace centipede {
+namespace {
 
 // See the definition of --fork_server flag.
 inline constexpr std::string_view kCommandLineSeparator(" \\\n");
 inline constexpr std::string_view kNoForkServerRequestPrefix("%f");
 
+// Returns true if `cmd_path` should be executed using the fork server.
+bool IsForkServerEnabled(std::string_view cmd_path) {
+  return !absl::StartsWith(cmd_path, kNoForkServerRequestPrefix);
+}
+
+// Strips the fork server request prefix from `cmd_path`, if any.
+std::string_view CleanseCommandPath(std::string_view cmd_path) {
+  if (absl::StartsWith(cmd_path, kNoForkServerRequestPrefix)) {
+    return cmd_path.substr(kNoForkServerRequestPrefix.size());
+  } else {
+    return cmd_path;
+  }
+}
+
+// Returns the most suitable stdout or stderr redericetion path:
+// - Always prefers an explicitly specified `out_or_err`.
+// - Else, if the fork server is enabled for `cmd_path`, redirects to /dev/null:
+// the fork server manipulates stdout/stderr and may mess them up for the parent
+// process.
+// - Else, (the fork server is disabled), returns an empty string (no
+// redirection): there is no harm in the command writing to stdout/stderr in
+// that case.
+std::string_view ResolveOutOrErrPath(std::string_view cmd_path,
+                                     std::string_view out_or_err) {
+  if (!out_or_err.empty()) return out_or_err;
+  if (IsForkServerEnabled(cmd_path)) return "/dev/null";
+  return "";
+}
+
+}  // namespace
+
 Command::Command(std::string_view path, std::vector<std::string> args,
                  std::vector<std::string> env, std::string_view out,
                  std::string_view err)
-    : path_(path),
+    : path_(CleanseCommandPath(path)),
       args_(std::move(args)),
       env_(std::move(env)),
-      out_(out),
-      err_(err) {}
+      out_(ResolveOutOrErrPath(path, out)),
+      err_(ResolveOutOrErrPath(path, err)) {}
 
 std::string Command::ToString() const {
   std::vector<std::string> ss;
-  // env.
-  for (auto &env : env_) {
-    ss.emplace_back(env);
-  }
-  // path.
-  std::string path = path_;
-  // Strip the % prefixes, if any.
-  if (absl::StartsWith(path, kNoForkServerRequestPrefix)) {
-    path = path.substr(kNoForkServerRequestPrefix.size());
-  }
-  ss.emplace_back(path);
-  // args.
-  for (auto &arg : args_) {
-    ss.emplace_back(arg);
-  }
-  // out/err.
+  ss.insert(ss.cend(), env_.cbegin(), env_.cend());
+  ss.push_back(path_);
+  ss.insert(ss.cend(), args_.cbegin(), args_.cend());
   if (!out_.empty()) {
     ss.emplace_back(absl::StrCat("> ", out_));
   }
   if (!err_.empty()) {
-    if (out_ != err_) {
-      ss.emplace_back(absl::StrCat("2> ", err_));
-    } else {
-      ss.emplace_back("2>&1");
-    }
+    ss.emplace_back(out_ != err_ ? absl::StrCat("2> ", err_) : "2>&1");
   }
-  // Trim trailing space and return.
   return absl::StrJoin(ss, kCommandLineSeparator);
 }
 
 bool Command::StartForkServer(std::string_view temp_dir_path,
                               std::string_view prefix) {
-  if (absl::StartsWith(path_, kNoForkServerRequestPrefix)) {
+  if (!IsForkServerEnabled(path_)) {
     LOG(INFO) << "Fork server disabled for " << path();
     return false;
   }
