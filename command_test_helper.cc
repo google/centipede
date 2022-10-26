@@ -14,12 +14,17 @@
 
 #include <unistd.h>
 
+#include <cassert>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
 // A binary linked with the fork server that exits/crashes in different ways.
 int main(int argc, char **argv) {
-  if (argc == 1) return 0;
+  assert(argc == 2);
+  printf("Got input: %s", argv[1]);
+  fflush(stdout);
+  if (!strcmp(argv[1], "success")) return EXIT_SUCCESS;
   if (!strcmp(argv[1], "fail")) return EXIT_FAILURE;
   if (!strcmp(argv[1], "ret42")) return 42;
   if (!strcmp(argv[1], "abort")) abort();

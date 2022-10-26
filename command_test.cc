@@ -21,6 +21,7 @@
 #include <string>
 
 #include "googletest/include/gtest/gtest.h"
+#include "absl/strings/substitute.h"
 #include "./logging.h"
 #include "./test_util.h"
 #include "./util.h"
@@ -73,27 +74,35 @@ TEST(CommandTest, ForkServer) {
   const std::string helper = GetDataDependencyFilepath("command_test_helper");
 
   {
-    Command ret0(helper);
-    EXPECT_TRUE(ret0.StartForkServer(test_tmpdir, "ForkServer"));
-    EXPECT_EQ(ret0.Execute(), EXIT_SUCCESS);
+    const std::string input = "success";
+    const std::string log = std::filesystem::path{test_tmpdir} / input;
+    Command cmd(helper, {input}, {}, log, log);
+    EXPECT_TRUE(cmd.StartForkServer(test_tmpdir, "ForkServer"));
+    EXPECT_EQ(cmd.Execute(), EXIT_SUCCESS);
   }
 
   {
-    Command fail(helper, {"fail"});
-    EXPECT_TRUE(fail.StartForkServer(test_tmpdir, "ForkServer"));
-    EXPECT_EQ(fail.Execute(), EXIT_FAILURE);
+    const std::string input = "fail";
+    const std::string log = std::filesystem::path{test_tmpdir} / input;
+    Command cmd(helper, {input}, {}, log, log);
+    EXPECT_TRUE(cmd.StartForkServer(test_tmpdir, "ForkServer"));
+    EXPECT_EQ(cmd.Execute(), EXIT_FAILURE);
   }
 
   {
-    Command ret7(helper, {"ret42"});
-    EXPECT_TRUE(ret7.StartForkServer(test_tmpdir, "ForkServer"));
-    EXPECT_EQ(ret7.Execute(), 42);
+    const std::string input = "ret42";
+    const std::string log = std::filesystem::path{test_tmpdir} / input;
+    Command cmd(helper, {input}, {}, log, log);
+    EXPECT_TRUE(cmd.StartForkServer(test_tmpdir, "ForkServer"));
+    EXPECT_EQ(cmd.Execute(), 42);
   }
 
   {
-    Command abrt(helper, {"abort"});
-    EXPECT_TRUE(abrt.StartForkServer(test_tmpdir, "ForkServer"));
-    EXPECT_EQ(WTERMSIG(abrt.Execute()), SIGABRT);
+    const std::string input = "abort";
+    const std::string log = std::filesystem::path{test_tmpdir} / input;
+    Command cmd(helper, {input}, {}, log, log);
+    EXPECT_TRUE(cmd.StartForkServer(test_tmpdir, "ForkServer"));
+    EXPECT_EQ(WTERMSIG(cmd.Execute()), SIGABRT);
   }
 
   // TODO(kcc): [impl] test what happens if the child is interrupted.

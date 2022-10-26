@@ -658,6 +658,7 @@ cc_test(
         ":logging",
         ":test_util",
         ":util",
+        "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
     ],
 )
