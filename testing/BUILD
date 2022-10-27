@@ -53,6 +53,12 @@ centipede_fuzz_target(
     sancov = "trace-pc-guard",  # Only this instrumentation to ensure it works.
 )
 
+# A standalone binary with main() that is worth fuzzinng.
+cc_binary(
+    name = "standalone_fuzz_target_with_main",
+    srcs = ["standalone_fuzz_target_with_main.cc"],
+)
+
 ################################################################################
 # This fuzz target is not currently used by any automated tests and is here for
 # manual tests only.
