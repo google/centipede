@@ -448,7 +448,7 @@ RUNNER_LINKOPTS = [
     "-lrt",  # for shm_open
 ]
 
-RUNNER_DEPS = ["//third_party/absl/types:span"]  # WARNING: be careful with more deps.
+RUNNER_DEPS = ["@com_google_absl//absl/types:span"]  # WARNING: be careful with more deps.
 
 # A fuzz target needs to link with this library in order to run with Centipede.
 # The fuzz target must provide its own main().
