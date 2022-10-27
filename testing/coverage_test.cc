@@ -172,9 +172,9 @@ static std::string GetThreadedTargetPath() {
 
 // Returns path to llvm-symbolizer.
 static std::string GetLLVMSymbolizerPath() {
-  return ResolveExecutablePath("llvm-symbolizer", "llvm-symbolizer",
-                               /*allow_empty=*/false,
-                               /*allow_unresolved=*/false);
+  CHECK_EQ(system("which llvm-symbolizer"), EXIT_SUCCESS)
+      << "llvm-symbolizer has to be installed and findable via PATH";
+  return "llvm-symbolizer";
 }
 
 // A simple CentipedeCallbacks derivative for this test.
