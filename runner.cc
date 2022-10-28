@@ -345,13 +345,51 @@ bool WriteCmpArgs(CmpTrace &cmp_trace,
   return !write_failed;
 }
 
+// Starts sending the outputs (coverage, etc) to `outputs_blobseq`.
+// Returns true on success.
+static bool StartSendingOutputsToEngine(
+    centipede::SharedMemoryBlobSequence &outputs_blobseq) {
+  return centipede::BatchResult::WriteInputBegin(outputs_blobseq);
+}
+
+// Finishes sending the outputs (coverage, etc) to `outputs_blobseq`.
+// Returns true on success.
+static bool FinishSendingOutputsToEngine(
+    centipede::SharedMemoryBlobSequence &outputs_blobseq) {
+  // Copy features to shared memory.
+  if (!centipede::BatchResult::WriteOneFeatureVec(
+          g_features.data(), g_features.size(), outputs_blobseq)) {
+    return false;
+  }
+
+  // Copy the CMP traces to shared memory.
+  if (state.run_time_flags.use_auto_dictionary) {
+    bool write_failed = false;
+    state.ForEachTls([&write_failed, &outputs_blobseq](
+                         centipede::ThreadLocalRunnerState &tls) {
+      if (!WriteCmpArgs(tls.cmp_trace2, outputs_blobseq)) write_failed = true;
+      if (!WriteCmpArgs(tls.cmp_trace4, outputs_blobseq)) write_failed = true;
+      if (!WriteCmpArgs(tls.cmp_trace8, outputs_blobseq)) write_failed = true;
+      if (!WriteCmpArgs(tls.cmp_traceN, outputs_blobseq)) write_failed = true;
+    });
+    if (write_failed) return false;
+  }
+
+  // Write the stats.
+  if (!centipede::BatchResult::WriteStats(state.stats, outputs_blobseq))
+    return false;
+  // We are done with this input.
+  if (!centipede::BatchResult::WriteInputEnd(outputs_blobseq)) return false;
+  return true;
+}
+
 // Handles an ExecutionRequest, see RequestExecution().
 // Reads inputs from `inputs_blobseq`, runs them,
-// saves coverage features to `feature_blobseq`.
+// saves coverage features to `outputs_blobseq`.
 // Returns EXIT_SUCCESS on success and EXIT_FAILURE otherwise.
 static int ExecuteInputsFromShmem(
     centipede::SharedMemoryBlobSequence &inputs_blobseq,
-    centipede::SharedMemoryBlobSequence &feature_blobseq,
+    centipede::SharedMemoryBlobSequence &outputs_blobseq,
     FuzzerTestOneInputCallback test_one_input_cb) {
   size_t num_inputs = 0;
   if (!execution_request::IsExecutionRequest(inputs_blobseq.Read()))
@@ -370,34 +408,11 @@ static int ExecuteInputsFromShmem(
     std::vector<uint8_t> data(blob.data, blob.data + size);
 
     // Starting execution of one more input.
-    if (!centipede::BatchResult::WriteInputBegin(feature_blobseq)) break;
+    if (!StartSendingOutputsToEngine(outputs_blobseq)) break;
 
     RunOneInput(data.data(), data.size(), test_one_input_cb);
 
-    // Copy features to shared memory.
-    if (!centipede::BatchResult::WriteOneFeatureVec(
-            g_features.data(), g_features.size(), feature_blobseq)) {
-      break;
-    }
-
-    // Copy the CMP traces to shared memory.
-    if (state.run_time_flags.use_auto_dictionary) {
-      bool write_failed = false;
-      state.ForEachTls([&write_failed, &feature_blobseq](
-                           centipede::ThreadLocalRunnerState &tls) {
-        if (!WriteCmpArgs(tls.cmp_trace2, feature_blobseq)) write_failed = true;
-        if (!WriteCmpArgs(tls.cmp_trace4, feature_blobseq)) write_failed = true;
-        if (!WriteCmpArgs(tls.cmp_trace8, feature_blobseq)) write_failed = true;
-        if (!WriteCmpArgs(tls.cmp_traceN, feature_blobseq)) write_failed = true;
-      });
-      if (write_failed) break;
-    }
-
-    // Write the stats.
-    if (!centipede::BatchResult::WriteStats(state.stats, feature_blobseq))
-      break;
-    // We are done with this input.
-    if (!centipede::BatchResult::WriteInputEnd(feature_blobseq)) break;
+    if (!FinishSendingOutputsToEngine(outputs_blobseq)) break;
   }
   return EXIT_SUCCESS;
 }
