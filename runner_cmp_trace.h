@@ -63,6 +63,8 @@ class CmpTrace {
   // Captures one CMP argument pair, as two integers of kFixedSize bytes each.
   template <typename T>
   void Capture(T value0, T value1) {
+    // If both values are small, ignore them as not very useful.
+    if (value0 < 256 && value1 < 256) return;
     static_assert(sizeof(T) == kFixedSize);
     Capture(sizeof(T), reinterpret_cast<const uint8_t *>(&value0),
             reinterpret_cast<const uint8_t *>(&value1));
@@ -99,8 +101,18 @@ class CmpTrace {
     uint8_t size_;
   };
 
+  template <typename T>
+  static bool IsZero(const uint8_t *value) {
+    T x = {};
+    __builtin_memcpy(&x, value, sizeof(T));
+    return x == T{};
+  }
+
   // Returns true if all value[0:size] are zero.
   static bool IsZero(const uint8_t *value, size_t size) {
+    if constexpr (kFixedSize == 8) return IsZero<uint64_t>(value);
+    if constexpr (kFixedSize == 4) return IsZero<uint32_t>(value);
+    if constexpr (kFixedSize == 2) return IsZero<uint16_t>(value);
     // The code iterates over bytes, but we expect the compiler to optimize it.
     uint64_t ored_bytes = 0;
     for (size_t i = 0; i < size; ++i) {
