@@ -131,10 +131,33 @@ Coverage::PCTable Coverage::GetPcTableFromBinaryWithPcTable(
   std::filesystem::remove(tmp_path);
   CHECK_EQ(pc_infos_as_bytes.size() % sizeof(PCInfo), 0);
   size_t pc_table_size = pc_infos_as_bytes.size() / sizeof(PCInfo);
-  const auto* pc_infos = reinterpret_cast<PCInfo*>(pc_infos_as_bytes.data());
+  const auto *pc_infos = reinterpret_cast<PCInfo *>(pc_infos_as_bytes.data());
   PCTable pc_table{pc_infos, pc_infos + pc_table_size};
   CHECK_EQ(pc_table.size(), pc_table_size);
   return pc_table;
+}
+
+Coverage::CFTable Coverage::GetCfTableFromBinary(std::string_view binary_path,
+                                                 std::string_view tmp_path) {
+  Command cmd(binary_path, {},
+              {absl::StrCat("CENTIPEDE_RUNNER_FLAGS=:dump_cf_table:arg1=",
+                            tmp_path, ":")},
+              "/dev/null", "/dev/null");
+  int cmd_exit_code = cmd.Execute();
+  if (cmd_exit_code != EXIT_SUCCESS) {
+    LOG(ERROR) << "CF table dumping failed: " << VV(cmd.ToString())
+               << VV(cmd_exit_code);
+    return {};
+  }
+  ByteArray cf_infos_as_bytes;
+  ReadFromLocalFile(tmp_path, cf_infos_as_bytes);
+  std::filesystem::remove(tmp_path);
+
+  size_t cf_table_size = cf_infos_as_bytes.size() / sizeof(intptr_t);
+  const auto *cf_infos = reinterpret_cast<intptr_t *>(cf_infos_as_bytes.data());
+  CFTable cf_table{cf_infos, cf_infos + cf_table_size};
+  CHECK_EQ(cf_table.size(), cf_table_size);
+  return cf_table;
 }
 
 //---------------------- NewCoverageLogger

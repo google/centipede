@@ -38,6 +38,15 @@ __attribute__((noinline)) extern "C" void MultiEdgeFunc(uint8_t input) {
   }
 }
 
+// Function with indirect call based on the input value.
+__attribute__((noinline)) extern "C" void IndirectCallFunc(uint8_t input) {
+    [[maybe_unused]] static volatile int sink;
+    using func_type = void (*)();
+    func_type funcs[4] = {[]() { sink = 0; }, []() { sink = 1; },
+                          []() { sink = 2; }, []() { sink = 3; }};
+    funcs[input % 4]();
+}
+
 // Used to test data flow instrumentation.
 static int non_cost_global[10];
 static const int const_global[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
@@ -162,7 +171,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     funcs[idx1]();
     funcs[idx2]();
   }
-
+  IndirectCallFunc(data[0]);
   return 0;
 }
 

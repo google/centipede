@@ -476,6 +476,40 @@ static void DumpPcTable(const char *output_path) {
   delete[] data_copy;
 }
 
+// Dumps the control-flow table to `output_path`.
+// Assumes that main_object_start_address is already computed.
+static void DumpCfTable(const char *output_path) {
+  PrintErrorAndExitIf(
+      state.main_object_start_address == state.kInvalidStartAddress,
+      "main_object_start_address is not set");
+  FILE *output_file = fopen(output_path, "w");
+  PrintErrorAndExitIf(!output_file, "can't open output file");
+  // Make a local copy of the cf table, and subtract the ASLR base
+  // (i.e. main_object_start_address) from every PC before dumping the table.
+  // Otherwise, we need to pass this ASLR offset at the symbolization time,
+  // e.g. via `llvm-symbolizer --adjust-vma=<ASLR offset>`.
+  // Another alternative is to build the binary w/o -fPIE or with -static.
+  const uintptr_t *data = state.cfs_beg;
+  const size_t data_size_in_words = state.cfs_end - state.cfs_beg;
+  PrintErrorAndExitIf(data_size_in_words == 0, "No data in control-flow table");
+  const size_t data_size_in_bytes = data_size_in_words * sizeof(*state.cfs_beg);
+  std::vector<intptr_t> data_copy(data_size_in_words);
+  for (size_t i = 0; i < data_size_in_words; ++i) {
+    // data_copy is an array of PCs, except for delimiter (Null) and indirect
+    // call indicator (-1).
+    if (data[i] != 0 && data[i] != -1ULL)
+      data_copy[i] = data[i] - state.main_object_start_address;
+    else
+      data_copy[i] = data[i];
+  }
+  // Dump the modified table.
+  auto num_bytes_written =
+      fwrite(&data_copy[0], 1, data_size_in_bytes, output_file);
+  PrintErrorAndExitIf(num_bytes_written != data_size_in_bytes,
+                      "wrong number of bytes written for cf table");
+  fclose(output_file);
+}
+
 // Returns a random seed. No need for a more sophisticated seed.
 // TODO(kcc): [as-needed] optionally pass an external seed.
 static unsigned GetRandomSeed() { return time(nullptr); }
@@ -650,6 +684,13 @@ extern "C" int CentipedeRunnerMain(
   if (state.HasFlag(":dump_pc_table:")) {
     if (!state.arg1) return EXIT_FAILURE;
     centipede::DumpPcTable(state.arg1);
+    return EXIT_SUCCESS;
+  }
+
+  // Dump the control-flow table, if instructed.
+  if (state.HasFlag(":dump_cf_table:")) {
+    if (!state.arg1) return EXIT_FAILURE;
+    centipede::DumpCfTable(state.arg1);
     return EXIT_SUCCESS;
   }
 

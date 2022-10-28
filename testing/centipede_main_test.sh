@@ -90,8 +90,8 @@ test_debug_symbols() {
     --symbolizer_path="${LLVM_SYMBOLIZER}" | tee "${LOG}"
   centipede::assert_regex_in_file 'Custom mutator detected in the target, will use it' "${LOG}"
   # Note: the test assumes LLVMFuzzerTestOneInput is defined on a specific line.
-  centipede::assert_regex_in_file "FUNC: LLVMFuzzerTestOneInput .*testing/test_fuzz_target.cc:53" "${LOG}"
-  centipede::assert_regex_in_file "EDGE: LLVMFuzzerTestOneInput .*testing/test_fuzz_target.cc" "${LOG}"
+  centipede::assert_regex_in_file "FUNC: LLVMFuzzerTestOneInput third_party/centipede/testing/test_fuzz_target.cc:62" "${LOG}"
+  centipede::assert_regex_in_file "EDGE: LLVMFuzzerTestOneInput third_party/centipede/testing/test_fuzz_target.cc" "${LOG}"
 
   echo "============ ${FUNC}: add func1/func2-A inputs to the corpus."
   test_fuzz --workdir="${WD}" --export_corpus_from_local_dir="${TMPCORPUS}"

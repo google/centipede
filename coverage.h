@@ -94,6 +94,19 @@ class Coverage {
   // PCIndexVec is the coverage obtained from specific execution(s).
   Coverage(const PCTable &pc_table, const PCIndexVec &pci_vec);
 
+  // Array of elements in __sancov_cfs section.
+  // CFTable is created by the compiler/linker in the instrumented binary.
+  // https://clang.llvm.org/docs/SanitizerCoverage.html#tracing-control-flow.
+  using CFTable = std::vector<intptr_t>;
+
+  // Reads the control-flow table from the binary file at `binary_path`.
+  // May create a file `tmp_path`, but will delete it afterwards.
+  // Currently works for
+  // * binaries linked with :fuzz_target_runner
+  //     and built with -fsanitize-coverage=control-flow.
+  static CFTable GetCfTableFromBinary(std::string_view binary_path,
+                                      std::string_view tmp_path);
+
   // Prints in human-readable form to `out` using `symbols`.
   void Print(const SymbolTable &symbols, std::ostream &out);
 
