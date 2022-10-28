@@ -455,6 +455,7 @@ RUNNER_DEPS = ["@com_google_absl//absl/types:span"]  # WARNING: be careful with 
 #
 # See also comments above RUNNER_SOURCES_NO_MAIN.
 #
+# TODO(ussuri): Rename to centipede_runner_no_main & update clients.
 cc_library(
     name = "fuzz_target_runner_no_main",
     srcs = RUNNER_SOURCES_NO_MAIN,
@@ -465,6 +466,7 @@ cc_library(
 
 # A fuzz target needs to link with this library (containing main()) in order to
 # run with Centipede.
+# TODO(ussuri): Now a dupe of centipede_runner: remove & update clients.
 cc_library(
     name = "fuzz_target_runner",
     srcs = RUNNER_SOURCES_WITH_MAIN,
@@ -474,11 +476,11 @@ cc_library(
 )
 
 # A full self-contained library archive that external clients should link to
-# their fuzz targets to make them compatible with the Centipede main binary (the
-# `:centipede` target in this BUILD).
+# their fuzz targets to make them compatible with the Centipede fuzzing engine
+# (the `:centipede` target in this BUILD).
 cc_library(
     name = "centipede_runner",
-    srcs = RUNNER_SOURCES_NO_MAIN,
+    srcs = RUNNER_SOURCES_WITH_MAIN,
     copts = RUNNER_COPTS,
     linkopts = RUNNER_LINKOPTS,
     deps = RUNNER_DEPS,
