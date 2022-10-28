@@ -28,5 +28,12 @@ int main(int argc, char **argv) {
   if (!strcmp(argv[1], "fail")) return EXIT_FAILURE;
   if (!strcmp(argv[1], "ret42")) return 42;
   if (!strcmp(argv[1], "abort")) abort();
-  if (!strcmp(argv[1], "hang")) sleep(100);
+  if (!strcmp(argv[1], "hang")) {
+    printf("\nHanging...");
+    fflush(stdout);
+    sleep(40);  // longer than the timeout in Command::Execute()
+    printf("\n...Unhung");
+    fflush(stdout);
+  }
+  return EXIT_SUCCESS;
 }

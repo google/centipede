@@ -124,16 +124,22 @@ TEST(CommandTest, ForkServer) {
 
 TEST(CommandDeathTest, ForkServerHangingBinary) {
   GTEST_FLAG_SET(death_test_style, "threadsafe");
+  const std::string test_tmpdir = GetTestTempDir(test_info_->name());
+  const std::string helper = GetDataDependencyFilepath("command_test_helper");
+  const std::string input = "hang";
+  const std::string log = std::filesystem::path{test_tmpdir} / input;
   EXPECT_DEATH(
       {
-        const std::string test_tmpdir = GetTestTempDir(test_info_->name());
-        const std::string helper =
-            GetDataDependencyFilepath("command_test_helper");
-        Command hang(helper, {"hang"});
-        ASSERT_TRUE(hang.StartForkServer(test_tmpdir, "ForkServer"));
-        hang.Execute();
+        Command cmd(helper, {"hang"}, {}, log, log);
+        ASSERT_TRUE(cmd.StartForkServer(test_tmpdir, "ForkServer"));
+        cmd.Execute();
       },
       "Timeout while waiting for fork server");
+  std::string log_contents;
+  ReadFromLocalFile(log, log_contents);
+  EXPECT_EQ(log_contents,
+            absl::Substitute("Got input: $0\nHanging...\n...Unhung", input))
+      << log;
 }
 
 }  // namespace
