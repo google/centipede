@@ -122,7 +122,7 @@ TEST(CommandTest, ForkServer) {
   // TODO(kcc): [impl] test what happens if the child is interrupted.
 }
 
-TEST(CommandDeathTest, ForkServerHangingBinary) {
+TEST(CommandDeathTest, DISABLED_ForkServerHangingBinary) {
   GTEST_FLAG_SET(death_test_style, "threadsafe");
   EXPECT_DEATH(
       {
