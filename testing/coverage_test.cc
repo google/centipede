@@ -189,10 +189,16 @@ TEST(Coverage, GetCfTable) {
 
   // Load the cf table.
   auto cf_table = Coverage::GetCfTableFromBinary(target_path, tmp_path1);
+  if (cf_table.empty()) {
+    LOG(INFO) << "__sancov_cfs is empty.";
+    // TODO(navidem): This should be removed once OSS's clang supports
+    // control-flow.
+    GTEST_SKIP();
+  }
+
   ASSERT_EQ(std::filesystem::exists(tmp_path1.c_str()),
             false);  // tmp_path1 was deleted.
   LOG(INFO) << VV(cf_table.size());
-  EXPECT_THAT(cf_table.empty(), false);
 
   // Load the pc table.
   auto pc_table = Coverage::GetPcTableFromBinary(target_path, tmp_path1);
