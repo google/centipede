@@ -333,9 +333,10 @@ ReadOneInputExecuteItAndDumpCoverage(
 // Calls centipede::BatchResult::WriteCmpArgs for every CMP arg pair
 // found in `cmp_trace`.
 // Returns true if all writes succeeded.
+// "noinline" so that we see it in a profile, if it becomes hot.
 template <typename CmpTrace>
-bool WriteCmpArgs(CmpTrace &cmp_trace,
-                  centipede::SharedMemoryBlobSequence &blobseq) {
+__attribute__((noinline)) bool WriteCmpArgs(
+    CmpTrace &cmp_trace, centipede::SharedMemoryBlobSequence &blobseq) {
   bool write_failed = false;
   cmp_trace.ForEachNonZero(
       [&](uint8_t size, const uint8_t *v0, const uint8_t *v1) {
