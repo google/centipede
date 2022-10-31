@@ -21,6 +21,13 @@
 #include <cstdio>
 #include <cstdlib>
 
+// Separate no-inline function so that the compiler doesn't know
+// the size of `data`. Crashes when the input starts with 'fuz'.
+__attribute__((noinline)) static void FuzzMe(const uint8_t* data, size_t size) {
+  if (size >= 3 && data[0] == 'f' && data[1] == 'u' && data[2] == 'z')
+    __builtin_trap();
+}
+
 int main(int argc, char* argv[]) {
   if (argc != 2) return EXIT_FAILURE;
   constexpr size_t kMaxSize = 1000;
@@ -30,6 +37,5 @@ int main(int argc, char* argv[]) {
   auto n_bytes = fread(bytes, 1, kMaxSize, f);
   if (n_bytes < 0) return EXIT_FAILURE;
   if (fclose(f) != 0) return EXIT_FAILURE;
-  if (n_bytes >= 3 && bytes[0] == 'f' && bytes[1] == 'u' && bytes[2] == 'z')
-    __builtin_trap();
+  FuzzMe(bytes, n_bytes);
 }
