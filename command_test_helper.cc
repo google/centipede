@@ -28,5 +28,7 @@ int main(int argc, char **argv) {
   if (!strcmp(argv[1], "fail")) return EXIT_FAILURE;
   if (!strcmp(argv[1], "ret42")) return 42;
   if (!strcmp(argv[1], "abort")) abort();
-  if (!strcmp(argv[1], "hang")) sleep(100);
+  // Sleep longer than kTimeout in CommandDeathTest_ForkServerHangingBinary.
+  if (!strcmp(argv[1], "hang")) sleep(5);
+  return 17;
 }

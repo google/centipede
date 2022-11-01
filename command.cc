@@ -40,12 +40,13 @@ inline constexpr std::string_view kNoForkServerRequestPrefix("%f");
 
 Command::Command(std::string_view path, std::vector<std::string> args,
                  std::vector<std::string> env, std::string_view out,
-                 std::string_view err)
+                 std::string_view err, absl::Duration timeout)
     : path_(path),
       args_(std::move(args)),
       env_(std::move(env)),
       out_(out),
-      err_(err) {}
+      err_(err),
+      timeout_(timeout) {}
 
 std::string Command::ToString() const {
   std::vector<std::string> ss;
@@ -137,9 +138,9 @@ int Command::Execute() {
         .fd = pipe_[1],    // The file descriptor to wait for.
         .events = POLLIN,  // Wait until `fd` gets readable data written to it.
     };
-    // TODO(ussuri): Parameterize the timeout.
-    constexpr int kPollTimeoutMs = 30'000;
-    const int poll_ret = poll(&poll_fd, 1, kPollTimeoutMs);
+    const int poll_timeout_ms =
+        static_cast<int>(absl::ToInt64Milliseconds(timeout_));
+    const int poll_ret = poll(&poll_fd, 1, poll_timeout_ms);
     if (poll_ret != 1 || (poll_fd.revents & POLLIN) == 0) {
       // The fork server errored out or timed out, or some other error occurred,
       // e.g. the syscall was interrupted.
@@ -149,7 +150,7 @@ int Command::Execute() {
       }
       if (poll_ret == 0) {
         LOG(FATAL) << "Timeout while waiting for fork server: "
-                   << VV(kPollTimeoutMs) << VV(fork_server_log)
+                   << VV(poll_timeout_ms) << VV(fork_server_log)
                    << VV(command_line_);
       } else {
         PLOG(FATAL) << "Error or interrupt while waiting for fork server: "
