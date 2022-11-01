@@ -127,7 +127,7 @@ ABSL_FLAG(bool, use_pc_features, true,
 ABSL_FLAG(bool, use_cmp_features, true,
           "When available from instrumentation, use features derived from "
           "instrumentation of CMP instructions.");
-ABSL_FLAG(bool, use_auto_dictionary, false,
+ABSL_FLAG(bool, use_auto_dictionary, true,
           "If true, use automatically-generated dictionary derived from "
           "intercepting comparison instructions, memcmp, and similar.");
 ABSL_FLAG(size_t, path_level, 0,  // Not ready for wide usage.
