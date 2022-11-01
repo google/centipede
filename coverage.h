@@ -63,14 +63,14 @@ class Coverage {
   // Reads the pc table from the binary file at `binary_path`.
   // May create a file `tmp_path`, but will delete it afterwards.
   // Currently works for
-  // * binaries linked with :fuzz_target_runner
+  // * binaries linked with :centipede_runner
   //     and built with -fsanitize-coverage=pc-table,
   // * binaries built with -fsanitize-coverage=trace-pc
   static PCTable GetPcTableFromBinary(std::string_view binary_path,
                                       std::string_view tmp_path);
 
   // Helper for GetPcTableFromBinary,
-  // for binaries linked with :fuzz_target_runner
+  // for binaries linked with :centipede_runner
   // and built with -fsanitize-coverage=pc-table.
   // Returns the PCTable that the binary itself reported.
   // May create a file `tmp_path`, but will delete it afterwards.

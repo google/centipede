@@ -99,7 +99,7 @@ class CentipedeCallbacks {
                                    bool disable_coverage = false);
 
   // Uses an external binary `binary` to mutate `inputs`.
-  // The binary should be linked against :fuzz_target_runner and
+  // The binary should be linked against :centipede_runner and
   // implement the Structure-Aware Fuzzing interface, as described here:
   // github.com/google/fuzzing/blob/master/docs/structure-aware-fuzzing.md
   //

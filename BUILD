@@ -171,7 +171,7 @@ cc_library(
     hdrs = ["execution_result.h"],
     deps = [
         # This target must have a minimal set of dependencies since it is
-        # used in fuzz_target_runner.
+        # used in centipede_runner.
         ":feature",
         ":runner_cmp_trace",
         ":shared_memory_blob_sequence",
@@ -184,7 +184,7 @@ cc_library(
     hdrs = ["execution_request.h"],
     deps = [
         # This target must have a minimal set of dependencies since it is
-        # used in fuzz_target_runner.
+        # used in centipede_runner.
         ":shared_memory_blob_sequence",
         ":defs",
     ],
@@ -455,21 +455,9 @@ RUNNER_DEPS = ["@com_google_absl//absl/types:span"]  # WARNING: be careful with 
 #
 # See also comments above RUNNER_SOURCES_NO_MAIN.
 #
-# TODO(ussuri): Rename to centipede_runner_no_main & update clients.
 cc_library(
-    name = "fuzz_target_runner_no_main",
+    name = "centipede_runner_no_main",
     srcs = RUNNER_SOURCES_NO_MAIN,
-    copts = RUNNER_COPTS,
-    linkopts = RUNNER_LINKOPTS,
-    deps = RUNNER_DEPS,
-)
-
-# A fuzz target needs to link with this library (containing main()) in order to
-# run with Centipede.
-# TODO(ussuri): Now a dupe of centipede_runner: remove & update clients.
-cc_library(
-    name = "fuzz_target_runner",
-    srcs = RUNNER_SOURCES_WITH_MAIN,
     copts = RUNNER_COPTS,
     linkopts = RUNNER_LINKOPTS,
     deps = RUNNER_DEPS,
