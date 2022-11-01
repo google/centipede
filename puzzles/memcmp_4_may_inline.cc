@@ -13,7 +13,8 @@
 // limitations under the License.
 
 // Centipede puzzle: one 4-byte memcmp, which may get inlined.
-// RUN: Run && SolutionIs FUZz
+// Disable use_auto_dictionary so that we test other functionality.
+// RUN: Run --use_auto_dictionary=false && SolutionIs FUZz
 
 #include <cstdint>
 #include <cstdlib>
