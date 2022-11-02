@@ -134,13 +134,21 @@ int Command::Execute() {
     // The fork server forks, the child is running. Block until some readable
     // data appears in the pipe (that is, after the fork server writes the
     // execution result to it).
-    struct pollfd poll_fd = {
-        .fd = pipe_[1],    // The file descriptor to wait for.
-        .events = POLLIN,  // Wait until `fd` gets readable data written to it.
-    };
     const int poll_timeout_ms =
         static_cast<int>(absl::ToInt64Milliseconds(timeout_));
-    const int poll_ret = poll(&poll_fd, 1, poll_timeout_ms);
+    // The `poll()` syscall can get interrupted: it sets errno==EINTR in that
+    // case. We should tolerate that.
+    struct pollfd poll_fd = {};
+    int poll_ret = -1;
+    do {
+      // NOTE: `poll_fd` has to be reset every time.
+      poll_fd = {
+          .fd = pipe_[1],    // The file descriptor to wait for.
+          .events = POLLIN,  // Wait until `fd` gets readable data.
+      };
+      poll_ret = poll(&poll_fd, 1, poll_timeout_ms);
+    } while (poll_ret < 0 && errno == EINTR);
+
     if (poll_ret != 1 || (poll_fd.revents & POLLIN) == 0) {
       // The fork server errored out or timed out, or some other error occurred,
       // e.g. the syscall was interrupted.
