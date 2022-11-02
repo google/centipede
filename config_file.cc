@@ -67,6 +67,8 @@ ABSL_FLAG(std::string, save_config, "",
 ABSL_FLAG(bool, update_config, false,
           "Must be used in combination with --config=<file>. Writes the final "
           "resolved config back to the same file.");
+ABSL_FLAG(bool, print_config, false,
+          "Print the config to stderr upon starting Centipede.");
 
 // Declare --flagfile defined by the Abseil Flags library. The flag should point
 // at a _local_ file is always automatically parsed by Abseil Flags.
@@ -252,10 +254,13 @@ std::vector<std::string> InitCentipede(
   }
 
   // Log the final resolved config.
-  const FlagInfosPerSource flags = GetFlagsPerSource("third_party/centipede/");
-  const std::string flags_str = FormatFlagfileString(
-      flags, DefaultedFlags::kCommentedOut, FlagComments::kNone);
-  LOG(INFO) << "Final resolved config:\n" << flags_str;
+  if (absl::GetFlag(FLAGS_print_config)) {
+    const FlagInfosPerSource flags =
+        GetFlagsPerSource("third_party/centipede/");
+    const std::string flags_str = FormatFlagfileString(
+        flags, DefaultedFlags::kCommentedOut, FlagComments::kNone);
+    LOG(INFO) << "Final resolved config:\n" << flags_str;
+  }
 
   // If --save_config was passed, save the final resolved flags to the requested
   // file and exit the program.
