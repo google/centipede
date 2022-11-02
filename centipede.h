@@ -102,6 +102,9 @@ class Centipede {
   void GenerateCoverageReport(std::string_view annotation, size_t batch_index);
   // Generates a corpus stats file in workdir.
   void GenerateCorpusStats(std::string_view annotation, size_t batch_index);
+  // Generates the clang source-based coverage report in workdir.
+  void GenerateSourceBasedCoverageReport(std::string_view annotation,
+                                         size_t batch_index);
   // Generates all the report and stats files in workdir if this shard is
   // assigned to do that and if `batch_index` == 0 or satisfies the criteria set
   // via the flags.

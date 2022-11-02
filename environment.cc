@@ -41,6 +41,13 @@ ABSL_FLAG(std::string, binary, "", "The target binary.");
 ABSL_FLAG(std::string, coverage_binary, "",
           "The actual binary from which coverage is collected - if different "
           "from --binary.");
+ABSL_FLAG(std::string, clang_coverage_binary, "",
+          "A clang source-based code coverage binary used to produce "
+          "human-readable reports. Do not add this binary to extra_binaries. "
+          "You must have llvm-cov and llvm-profdata in your path to generate "
+          "the reports. --workdir in turn must be local in order for this "
+          "functionality to work. See "
+          "https://clang.llvm.org/docs/SourceBasedCodeCoverage.html");
 ABSL_FLAG(std::string, extra_binaries, "",
           "A comma-separated list of extra target binaries. These binaries are "
           "fed the same inputs as the main binary, but the coverage feedback "
@@ -244,6 +251,7 @@ Environment::Environment(const std::vector<std::string> &argv)
           absl::GetFlag(FLAGS_coverage_binary).empty()
               ? (binary.empty() ? "" : *absl::StrSplit(binary, ' ').begin())
               : absl::GetFlag(FLAGS_coverage_binary)),
+      clang_coverage_binary(absl::GetFlag(FLAGS_clang_coverage_binary)),
       extra_binaries(absl::StrSplit(absl::GetFlag(FLAGS_extra_binaries), ',',
                                     absl::SkipEmpty{})),
       workdir(absl::GetFlag(FLAGS_workdir)),
@@ -317,6 +325,10 @@ Environment::Environment(const std::vector<std::string> &argv)
       args.emplace_back(argv[i]);
     }
   }
+
+  if (!clang_coverage_binary.empty())
+    extra_binaries.push_back(clang_coverage_binary);
+
   if (absl::StrContains(binary, "@@")) {
     LOG(INFO) << "@@ detected; running in standalone mode with batch_size=1";
     has_input_wildcards = true;
@@ -381,6 +393,49 @@ std::string Environment::MakeCorpusStatsPath(
   return std::filesystem::path(workdir).append(absl::StrFormat(
       "corpus-stats-%s.%0*d%s.json", binary_name, kDigitsInShardIndex,
       my_shard_index, NormalizeAnnotation(annotation)));
+}
+
+std::string Environment::MakeSourceBasedCoverageRawProfilePath() const {
+  // Pass %m to enable online merge mode: updates file in place instead of
+  // replacing it %m is replaced by lprofGetLoadModuleSignature(void) which
+  // should be consistent for a fixed binary
+  return std::filesystem::path(MakeCoverageDirPath())
+      .append(absl::StrFormat("clang_coverage.%0*d.%s.profraw",
+                              kDigitsInShardIndex, my_shard_index, "%m"));
+}
+
+std::string Environment::MakeSourceBasedCoverageIndexedProfilePath() const {
+  return std::filesystem::path(MakeCoverageDirPath())
+      .append(absl::StrFormat("clang_coverage.profdata"));
+}
+
+std::string Environment::MakeSourceBasedCoverageReportPath(
+    std::string_view annotation) const {
+  return std::filesystem::path(workdir).append(absl::StrFormat(
+      "source-coverage-report-%s.%0*d%s", binary_name, kDigitsInShardIndex,
+      my_shard_index, NormalizeAnnotation(annotation)));
+}
+
+std::vector<std::string> Environment::EnumerateRawCoverageProfiles() const {
+  // Unfortunately we have to enumerate the profiles from the filesystem since
+  // clang-coverage generates its own hash of the binary to avoid collisions
+  // between builds. We account for this in Centipede already with the
+  // per-binary coverage directory but LLVM coverage (perhaps smartly) doesn't
+  // trust the user to get this right. We could call __llvm_profile_get_filename
+  // in the runner and plumb it back to us but this is simpler.
+  std::vector<std::string> raw_profiles;
+  std::error_code error_code;
+  for (const auto &entry :
+       std::filesystem::directory_iterator(MakeCoverageDirPath(), error_code)) {
+    if (!entry.is_regular_file() && entry.path().extension() == ".profraw")
+      continue;
+    raw_profiles.push_back(entry.path());
+  }
+  if (error_code)
+    LOG(ERROR) << absl::StrFormat(
+        "Failed to access coverage directory %s with %s", MakeCoverageDirPath(),
+        error_code.message());
+  return raw_profiles;
 }
 
 // Returns true if `value` is one of "1", "true".

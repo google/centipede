@@ -94,16 +94,22 @@ Command &CentipedeCallbacks::GetOrCreateCommandForBinary(
   bool disable_coverage =
       std::find(env_.extra_binaries.begin(), env_.extra_binaries.end(),
                 binary) != env_.extra_binaries.end();
+
+  std::vector<std::string> env = {ConstructRunnerFlags(
+      absl::StrCat(":shmem:arg1=", shmem_name1_, ":arg2=", shmem_name2_,
+                   ":failure_description_path=", failure_description_path_,
+                   ":"),
+      disable_coverage)};
+
+  if (env_.clang_coverage_binary == binary)
+    env.emplace_back(absl::StrCat(
+        "LLVM_PROFILE_FILE=", env_.MakeSourceBasedCoverageRawProfilePath()));
+
   // Allow for the time it takes to fork a subprocess etc.
   const auto amortized_timeout = absl::Seconds(env_.timeout) + absl::Seconds(5);
   Command &cmd = commands_.emplace_back(Command(
-      /*path=*/binary, /*args=*/{},
-      /*env=*/
-      {ConstructRunnerFlags(
-          absl::StrCat(":shmem:arg1=", shmem_name1_, ":arg2=", shmem_name2_,
-                       ":failure_description_path=", failure_description_path_,
-                       ":"),
-          disable_coverage)},
+      /*path=*/binary, /*args=*/{shmem_name1_, shmem_name2_},
+      /*env=*/env,
       /*out=*/execute_log_path_,
       /*err=*/execute_log_path_,
       /*timeout=*/amortized_timeout,

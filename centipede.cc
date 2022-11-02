@@ -403,12 +403,55 @@ void Centipede::GenerateCorpusStats(std::string_view annotation,
   RemoteFileClose(f);
 }
 
+// TODO(nedwill): add integration test once tests are refactored per b/255660879
+void Centipede::GenerateSourceBasedCoverageReport(std::string_view annotation,
+                                                  size_t batch_index) {
+  if (env_.clang_coverage_binary.empty()) return;
+
+  auto report_path = env_.MakeSourceBasedCoverageReportPath(annotation);
+  RemoteMkdir(report_path);
+
+  std::vector<std::string> raw_profiles = env_.EnumerateRawCoverageProfiles();
+
+  if (raw_profiles.empty()) {
+    LOG(ERROR) << "No raw profiles found for coverage report";
+    return;
+  }
+
+  std::string indexed_profile_path =
+      env_.MakeSourceBasedCoverageIndexedProfilePath();
+
+  std::vector<std::string> merge_arguments = {"merge", "-o",
+                                              indexed_profile_path, "-sparse"};
+  for (const std::string &raw_profile : raw_profiles) {
+    merge_arguments.push_back(raw_profile);
+  }
+
+  Command merge_command("llvm-profdata", merge_arguments);
+  if (merge_command.Execute()) {
+    LOG(ERROR) << "Failed to run command " << merge_command.ToString();
+    return;
+  }
+
+  Command generate_report_command(
+      "llvm-cov",
+      {"show", "-format=html", absl::StrCat("-output-dir=", report_path),
+       absl::StrCat("-instr-profile=", indexed_profile_path),
+       env_.clang_coverage_binary});
+  if (generate_report_command.Execute()) {
+    LOG(ERROR) << "Failed to run command "
+               << generate_report_command.ToString();
+    return;
+  }
+}
+
 void Centipede::MaybeGenerateTelemetry(std::string_view annotation,
                                        size_t batch_index) {
   if (env_.DumpTelemetryInThisShard() &&
       env_.DumpTelemetryForThisBatch(batch_index)) {
     GenerateCoverageReport(annotation, batch_index);
     GenerateCorpusStats(annotation, batch_index);
+    GenerateSourceBasedCoverageReport(annotation, batch_index);
   }
 }
 

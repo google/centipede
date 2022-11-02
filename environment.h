@@ -34,6 +34,7 @@ struct Environment {
 
   std::string binary;
   std::string coverage_binary;
+  std::string clang_coverage_binary;
   std::vector<std::string> extra_binaries;
   std::string workdir;
   std::string merge_from;
@@ -106,6 +107,12 @@ struct Environment {
   std::string MakeCorpusPath(size_t shard_index) const;
   // Returns the path for a features file by its shard_index.
   std::string MakeFeaturesPath(size_t shard_index) const;
+  // Returns the path to the coverage profile for this shard.
+  std::string MakeSourceBasedCoverageRawProfilePath() const;
+  // Returns all shards' raw profile paths by scanning the coverage directory.
+  std::vector<std::string> EnumerateRawCoverageProfiles() const;
+  // Returns the path to the indexed code coverage file.
+  std::string MakeSourceBasedCoverageIndexedProfilePath() const;
   // Returns the path for the distilled corpus file for my_shard_index.
   std::string MakeDistilledPath() const;
   // Returns true if we want to distill the corpus in this shard before fuzzing.
@@ -122,6 +129,9 @@ struct Environment {
   // Returns the path for the corpus stats report file for my_shard_index.
   // The corpus stats report is regenerated periodically during fuzzing.
   std::string MakeCorpusStatsPath(std::string_view annotation = "") const;
+  // Returns the path to the source-based coverage report directory.
+  std::string MakeSourceBasedCoverageReportPath(
+      std::string_view annotation = "") const;
   // Returns true if we want to generate the telemetry files (coverage report,
   // corpus stats, etc.) in this shard.
   bool DumpTelemetryInThisShard() const { return my_shard_index == 0; }
