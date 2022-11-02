@@ -29,6 +29,7 @@
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
+#include "absl/strings/str_replace.h"
 #include "./logging.h"
 #include "./util.h"
 
@@ -40,13 +41,15 @@ inline constexpr std::string_view kNoForkServerRequestPrefix("%f");
 
 Command::Command(std::string_view path, std::vector<std::string> args,
                  std::vector<std::string> env, std::string_view out,
-                 std::string_view err, absl::Duration timeout)
+                 std::string_view err, absl::Duration timeout,
+                 std::string_view temp_file_path)
     : path_(path),
       args_(std::move(args)),
       env_(std::move(env)),
       out_(out),
       err_(err),
-      timeout_(timeout) {}
+      timeout_(timeout),
+      temp_file_path_(temp_file_path) {}
 
 std::string Command::ToString() const {
   std::vector<std::string> ss;
@@ -59,6 +62,12 @@ std::string Command::ToString() const {
   // Strip the % prefixes, if any.
   if (absl::StartsWith(path, kNoForkServerRequestPrefix)) {
     path = path.substr(kNoForkServerRequestPrefix.size());
+  }
+  // Replace @@ with temp_file_path_.
+  constexpr std::string_view kTempFileWildCard = "@@";
+  if (absl::StrContains(path, kTempFileWildCard)) {
+    CHECK(!temp_file_path_.empty());
+    path = absl::StrReplaceAll(path, {{kTempFileWildCard, temp_file_path_}});
   }
   ss.emplace_back(path);
   // args.

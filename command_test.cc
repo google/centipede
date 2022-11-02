@@ -69,6 +69,12 @@ TEST(CommandDeathTest, Execute) {
   EXPECT_DEATH(self_sigint_lambda(), "Early exit requested");
 }
 
+TEST(CommandTest, InputFileWildCard) {
+  std::string_view command_line = "foo bar @@ baz";
+  Command cmd(command_line, {}, {}, "", "", absl::Seconds(2), "TEMP_FILE");
+  EXPECT_EQ(cmd.ToString(), "foo bar TEMP_FILE baz");
+}
+
 TEST(CommandTest, ForkServer) {
   const std::string test_tmpdir = GetTestTempDir(test_info_->name());
   const std::string helper = GetDataDependencyFilepath("command_test_helper");

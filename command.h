@@ -40,6 +40,7 @@ class Command final {
         out_(other.out_),
         err_(other.err_),
         timeout_(other.timeout_),
+        temp_file_path_(other.temp_file_path_),
         command_line_(other.command_line_),
         fifo_path_{std::move(other.fifo_path_[0]),
                    std::move(other.fifo_path_[1])},
@@ -56,13 +57,15 @@ class Command final {
   // `out`: stdout redirect path (empty means none).
   // `err`: stderr redirect path (empty means none).
   // `timeout`: terminate a fork server execution attempt after this duration.
+  // `temp_file_path`: "@@" in `path` will be replaced with `temp_file_path`.
   // If `out` == `err` and both are non-empty, stdout/stderr are combined.
   // TODO(ussuri): The number of parameters became untenable and error-prone.
   //  Use the Options or Builder pattern instead.
   explicit Command(std::string_view path, std::vector<std::string> args = {},
                    std::vector<std::string> env = {}, std::string_view out = "",
                    std::string_view err = "",
-                   absl::Duration timeout = absl::InfiniteDuration());
+                   absl::Duration timeout = absl::InfiniteDuration(),
+                   std::string_view temp_file_path = "");
 
   // Cleans up the fork server, if that was created.
   ~Command();
@@ -91,6 +94,7 @@ class Command final {
   const std::string out_;
   const std::string err_;
   const absl::Duration timeout_;
+  const std::string temp_file_path_;
   const std::string command_line_ = ToString();
   // Pipe paths and file descriptors for the fork server.
   std::string fifo_path_[2];
