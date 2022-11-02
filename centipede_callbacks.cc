@@ -94,6 +94,8 @@ Command &CentipedeCallbacks::GetOrCreateCommandForBinary(
   bool disable_coverage =
       std::find(env_.extra_binaries.begin(), env_.extra_binaries.end(),
                 binary) != env_.extra_binaries.end();
+  // Allow for the time it takes to fork a subprocess etc.
+  const auto amortized_timeout = absl::Seconds(env_.timeout) + absl::Seconds(5);
   Command &cmd = commands_.emplace_back(Command(
       /*path=*/binary, /*args=*/{shmem_name1_, shmem_name2_},
       /*env=*/
@@ -103,7 +105,8 @@ Command &CentipedeCallbacks::GetOrCreateCommandForBinary(
                        ":"),
           disable_coverage)},
       /*out=*/execute_log_path_,
-      /*err=*/execute_log_path_));
+      /*err=*/execute_log_path_,
+      /*timeout=*/amortized_timeout));
   if (env_.fork_server) cmd.StartForkServer(temp_dir_, Hash(binary));
 
   return cmd;
