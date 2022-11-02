@@ -92,6 +92,9 @@ struct GlobalRunnerState {
   // Used by LLVMFuzzerMutate and initialized in main().
   ByteArrayMutator *byte_array_mutator = nullptr;
 
+  GlobalRunnerState();
+  ~GlobalRunnerState();
+
   // Runner reads flags from a dedicated env var, CENTIPEDE_RUNNER_FLAGS.
   // We don't use flags passed via argv so that argv flags can be passed
   // directly to LLVMFuzzerInitialize, w/o filtering. The flags passed in
@@ -213,6 +216,9 @@ struct GlobalRunnerState {
 
   // Execution stats for the currently executed input.
   ExecutionResult::Stats stats;
+
+  // CentipedeRunnerMain() sets this to true.
+  bool centipede_runner_main_executed = false;
 
   // Timeout-related machinery.
 

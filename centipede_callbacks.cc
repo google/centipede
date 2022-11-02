@@ -97,7 +97,7 @@ Command &CentipedeCallbacks::GetOrCreateCommandForBinary(
   // Allow for the time it takes to fork a subprocess etc.
   const auto amortized_timeout = absl::Seconds(env_.timeout) + absl::Seconds(5);
   Command &cmd = commands_.emplace_back(Command(
-      /*path=*/binary, /*args=*/{shmem_name1_, shmem_name2_},
+      /*path=*/binary, /*args=*/{},
       /*env=*/
       {ConstructRunnerFlags(
           absl::StrCat(":shmem:arg1=", shmem_name1_, ":arg2=", shmem_name2_,
@@ -106,7 +106,8 @@ Command &CentipedeCallbacks::GetOrCreateCommandForBinary(
           disable_coverage)},
       /*out=*/execute_log_path_,
       /*err=*/execute_log_path_,
-      /*timeout=*/amortized_timeout));
+      /*timeout=*/amortized_timeout,
+      /*temp_file_path=*/temp_input_file_path_));
   if (env_.fork_server) cmd.StartForkServer(temp_dir_, Hash(binary));
 
   return cmd;
@@ -121,9 +122,17 @@ int CentipedeCallbacks::ExecuteCentipedeSancovBinaryWithShmem(
   inputs_blobseq_.Reset();
   outputs_blobseq_.Reset();
 
-  // Feed the inputs to inputs_blobseq_.
-  size_t num_inputs_written =
-      execution_request::RequestExecution(inputs, inputs_blobseq_);
+  size_t num_inputs_written = 0;
+
+  if (env_.has_input_wildcards) {
+    CHECK_EQ(inputs.size(), 1);
+    WriteToLocalFile(temp_input_file_path_, inputs[0]);
+    num_inputs_written = 1;
+  } else {
+    // Feed the inputs to inputs_blobseq_.
+    num_inputs_written =
+        execution_request::RequestExecution(inputs, inputs_blobseq_);
+  }
 
   if (num_inputs_written != inputs.size()) {
     LOG(INFO) << "Wrote " << num_inputs_written << "/" << inputs.size()

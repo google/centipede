@@ -30,6 +30,13 @@
 #include "./logging.h"
 #include "./util.h"
 
+// TODO(kcc): document usage of standalone binaries and how to use @@ wildcard.
+// If the "binary" contains @@, it means the binary can only accept inputs
+// from the command line, and only one input per process.
+// @@ will be replaced with a path to file with the input.
+// @@ is chosen to follow the AFL command line syntax.
+// TODO(kcc): rename --binary to --command (same for --extra_binaries),
+// while remaining backward compatible.
 ABSL_FLAG(std::string, binary, "", "The target binary.");
 ABSL_FLAG(std::string, coverage_binary, "",
           "The actual binary from which coverage is collected - if different "
@@ -309,6 +316,12 @@ Environment::Environment(const std::vector<std::string> &argv)
     for (size_t i = 1; i < argv.size(); ++i) {
       args.emplace_back(argv[i]);
     }
+  }
+  if (absl::StrContains(binary, "@@")) {
+    LOG(INFO) << "@@ detected; running in standalone mode with batch_size=1";
+    has_input_wildcards = true;
+    batch_size = 1;
+    // TODO(kcc): do we need to check if extra_binaries have @@?
   }
 }
 

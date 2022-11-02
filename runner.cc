@@ -36,6 +36,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <cstdlib>
 #include <vector>
 
 #include "./byte_array_mutator.h"
@@ -649,6 +650,24 @@ extern void ForkServerCallMeVeryEarly();
 extern void RunnerSancov();
 [[maybe_unused]] auto fake_reference_for_runner_sancov = &RunnerSancov;
 
+GlobalRunnerState::GlobalRunnerState() {
+  // TODO(kcc): move some code from CentipedeRunnerMain() here so that it works
+  // even if CentipedeRunnerMain() is not called.
+}
+
+GlobalRunnerState::~GlobalRunnerState() {
+  // The process is winding down, but CentipedeRunnerMain did not run.
+  // This means, the binary is standalone with its own main(), and we need to
+  // report the coverage now.
+  if (!state.centipede_runner_main_executed && state.HasFlag(":shmem:")) {
+    int exit_status = EXIT_SUCCESS;  // TODO(kcc): do we know our exit status?
+    PostProcessCoverage(exit_status);
+    centipede::SharedMemoryBlobSequence outputs_blobseq(state.arg2);
+    StartSendingOutputsToEngine(outputs_blobseq);
+    FinishSendingOutputsToEngine(outputs_blobseq);
+  }
+}
+
 }  // namespace centipede
 
 // If HasFlag(:dump_pc_table:), dump the pc table to state.arg1.
@@ -670,6 +689,8 @@ extern "C" int CentipedeRunnerMain(
     FuzzerCustomCrossOverCallback custom_crossover_cb) {
   using centipede::state;
   using centipede::tls;
+
+  state.centipede_runner_main_executed = true;
 
   tls.OnThreadStart();
   fprintf(stderr, "Centipede fuzz target runner; argv[0]: %s flags: %s\n",

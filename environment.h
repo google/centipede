@@ -96,6 +96,7 @@ struct Environment {
   const std::string cmd;
   const std::string binary_name;  // Name of coverage_binary, w/o directories.
   const std::string binary_hash;  // Hash of the coverage_binary file.
+  bool has_input_wildcards = false;  // Set to true iff `binary` contains "@@"
 
   // Returns the path to the coverage dir.
   std::string MakeCoverageDirPath() const;
