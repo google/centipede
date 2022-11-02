@@ -427,9 +427,8 @@ std::vector<std::string> Environment::EnumerateRawCoverageProfiles() const {
   std::error_code error_code;
   for (const auto &entry :
        std::filesystem::directory_iterator(MakeCoverageDirPath(), error_code)) {
-    if (!entry.is_regular_file() && entry.path().extension() == ".profraw")
-      continue;
-    raw_profiles.push_back(entry.path());
+    if (entry.is_regular_file() && entry.path().extension() == ".profraw")
+      raw_profiles.push_back(entry.path());
   }
   if (error_code)
     LOG(ERROR) << absl::StrFormat(
