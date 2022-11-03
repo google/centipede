@@ -423,17 +423,20 @@ std::vector<std::string> Environment::EnumerateRawCoverageProfiles() const {
   // per-binary coverage directory but LLVM coverage (perhaps smartly) doesn't
   // trust the user to get this right. We could call __llvm_profile_get_filename
   // in the runner and plumb it back to us but this is simpler.
+  const std::string dir_path = MakeCoverageDirPath();
+  std::error_code dir_error;
+  const auto dir_iter =
+      std::filesystem::directory_iterator(dir_path, dir_error);
+  if (dir_error) {
+    LOG(ERROR) << "Failed to access coverage dir '" << dir_path
+               << "': " << dir_error.message();
+    return {};
+  }
   std::vector<std::string> raw_profiles;
-  std::error_code error_code;
-  for (const auto &entry :
-       std::filesystem::directory_iterator(MakeCoverageDirPath(), error_code)) {
+  for (const auto &entry : dir_iter) {
     if (entry.is_regular_file() && entry.path().extension() == ".profraw")
       raw_profiles.push_back(entry.path());
   }
-  if (error_code)
-    LOG(ERROR) << absl::StrFormat(
-        "Failed to access coverage directory %s with %s", MakeCoverageDirPath(),
-        error_code.message());
   return raw_profiles;
 }
 
