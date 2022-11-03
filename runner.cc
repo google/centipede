@@ -653,6 +653,27 @@ extern void RunnerSancov();
 GlobalRunnerState::GlobalRunnerState() {
   // TODO(kcc): move some code from CentipedeRunnerMain() here so that it works
   // even if CentipedeRunnerMain() is not called.
+  tls.OnThreadStart();
+  state.StartTimerThread();
+
+  centipede::SetLimits();
+
+  // Compute main_object_start_address, main_object_size.
+  dl_iterate_phdr(centipede::dl_iterate_phdr_callback, nullptr);
+
+  // Dump the pc table, if instructed.
+  if (state.HasFlag(":dump_pc_table:")) {
+    if (!state.arg1) _exit(EXIT_FAILURE);
+    centipede::DumpPcTable(state.arg1);
+    _exit(EXIT_SUCCESS);
+  }
+
+  // Dump the control-flow table, if instructed.
+  if (state.HasFlag(":dump_cf_table:")) {
+    if (!state.arg1) _exit(EXIT_FAILURE);
+    centipede::DumpCfTable(state.arg1);
+    _exit(EXIT_SUCCESS);
+  }
 }
 
 GlobalRunnerState::~GlobalRunnerState() {
@@ -692,29 +713,8 @@ extern "C" int CentipedeRunnerMain(
 
   state.centipede_runner_main_executed = true;
 
-  tls.OnThreadStart();
   fprintf(stderr, "Centipede fuzz target runner; argv[0]: %s flags: %s\n",
           argv[0], state.centipede_runner_flags);
-  state.StartTimerThread();
-
-  centipede::SetLimits();
-
-  // Compute main_object_start_address, main_object_size.
-  dl_iterate_phdr(centipede::dl_iterate_phdr_callback, nullptr);
-
-  // Dump the pc table, if instructed.
-  if (state.HasFlag(":dump_pc_table:")) {
-    if (!state.arg1) return EXIT_FAILURE;
-    centipede::DumpPcTable(state.arg1);
-    return EXIT_SUCCESS;
-  }
-
-  // Dump the control-flow table, if instructed.
-  if (state.HasFlag(":dump_cf_table:")) {
-    if (!state.arg1) return EXIT_FAILURE;
-    centipede::DumpCfTable(state.arg1);
-    return EXIT_SUCCESS;
-  }
 
   // All further actions will execute code in the target,
   // so we need to call LLVMFuzzerInitialize.
