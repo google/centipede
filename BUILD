@@ -224,6 +224,23 @@ cc_library(
     ],
 )
 
+# Library for dealing with control flow data from
+# https://clang.llvm.org/docs/SanitizerCoverage.html#tracing-control-flow.
+cc_library(
+    name = "control_flow",
+    srcs = [
+        "control_flow.cc",
+    ],
+    hdrs = [
+        "control_flow.h",
+    ],
+    deps = [
+        ":coverage",
+        ":logging",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
 cc_library(
     name = "remote_file",
     srcs = ["remote_file.cc"],
@@ -659,6 +676,18 @@ cc_test(
     srcs = ["runner_cmp_trace_test.cc"],
     deps = [
         ":runner_cmp_trace",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "control_flow_test",
+    srcs = ["control_flow_test.cc"],
+    deps = [
+        "@centipede//:control_flow",
+        "@centipede//:coverage",
+        "@centipede//:logging",
+        "@centipede//:test_util",
         "@com_google_googletest//:gtest_main",
     ],
 )
