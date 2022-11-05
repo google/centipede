@@ -31,6 +31,7 @@
 #include "absl/strings/str_split.h"
 #include "absl/strings/substitute.h"
 #include "./config_util.h"
+#include "./environment.h"
 #include "./logging.h"
 #include "./remote_file.h"
 #include "./util.h"
@@ -67,11 +68,13 @@ ABSL_FLAG(std::string, save_config, "",
           "This format can be parsed back by both --config and --flagfile. "
           "Unlike those two flags, this flag is not position-sensitive and "
           "always saves the final resolved config.\n"
-          "Special case: if the file's extension is .sh, a runnable shell "
-          "script is saved instead.");
+          "Tips: 1) If the file's extension is .sh, a runnable shell script is "
+          "saved instead. 2) Use --dry_run to just save the config file, "
+          "validate the command line, and exit.");
 ABSL_FLAG(bool, update_config, false,
           "Must be used in combination with --config=<file>. Writes the final "
-          "resolved config back to the same file.");
+          "resolved config back to the same file. See also --save_config for "
+          "details and tips.");
 ABSL_FLAG(bool, print_config, false,
           "Print the config to stderr upon starting Centipede.");
 
@@ -203,7 +206,7 @@ std::filesystem::path MaybeSaveConfigToFile(
     const std::vector<std::string>& leftover_argv) {
   std::filesystem::path path;
 
-  // Initialize `path` if --save_config or --update_config is passed.
+  // Initialize `path` if --save_config=... or --update_config is passed.
   if (!absl::GetFlag(FLAGS_save_config).empty()) {
     path = absl::GetFlag(FLAGS_save_config);
     CHECK_NE(path, absl::GetFlag(FLAGS_config))
@@ -213,9 +216,9 @@ std::filesystem::path MaybeSaveConfigToFile(
         << DASHED_FLAG_NAME(update_config) << " are mutually exclusive";
   } else if (absl::GetFlag(FLAGS_update_config)) {
     path = absl::GetFlag(FLAGS_config);
-    CHECK(!path.empty()) << DASHED_FLAG_NAME(update_config)
-                         << " must be used in combination with "
-                         << DASHED_FLAG_NAME(config);
+    CHECK(!path.empty())  //
+        << DASHED_FLAG_NAME(update_config)
+        << " must be used in combination with " << DASHED_FLAG_NAME(config);
   }
 
   // Save or update the config file.
@@ -224,7 +227,7 @@ std::filesystem::path MaybeSaveConfigToFile(
         FLAGS_config.Name(),
         FLAGS_save_config.Name(),
         FLAGS_update_config.Name(),
-        FLAGS_print_config.Name(),
+        FLAGS_dry_run.Name(),
     };
     const FlagInfosPerSource flags =
         GetFlagsPerSource("third_party/centipede/", excluded_flags);
@@ -302,12 +305,10 @@ std::vector<std::string> InitCentipede(
   }
 
   // If --save_config was passed, save the final resolved flags to the requested
-  // file and exit the program.
+  // file and possibly exit the program.
   const auto path = MaybeSaveConfigToFile(leftover_argv);
   if (!path.empty()) {
     LOG(INFO) << "Config written to file: " << VV(path);
-    LOG(INFO) << "Nothing left to do; exiting";
-    exit(EXIT_SUCCESS);
   }
 
   return leftover_argv;

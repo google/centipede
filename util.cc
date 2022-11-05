@@ -441,7 +441,6 @@ std::vector<size_t> RandomWeightedSubset(absl::Span<const uint32_t> set,
 static std::atomic<int> requested_exit_code(EXIT_SUCCESS);
 
 void RequestEarlyExit(int exit_code) {
-  CHECK_NE(exit_code, EXIT_SUCCESS);
   requested_exit_code = exit_code;
 }
 bool EarlyExitRequested() { return requested_exit_code != EXIT_SUCCESS; }

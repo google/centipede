@@ -151,46 +151,62 @@ int Analyze(const Environment &env, const Coverage::PCTable &pc_table,
 
 int CentipedeMain(const Environment &env,
                   CentipedeCallbacksFactory &callbacks_factory) {
+  LOG_IF(WARNING, env.dry_run)
+      << "--dry_run requested: exiting after some basic sanity checks";
+
   SetSignalHandlers();
 
-  if (!env.save_corpus_to_local_dir.empty())
-    return Centipede::SaveCorpusToLocalDir(env, env.save_corpus_to_local_dir);
+  // TODO(ussuri): Ideally, the dry run should execute at couple fuzzing
+  //  iterations, but skip writing any outputs. That could be done by making all
+  //  file ops to be no-ops.
+  if (!env.dry_run) {
+    if (!env.save_corpus_to_local_dir.empty())
+      return Centipede::SaveCorpusToLocalDir(env, env.save_corpus_to_local_dir);
 
-  if (!env.for_each_blob.empty()) return ForEachBlob(env);
+    // Extract blobs, run the requested command line for each of them, and exit.
+    if (!env.for_each_blob.empty()) return ForEachBlob(env);
 
-  // Just export the corpus from a local dir and exit.
-  if (!env.export_corpus_from_local_dir.empty())
-    return Centipede::ExportCorpusFromLocalDir(
-        env, env.export_corpus_from_local_dir);
-
-  // Export the corpus from a local dir and then fuzz.
-  if (!env.corpus_dir.empty()) {
-    for (const auto &corpus_dir : env.corpus_dir) {
-      Centipede::ExportCorpusFromLocalDir(env, corpus_dir);
+    // Just export the corpus from a local dir and exit.
+    if (!env.export_corpus_from_local_dir.empty()) {
+      return Centipede::ExportCorpusFromLocalDir(
+          env, env.export_corpus_from_local_dir);
     }
+
+    // Export the corpus from a local dir and then fuzz.
+    if (!env.corpus_dir.empty()) {
+      for (const auto &corpus_dir : env.corpus_dir) {
+        Centipede::ExportCorpusFromLocalDir(env, corpus_dir);
+      }
+    }
+
+    // Create the coverage dir once, before creating any threads.
+    LOG(INFO) << "Coverage dir " << env.MakeCoverageDirPath();
+    RemoteMkdir(env.MakeCoverageDirPath());
   }
 
-  // Create the coverage dir once, before creating any threads.
-  LOG(INFO) << "Coverage dir " << env.MakeCoverageDirPath();
-  RemoteMkdir(env.MakeCoverageDirPath());
-
-  auto one_time_callbacks = callbacks_factory.create(env);
   Coverage::PCTable pc_table;
   SymbolTable symbols;
-  one_time_callbacks->PopulateSymbolAndPcTables(symbols, pc_table);
-  callbacks_factory.destroy(one_time_callbacks);
-
-  if (env.analyze) return Analyze(env, pc_table, symbols);
-
-  if (env.use_pcpair_features) {
-    CHECK(!pc_table.empty())
-        << "use_pcpair_features requires non-empty pc_table";
-  }
   CoverageLogger coverage_logger(pc_table, symbols);
+
+  if (!env.dry_run) {
+    auto one_time_callbacks = callbacks_factory.create(env);
+    one_time_callbacks->PopulateSymbolAndPcTables(symbols, pc_table);
+    callbacks_factory.destroy(one_time_callbacks);
+
+    if (env.analyze) return Analyze(env, pc_table, symbols);
+
+    if (env.use_pcpair_features) {
+      CHECK(!pc_table.empty())
+          << "use_pcpair_features requires non-empty pc_table";
+    }
+  }
 
   auto thread_callback = [&](Environment &my_env, Stats &stats) {
     CreateLocalDirRemovedAtExit(TemporaryLocalDirPath());  // creates temp dir.
     my_env.seed = GetRandomSeed(env.seed);  // uses TID, call in this thread.
+
+    if (env.dry_run) return;
+
     auto user_callbacks = callbacks_factory.create(my_env);
     my_env.ReadKnobsFileIfSpecified();
     Centipede centipede(my_env, *user_callbacks, pc_table, symbols,

@@ -119,6 +119,7 @@ cc_library(
     hdrs = ["config_file.h"],
     deps = [
         ":config_util",
+        ":environment",
         ":logging",
         ":remote_file",
         ":util",
