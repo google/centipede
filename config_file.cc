@@ -222,7 +222,7 @@ std::filesystem::path MaybeSaveConfigToFile() {
     const FlagInfosPerSource flags =
         GetFlagsPerSource("third_party/centipede/", excluded_flags);
     const std::string flags_str = FormatFlagfileString(
-        flags, DefaultedFlags::kIncluded, FlagComments::kHelpAndDefault);
+        flags, DefaultedFlags::kCommentedOut, FlagComments::kHelpAndDefault);
     RemoteFileSetContents(path, flags_str);
   }
 
