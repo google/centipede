@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "./jit_profiler.h"
+#include "./rusage_profiler.h"
 
 #include <unistd.h>
 
@@ -75,36 +75,36 @@ struct BigSlowThing {
 };
 
 void WasteTimeAndGobbleBytes(bool profile) {
-  JPROF_THIS_FUNCTION_WITH_REPORT(profile);
+  RPROF_THIS_FUNCTION_WITH_REPORT(profile);
   {
     BigSlowThing big_slow_1{50'000'000, absl::Seconds(3)};
-    JPROF_SNAPSHOT_AND_LOG("Scope 1");
+    RPROF_SNAPSHOT_AND_LOG("Scope 1");
   }
   {
     BigSlowThing big_slow_2{20'000'000, absl::Seconds(2)};
-    JPROF_SNAPSHOT("Scope 2");
+    RPROF_SNAPSHOT("Scope 2");
     for (int i = 0; i < 3; ++i) {
       BigSlowThing big_slow_3{10'000'000, absl::Seconds(1)};
-      JPROF_SNAPSHOT_AND_LOG(absl::StrCat("Loop iteration ", i));
+      RPROF_SNAPSHOT_AND_LOG(absl::StrCat("Loop iteration ", i));
     }
   }
 }
 
 }  // namespace
 
-TEST(JitProfilerTest, FunctionLevelMacros) {
+TEST(RUsageProfilerTest, FunctionLevelMacros) {
   LOG(INFO) << "Without profiling:";
   WasteTimeAndGobbleBytes(/*profile=*/false);
   LOG(INFO) << "With profiling:";
   WasteTimeAndGobbleBytes(/*profile=*/true);
 }
 
-TEST(JitProfilerTest, ScopeLevelMacros) {
+TEST(RUsageProfilerTest, ScopeLevelMacros) {
   {
-    JPROF_THIS_SCOPE(/*enable=*/true, "Outer scope");
+    RPROF_THIS_SCOPE(/*enable=*/true, "Outer scope");
     std::vector<BigSlowThing> big_slow_things;
     for (int i = 1; i < 4; i++) {
-      JPROF_THIS_SCOPE(/*enable=*/true, "Inner scope");
+      RPROF_THIS_SCOPE(/*enable=*/true, "Inner scope");
       big_slow_things.emplace_back(i * 10'000'000, absl::Seconds(i));
     }
     // the BigSlowThings free up their memories, so the top-level scope
@@ -113,12 +113,12 @@ TEST(JitProfilerTest, ScopeLevelMacros) {
   }
 }
 
-TEST(JitProfilerTest, TimelapseSnapshots) {
-  JPROF_THIS_FUNCTION_WITH_REPORT(/*enable=*/true);
-  JPROF_START_TIMELAPSE(absl::Seconds(1), /*also_log=*/true, "Timelapse");
+TEST(RUsageProfilerTest, TimelapseSnapshots) {
+  RPROF_THIS_FUNCTION_WITH_REPORT(/*enable=*/true);
+  RPROF_START_TIMELAPSE(absl::Seconds(1), /*also_log=*/true, "Timelapse");
   WasteTimeAndGobbleBytes(/*profile=*/false);
-  JPROF_STOP_TIMELAPSE();
-  JPROF_DUMP_REPORT_TO_LOG("Report");
+  RPROF_STOP_TIMELAPSE();
+  RPROF_DUMP_REPORT_TO_LOG("Report");
 }
 
 // NOTE: Exclude this test from MSAN: 1) MSAN messes with the system memory
@@ -126,32 +126,33 @@ TEST(JitProfilerTest, TimelapseSnapshots) {
 // memory blocks to fight small number volatility of the system allocator, but
 // MSAN's custom allocator can't cope and intermittently OOMs.
 #if !defined(MEMORY_SANITIZER)
-// Compare JitProfiler's manually taken snapshots against raw SysTiming and
+// Compare RUsageProfiler's manually taken snapshots against raw SysTiming and
 // SysMemory numbers acquired approximately at the same time. "Approximately the
 // same" is still not *the same*, so some discrepancies are fully expected.
-TEST(JitProfilerTest, ValidateManualSnapshots) {
+TEST(RUsageProfilerTest, ValidateManualSnapshots) {
   // Allocate A LOT of memory to fight the small numbers volatility, in
   // particular in the virtual memory size and peak, which grow in page
   // increments.
   constexpr int64_t kGobbleBytes = 10'000'000'000;
   constexpr absl::Duration kWasteTime = absl::Seconds(7);
 
-  JitProfiler jprof{
-      JitProfiler::kAllMetrics, JitProfiler::kRaiiOff, {__FILE__, __LINE__}};
+  RUsageProfiler rprof{RUsageProfiler::kAllMetrics,
+                       RUsageProfiler::kRaiiOff,
+                       {__FILE__, __LINE__}};
 
-  const JitProfiler::Snapshot& before_snapshot =
-      jprof.TakeSnapshot({__FILE__, __LINE__});
-  // NOTE: Use jprof's internal timer rather than SysTiming's default global one
+  const RUsageProfiler::Snapshot& before_snapshot =
+      rprof.TakeSnapshot({__FILE__, __LINE__});
+  // NOTE: Use rprof's internal timer rather than SysTiming's default global one
   // (which starts when the process starts) to measure the times on the same
-  // timeline as jprof.
-  const SysTiming before_timing = SysTiming::Snapshot(jprof.timer_);
+  // timeline as rprof.
+  const SysTiming before_timing = SysTiming::Snapshot(rprof.timer_);
   const SysMemory before_memory = SysMemory::Snapshot();
 
   const BigSlowThing big_slow_thing{kGobbleBytes, kWasteTime};
 
-  const JitProfiler::Snapshot& after_snapshot =
-      jprof.TakeSnapshot({__FILE__, __LINE__});
-  const SysTiming after_timing = SysTiming::Snapshot(jprof.timer_);
+  const RUsageProfiler::Snapshot& after_snapshot =
+      rprof.TakeSnapshot({__FILE__, __LINE__});
+  const SysTiming after_timing = SysTiming::Snapshot(rprof.timer_);
   const SysMemory after_memory = SysMemory::Snapshot();
   const SysTiming delta_timing = after_timing - before_timing;
   const SysMemory delta_memory = after_memory - before_memory;
@@ -187,22 +188,22 @@ TEST(JitProfilerTest, ValidateManualSnapshots) {
 }
 #endif  // MSAN is now back on.
 
-TEST(JitProfilerTest, ValidateTimelapseSnapshots) {
+TEST(RUsageProfilerTest, ValidateTimelapseSnapshots) {
   constexpr absl::Duration kWasteTime = absl::Seconds(7);
   constexpr absl::Duration kInterval = absl::Seconds(1);
   constexpr int kGobbleBytes = 100'000'000;
   const bool kAlsoLog = absl::GetFlag(FLAGS_verbose);
 
-  JitProfiler jprof{
-      JitProfiler::kAllMetrics, kInterval, kAlsoLog, {__FILE__, __LINE__}};
+  RUsageProfiler rprof{
+      RUsageProfiler::kAllMetrics, kInterval, kAlsoLog, {__FILE__, __LINE__}};
   const BigSlowThing big_slow_thing{kGobbleBytes, kWasteTime};
-  jprof.StopTimelapse();
+  rprof.StopTimelapse();
 
   // NOTE: The sanitizers heavily instrument the code and skew any time
   //  measurements.
 #if !defined(ADDRESS_SANITIZER) && !defined(THREAD_SANITIZER) && \
     !defined(MEMORY_SANITIZER)
-  const auto& snapshots = jprof.GetSnapshots();
+  const auto& snapshots = rprof.GetSnapshots();
   ASSERT_NEAR(snapshots.size(), absl::FDivDuration(kWasteTime, kInterval), 1);
   for (int i = 1; i < snapshots.size(); ++i) {
     EXPECT_TIME_NEAR(  //
@@ -213,22 +214,23 @@ TEST(JitProfilerTest, ValidateTimelapseSnapshots) {
 #endif
 }
 
-TEST(JitProfilerTest, ValidateReport) {
+TEST(RUsageProfilerTest, ValidateReport) {
   constexpr int kGobbleBytes = 100'000'000;
   constexpr absl::Duration kWasteTime = absl::Seconds(7);
 
-  JitProfiler jprof{
-      JitProfiler::kAllMetrics, JitProfiler::kRaiiOff, {__FILE__, __LINE__}};
+  RUsageProfiler rprof{RUsageProfiler::kAllMetrics,
+                       RUsageProfiler::kRaiiOff,
+                       {__FILE__, __LINE__}};
   {
-    jprof.TakeSnapshot({__FILE__, __LINE__});
+    rprof.TakeSnapshot({__FILE__, __LINE__});
     const BigSlowThing big_slow_thing_1{kGobbleBytes, kWasteTime};
-    jprof.TakeSnapshot({__FILE__, __LINE__});
+    rprof.TakeSnapshot({__FILE__, __LINE__});
     const BigSlowThing big_slow_thing_2{kGobbleBytes, kWasteTime};
-    jprof.TakeSnapshot({__FILE__, __LINE__});
+    rprof.TakeSnapshot({__FILE__, __LINE__});
   }  // BigSlowThings release their memory.
-  jprof.TakeSnapshot({__FILE__, __LINE__});
+  rprof.TakeSnapshot({__FILE__, __LINE__});
 
-  class ReportCapture : public JitProfiler::ReportSink {
+  class ReportCapture : public RUsageProfiler::ReportSink {
    public:
     ~ReportCapture() override = default;
     void operator<<(const std::string& fragment) override {
@@ -237,7 +239,7 @@ TEST(JitProfilerTest, ValidateReport) {
   };
 
   ReportCapture report_capture{};
-  jprof.GenerateReport(&report_capture);
+  rprof.GenerateReport(&report_capture);
 }
 
 }  // namespace centipede::perf

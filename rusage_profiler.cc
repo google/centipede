@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "./jit_profiler.h"
+#include "./rusage_profiler.h"
 
 #include <atomic>
 #include <cmath>
@@ -35,27 +35,27 @@
 namespace centipede::perf {
 
 //------------------------------------------------------------------------------
-//                           JitProfiler::Snapshot
+//                          RUsageProfiler::Snapshot
 //------------------------------------------------------------------------------
 
-std::string JitProfiler::Snapshot::WhereStr() const {
+std::string RUsageProfiler::Snapshot::WhereStr() const {
   return absl::StrFormat("%s:%d", location.file, location.line);
 }
 
-std::string JitProfiler::Snapshot::ShortWhereStr() const {
+std::string RUsageProfiler::Snapshot::ShortWhereStr() const {
   return absl::StrFormat(  //
       "%s:%d", std::filesystem::path(location.file).filename(), location.line);
 }
 
-std::string JitProfiler::Snapshot::WhenStr() const {
+std::string RUsageProfiler::Snapshot::WhenStr() const {
   return absl::FormatTime("%E4Y-%m-%dT%H:%M:%E2S", time, absl::LocalTimeZone());
 }
 
-std::string JitProfiler::Snapshot::ShortWhenStr() const {
+std::string RUsageProfiler::Snapshot::ShortWhenStr() const {
   return absl::FormatTime("%H:%M:%E2S", time, absl::LocalTimeZone());
 }
 
-std::string JitProfiler::Snapshot::FormattedMetricsStr() const {
+std::string RUsageProfiler::Snapshot::FormattedMetricsStr() const {
   std::string s;
   absl::StrAppendFormat(                      //
       &s, "  [P.%d:S.%d] TIMING   | %s |\n",  //
@@ -76,7 +76,7 @@ std::string JitProfiler::Snapshot::FormattedMetricsStr() const {
   return s;
 }
 
-std::string JitProfiler::Snapshot::ShortMetricsStr() const {
+std::string RUsageProfiler::Snapshot::ShortMetricsStr() const {
   std::string s;
   absl::StrAppendFormat(  //
       &s, "TIMING { %s } ", timing.ShortStr());
@@ -93,7 +93,7 @@ std::string JitProfiler::Snapshot::ShortMetricsStr() const {
   return s;
 }
 
-const JitProfiler::Snapshot& JitProfiler::Snapshot::Log() const {
+const RUsageProfiler::Snapshot& RUsageProfiler::Snapshot::Log() const {
   if (id >= 0) {
     LOG(INFO).AtLocation(location.file, location.line)
         << "PROFILER [P." << profiler_id << (profiler_desc.empty() ? "" : " ")
@@ -104,7 +104,7 @@ const JitProfiler::Snapshot& JitProfiler::Snapshot::Log() const {
   return *this;
 }
 
-std::ostream& operator<<(std::ostream& os, const JitProfiler::Snapshot& ss) {
+std::ostream& operator<<(std::ostream& os, const RUsageProfiler::Snapshot& ss) {
   return os << ss.title << ": " << ss.ShortWhereStr() << " @ "
             << ss.ShortWhenStr() << ": " << ss.ShortMetricsStr();
 }
@@ -117,10 +117,10 @@ std::ostream& operator<<(std::ostream& os, const JitProfiler::Snapshot& ss) {
 // terminated at destruction.
 //------------------------------------------------------------------------------
 
-class JitProfiler::TimelapseThread {
+class RUsageProfiler::TimelapseThread {
  public:
   TimelapseThread(              //
-      JitProfiler* parent,      //
+      RUsageProfiler* parent,   //
       SourceLocation loc,       //
       absl::Duration interval,  //
       bool also_log,            //
@@ -149,7 +149,7 @@ class JitProfiler::TimelapseThread {
     loop_thread_.join();
   }
 
-  JitProfiler* parent_;
+  RUsageProfiler* parent_;
   const SourceLocation loc_;
   const absl::Duration interval_;
   const bool also_log_;
@@ -165,15 +165,15 @@ namespace {
 //------------------------------------------------------------------------------
 //                           ProfileReportGenerator
 //
-// A helper for JitProfiler::GenerateReport(): generates individual
+// A helper for RUsageProfiler::GenerateReport(): generates individual
 // chronological charts of the tracked metrics and streams them to an ostream.
 //------------------------------------------------------------------------------
 
 class ProfileReportGenerator {
  public:
-  ProfileReportGenerator(                                  //
-      const std::deque<JitProfiler::Snapshot>& snapshots,  //
-      JitProfiler::ReportSink* report_sink)
+  ProfileReportGenerator(                                     //
+      const std::deque<RUsageProfiler::Snapshot>& snapshots,  //
+      RUsageProfiler::ReportSink* report_sink)
       : snapshots_{snapshots}, report_sink_{report_sink} {
     for (const auto& snapshot : snapshots_) {
       timing_low_ = SysTiming::LowWater(  //
@@ -208,16 +208,16 @@ class ProfileReportGenerator {
   void GenChart(                       //
       const std::string& chart_title,  //
       const MetricT SysTiming::*metric_field) {
-    GenChartImpl(                                                   //
-        chart_title, &JitProfiler::Snapshot::timing, metric_field,  //
+    GenChartImpl(                                                      //
+        chart_title, &RUsageProfiler::Snapshot::timing, metric_field,  //
         timing_low_, timing_high_, /*is_delta=*/false);
   }
   template <typename MetricT>
   void GenChart(                       //
       const std::string& chart_title,  //
       const MetricT SysMemory::*metric_field) const {
-    GenChartImpl(                                                   //
-        chart_title, &JitProfiler::Snapshot::memory, metric_field,  //
+    GenChartImpl(                                                      //
+        chart_title, &RUsageProfiler::Snapshot::memory, metric_field,  //
         memory_low_, memory_high_, /*is_delta=*/false);
   }
 
@@ -226,31 +226,31 @@ class ProfileReportGenerator {
   void GenDeltaChart(                  //
       const std::string& chart_title,  //
       const MetricT SysTiming::*metric_field) {
-    GenChartImpl(                                                         //
-        chart_title, &JitProfiler::Snapshot::delta_timing, metric_field,  //
+    GenChartImpl(                                                            //
+        chart_title, &RUsageProfiler::Snapshot::delta_timing, metric_field,  //
         delta_timing_low_, delta_timing_high_, /*is_delta=*/true);
   }
   template <typename MetricT>
   void GenDeltaChart(                  //
       const std::string& chart_title,  //
       const MetricT SysMemory::*metric_field) const {
-    GenChartImpl(                                                         //
-        chart_title, &JitProfiler::Snapshot::delta_memory, metric_field,  //
+    GenChartImpl(                                                            //
+        chart_title, &RUsageProfiler::Snapshot::delta_memory, metric_field,  //
         delta_memory_low_, delta_memory_high_, /*is_delta=*/true);
   }
 
  private:
   // The actual chart generator. For better understanding of the code: an
-  // example of `metric_field` is `&JitProfiler::Snapshot::delta_timing` which
-  // has type `SysTiming`; an example of a matching `submetric_field` for that
-  // is `&SysTiming::wall_time`.
+  // example of `metric_field` is `&RUsageProfiler::Snapshot::delta_timing`
+  // which has type `SysTiming`; an example of a matching `submetric_field` for
+  // that is `&SysTiming::wall_time`.
   template <typename MetricT, typename SubmetricT>
-  void GenChartImpl(                                       //
-      const std::string& chart_title,                      //
-      const MetricT JitProfiler::Snapshot::*metric_field,  //
-      const SubmetricT MetricT::*submetric_field,          //
-      MetricT metric_low_water,                            //
-      MetricT metric_high_water,                           //
+  void GenChartImpl(                                          //
+      const std::string& chart_title,                         //
+      const MetricT RUsageProfiler::Snapshot::*metric_field,  //
+      const SubmetricT MetricT::*submetric_field,             //
+      MetricT metric_low_water,                               //
+      MetricT metric_high_water,                              //
       bool is_delta) const {
     *report_sink_ << chart_title;
 
@@ -335,8 +335,8 @@ class ProfileReportGenerator {
 
   static constexpr int kBarNotches = 50;
 
-  const std::deque<JitProfiler::Snapshot>& snapshots_;
-  JitProfiler::ReportSink* report_sink_;
+  const std::deque<RUsageProfiler::Snapshot>& snapshots_;
+  RUsageProfiler::ReportSink* report_sink_;
 
   SysMemory memory_low_ = SysMemory::Max();
   SysMemory memory_high_ = SysMemory::Min();
@@ -356,12 +356,12 @@ class ProfileReportGenerator {
 }  // namespace
 
 //------------------------------------------------------------------------------
-//                              JitProfiler
+//                              RUsageProfiler
 //------------------------------------------------------------------------------
 
-std::atomic<int> JitProfiler::next_id_;
+std::atomic<int> RUsageProfiler::next_id_;
 
-JitProfiler::JitProfiler(          //
+RUsageProfiler::RUsageProfiler(    //
     MetricsMask metrics,           //
     RaiiActionsMask raii_actions,  //
     SourceLocation location,       //
@@ -378,7 +378,7 @@ JitProfiler::JitProfiler(          //
   }
 }
 
-JitProfiler::JitProfiler(               //
+RUsageProfiler::RUsageProfiler(         //
     MetricsMask metrics,                //
     absl::Duration timelapse_interval,  //
     bool also_log_timelapses,           //
@@ -395,7 +395,7 @@ JitProfiler::JitProfiler(               //
       ctor_loc_, timelapse_interval, also_log_timelapses, "Timelapse");
 }
 
-JitProfiler::~JitProfiler() {
+RUsageProfiler::~RUsageProfiler() {
   if (metrics_ == kMetricsOff) return;
 
   // In case the caller hasn't done this.
@@ -414,7 +414,7 @@ JitProfiler::~JitProfiler() {
   }
 }
 
-const JitProfiler::Snapshot& JitProfiler::TakeSnapshot(  //
+const RUsageProfiler::Snapshot& RUsageProfiler::TakeSnapshot(  //
     SourceLocation loc, std::string title) {
   if (metrics_ == kMetricsOff) {
     static const Snapshot kEmpty{};
@@ -466,10 +466,10 @@ const JitProfiler::Snapshot& JitProfiler::TakeSnapshot(  //
   return snapshots_.emplace_back(std::move(snapshot));
 }
 
-void JitProfiler::StartTimelapse(  //
-    SourceLocation loc,            //
-    absl::Duration interval,       //
-    bool also_log,                 //
+void RUsageProfiler::StartTimelapse(  //
+    SourceLocation loc,               //
+    absl::Duration interval,          //
+    bool also_log,                    //
     std::string title) {
   absl::WriterMutexLock lock{&mutex_};
   CHECK(!timelapse_thread_) << "StopTimelapse() wasn't called";
@@ -477,13 +477,13 @@ void JitProfiler::StartTimelapse(  //
       this, loc, interval, also_log, std::move(title));
 }
 
-void JitProfiler::StopTimelapse() {
+void RUsageProfiler::StopTimelapse() {
   absl::WriterMutexLock lock{&mutex_};
   CHECK(timelapse_thread_) << "StartTimelapse() wasn't called";
   timelapse_thread_.reset();  // ~TimelapseThread() runs
 }
 
-void JitProfiler::PrintReport(  //
+void RUsageProfiler::PrintReport(  //
     SourceLocation loc, const std::string& title) {
   if (metrics_ == kMetricsOff) return;
 
@@ -522,9 +522,9 @@ void JitProfiler::PrintReport(  //
   GenerateReport(&report_logger);
 }
 
-void JitProfiler::GenerateReport(ReportSink* report_sink) const {
+void RUsageProfiler::GenerateReport(ReportSink* report_sink) const {
   absl::ReaderMutexLock lock{&mutex_};
-  // Prevent interleaved reports from multiple concurrent JitProfilers.
+  // Prevent interleaved reports from multiple concurrent RUsageProfilers.
   ABSL_CONST_INIT static absl::Mutex report_generation_mutex_{absl::kConstInit};
   absl::WriterMutexLock logging_lock{&report_generation_mutex_};
 

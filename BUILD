@@ -132,9 +132,9 @@ cc_library(
 )
 
 cc_library(
-    name = "jit_profiler",
-    srcs = ["jit_profiler.cc"],
-    hdrs = ["jit_profiler.h"],
+    name = "rusage_profiler",
+    srcs = ["rusage_profiler.cc"],
+    hdrs = ["rusage_profiler.h"],
     deps = [
         ":resource_usage",
         "@com_google_absl//absl/log",
@@ -607,13 +607,13 @@ cc_test(
 )
 
 cc_test(
-    name = "jit_profiler_test",
+    name = "rusage_profiler_test",
     # Allocates large blocks of memory to fight small number volatility.
     size = "large",
     timeout = "long",
-    srcs = ["jit_profiler_test.cc"],
+    srcs = ["rusage_profiler_test.cc"],
     deps = [
-        ":jit_profiler",
+        ":rusage_profiler",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/time",

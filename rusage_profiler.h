@@ -16,34 +16,36 @@
 //  not the entire process (available via /proc/self/tasks/<tid>/<file>).
 
 //------------------------------------------------------------------------------
-//                                JitProfiler
+//                                RUsageProfiler
 //
-// A profiler for the current process's timing and system memory usage. "Jit"
-// in the name refers to "just-in-time": unlike external sampling profilers that
-// require code instrumentation and slow profiling runs, JitProfiler's stat
-// collection and reporting are permanently compiled into client's code, consume
-// virtually no additional CPU cycles or RAM even when active, and can be
-// activated at any time, e.g. simply by passing a flag.
+// A profiler for the current process's timing and system memory usage. Unlike
+// external sampling profilers that require code instrumentation and slow
+// profiling runs, RUsageProfiler's stat collection and reporting are
+// permanently compiled into the client's code, consume no additional CPU cycles
+// or RAM when idle and very few additional cycles or RAM when active, and can
+// be activated at any time, e.g. by simply passing a flag.
 //
-// Another difference is that JitProfiler doesn't just track timing, but other
-// system resource usage as well, such as several types of the process's memory.
+// Another difference is that RUsageProfiler doesn't just track timing, but
+// other system resource usage as well, such as several types of the process's
+// memory.
 //
-// While the focus of traditional profilers is performance of functions, the
-// focus of JitProfiler is performance of higher-level logical units of
-// processing that can both be smaller than a single function and span multiple
-// functions, classes, or even modules.
+// While traditional profilers report performance of functions, the focus of
+// RUsageProfiler is performance of higher-level logical units of processing
+// that can both be smaller than a single function or span multiple functions,
+// classes, and modules.
 //
 // To achieve that, profiling metrics collection is explicit, intrusive and
-// driven entirely by client code: JitProfiler profiles only the bits of logic
-// it is told to profile, rather than every function call indiscriminately.
-// The downside is that client code requires explicit profiling statements.
-// The upside is that the client gets a very different level of control, as well
-// as a differently structured and differently focused resource usage stats,
-// unavailable with external sampling profilers: for example, JitProfiler makes
-// it very easy to measure the overall resource usage dynamics of a complicated
-// code path regardless of what function calls it makes or which external
-// libraries it uses, or to print a comparison diagram of resource usage by
-// different stages of a multi-stage processor module.
+// driven entirely by client code: RUsageProfiler profiles only the bits of
+// logic it is told to profile, rather than every function call
+// indiscriminately. The downside is that client code requires explicit
+// profiling statements. The upside is that the client gets a very different
+// level of control, as well as a differently structured and differently focused
+// resource usage stats, unavailable with external sampling profilers: for
+// example, RUsageProfiler makes it very easy to measure the overall resource
+// usage dynamics of a complicated code path regardless of what function calls
+// it makes or which external libraries it uses, or to print a comparison
+// diagram of resource usage by different stages of a multi-stage processor
+// module.
 //
 // Resource usage collection is available via one of or a combination of:
 // 1) Explicit snapshots at specific execution checkpoints.
@@ -52,7 +54,7 @@
 //
 //                                BASIC USAGE
 //
-// At construction, JitProfiler ctor records and logs an initial snapshot of
+// At construction, RUsageProfiler ctor records and logs an initial snapshot of
 // the metrics requested by the client; at destruction, the dtor logs the
 // current resource usage and the delta from the time of construction.
 //
@@ -64,14 +66,14 @@
 //
 // A final chronological report of the resource usage can also be generated and
 // logged. The report contains each tracked metric's snapshot history over this
-// JitProfiler object's lifetime. Each snapshot is annotated with the source
+// RUsageProfiler object's lifetime. Each snapshot is annotated with the source
 // location and time. The metric values are printed in the numeric and
 // pseudo-graphical form (as a progress-like bar representing the value relative
 // to its overall observed range).
 //
 //                             TIMELAPSE PROFILING
 //
-// JitProfiler also supports a limited timelapse mode. In contrast to
+// RUsageProfiler also supports a limited timelapse mode. In contrast to
 // traditional sampling profilers, it simply takes snapshots of resource usage
 // at regular intervals, but doesn't collect per-function call usage stats.
 //
@@ -83,7 +85,7 @@
 //
 //                              MULTI-THREADING
 //
-// JitProfiler is thread-safe.
+// RUsageProfiler is thread-safe.
 //
 // Keep in mind that this is a process-scoped profiler, not thread-scoped: it
 // records and reports the current _process's_ timing and resource usage, not
@@ -98,7 +100,7 @@
 //
 //  void foo() {
 //    // Logs the initial snapshot:
-//    JitProfiler profiler{kAllMetrics, ABSL_LOC, __func__};
+//    RUsageProfiler profiler{kAllMetrics, ABSL_LOC, __func__};
 //    ...
 //    profiler.TakeSnapshot(ABSL_LOC);  // Takes another snapshot
 //    ...
@@ -111,14 +113,14 @@
 //                           EXAMPLE USAGE - MACROS
 //
 //  void foo() {
-//    JPROF_THIS_FUNCTION(VLOG_IS_ON(2));  // Profile the function @ --v>=2
+//    RPROF_THIS_FUNCTION(VLOG_IS_ON(2));  // Profile the function @ --v>=2
 //    ...
-//    JPROF_SNAPSHOT_AND_LOG();  // Record and log a function-level snapshot
+//    RPROF_SNAPSHOT_AND_LOG();  // Record and log a function-level snapshot
 //    for (...) {
-//        JPROF_THIS_SCOPE(VLOG_IS_ON(3));  // Profile loop iterations @ --v>=3
+//        RPROF_THIS_SCOPE(VLOG_IS_ON(3));  // Profile loop iterations @ --v>=3
 //        ...
 //    }
-//    JPROF_SNAPSHOT();  // Record (not log) another function-level snapshot
+//    RPROF_SNAPSHOT();  // Record (not log) another function-level snapshot
 //  }  // Dtor logs a final snapshot and a chronological report
 //
 //                              EXAMPLE SNAPSHOTS
@@ -146,7 +148,7 @@
 //    [P.1:S.6] TIMING Δ | Wall:         +17ms | User:          +9ms | Sys:           +6ms | CpuUtil:    +22.56% | CpuCores:      +0.0 |  // NOLINT
 //    [P.1:S.6] MEMORY   | RSS:        145.92M | VSize:        2.04G | VPeak:        2.04G | Data:       211.08M | ShMem:       12.83M |  // NOLINT
 //    ...
-// clang-format on
+// clang-format off
 //
 //                       EXAMPLE FINAL REPORT (TRUNCATED)
 //
@@ -201,8 +203,8 @@
 // clang-format on
 //------------------------------------------------------------------------------
 
-#ifndef THIRD_PARTY_CENTIPEDE_JIT_PROFILER_H_
-#define THIRD_PARTY_CENTIPEDE_JIT_PROFILER_H_
+#ifndef THIRD_PARTY_CENTIPEDE_RUSAGE_PROFILER_H_
+#define THIRD_PARTY_CENTIPEDE_RUSAGE_PROFILER_H_
 
 #include <atomic>
 #include <cstdint>
@@ -230,7 +232,7 @@ struct SourceLocation {
   const int line = 0;
 };
 
-class JitProfiler {
+class RUsageProfiler {
  public:
   //----------------------------------------------------------------------------
   //                                 Types
@@ -322,8 +324,8 @@ class JitProfiler {
   // raii_actions & kCtorSnapshot != 0. SourceLocation `location` parameter is
   // used to annotate this profiler's log messages with the source location of
   // the caller, as if the caller printed them. That makes it easy to attribute
-  // the logged resource usage to the actual user rather than JitProfiler.
-  JitProfiler(                        //
+  // the logged resource usage to the actual user rather than RUsageProfiler.
+  RUsageProfiler(                     //
       MetricsMask metrics,            // Which metrics to track
       RaiiActionsMask raii_actions,   // Which RAII logs to enable
       SourceLocation location,        // Pass SourceLocation{__FILE__, __LINE__}
@@ -339,7 +341,7 @@ class JitProfiler {
   // As with manually started timelapse snapshotting (via StartTimelapse()),
   // the client can still request explicit snapshots at any time, interleaved
   // with timelapse ones.
-  JitProfiler(                            //
+  RUsageProfiler(                         //
       MetricsMask metrics,                // Which metrics to track
       absl::Duration timelapse_interval,  // Take timelapse snapshots this often
       bool also_log_timelapses,           // Log timelapse snapshots as taken
@@ -347,13 +349,13 @@ class JitProfiler {
       std::string description = "");      // Annotate logs in addition to ID
 
   // Logs the final report as returned by GenerateReport().
-  ~JitProfiler();
+  ~RUsageProfiler();
 
   // Records and returns a snapshot of the current metrics. The snapshot's
   // source location is set to `location`, so its Log() will print a log message
   // as if it were emitted by the `location` source line. As such, the rule of
   // thumb should be to pass `SourceLocation{__FILE__, __LINE__}`. The returned
-  // reference remains valid until JitProfiler is destroyed.
+  // reference remains valid until RUsageProfiler is destroyed.
   const Snapshot& TakeSnapshot(SourceLocation loc, std::string title = "");
 
   // Starts taking and optionally also logging periodic snapshots at a given
@@ -392,7 +394,7 @@ class JitProfiler {
   void PrintReport(SourceLocation loc, const std::string& title = "");
 
  private:
-  friend class JitProfilerTest_ValidateManualSnapshots_Test;
+  friend class RUsageProfilerTest_ValidateManualSnapshots_Test;
 
   //----------------------------------------------------------------------------
   //                                  Data
@@ -426,24 +428,24 @@ class JitProfiler {
   std::unique_ptr<TimelapseThread> timelapse_thread_ ABSL_GUARDED_BY(mutex_);
 
   // An auto-starting timer passed to SysTiming::Snapshot() in order to track
-  // this JitProfiler object's lifetime stats rather than the process's lifetime
-  // stats, which is the default.
+  // this RUsageProfiler object's lifetime stats rather than the process's
+  // lifetime stats, which is the default.
   ProcessTimer timer_;
 };
 
 }  // namespace centipede::perf
 
 //------------------------------------------------------------------------------
-//               Convenience macros for easy use of JitProfiler
+//               Convenience macros for easy use of RUsageProfiler
 //------------------------------------------------------------------------------
 
-#define JPROF_NAME(prefix, line) JPROF_NAME_CONCAT(prefix, line)
-#define JPROF_NAME_CONCAT(prefix, line) prefix##line
-#define FUNCTION_LEVEL_JPROF_NAME JPROF_NAME(jprof_, 0)
-#define SCOPE_LEVEL_JPROF_NAME JPROF_NAME(jprof_, __LINE__)
+#define RPROF_NAME(prefix, line) RPROF_NAME_CONCAT(prefix, line)
+#define RPROF_NAME_CONCAT(prefix, line) prefix##line
+#define FUNCTION_LEVEL_RPROF_NAME RPROF_NAME(rprof_, 0)
+#define SCOPE_LEVEL_RPROF_NAME RPROF_NAME(rprof_, __LINE__)
 
 // Profile the timing and resource usage of the current function, with an option
-// to take additional intermediate snapshots via JPROF_SNAPSHOT* later in the
+// to take additional intermediate snapshots via RPROF_SNAPSHOT* later in the
 // function.
 //
 // The intended canonical place to call this macro is right after the function's
@@ -451,126 +453,126 @@ class JitProfiler {
 // system timing and resource usage will be logged upon return. Only one such
 // macro call is allowed per function.
 // clang-format off
-#define JPROF_THIS_FUNCTION(enable)                                     \
-  centipede::perf::JitProfiler FUNCTION_LEVEL_JPROF_NAME = {            \
-      /*metrics=*/(enable) ? centipede::perf::JitProfiler::kAllMetrics  \
-                           : centipede::perf::JitProfiler::kMetricsOff, \
-      /*raii_actions=*/centipede::perf::JitProfiler::kRaiiSnapshots,    \
-      /*location=*/{__FILE__, __LINE__},                                \
-      /*description=*/absl::StrCat(__func__, "()")                      \
+#define RPROF_THIS_FUNCTION(enable)                                        \
+  centipede::perf::RUsageProfiler FUNCTION_LEVEL_RPROF_NAME = {            \
+      /*metrics=*/(enable) ? centipede::perf::RUsageProfiler::kAllMetrics  \
+                           : centipede::perf::RUsageProfiler::kMetricsOff, \
+      /*raii_actions=*/centipede::perf::RUsageProfiler::kRaiiSnapshots,    \
+      /*location=*/{__FILE__, __LINE__},                                   \
+      /*description=*/absl::StrCat(__func__, "()")                         \
   }
 // clang-format on
 
-// Same as JPROF_THIS_FUNCTION, but with a full report printed at return from
+// Same as RPROF_THIS_FUNCTION, but with a full report printed at return from
 // the function.
 // clang-format off
-#define JPROF_THIS_FUNCTION_WITH_REPORT(enable)                         \
-  centipede::perf::JitProfiler FUNCTION_LEVEL_JPROF_NAME = {            \
-      /*metrics=*/(enable) ? centipede::perf::JitProfiler::kAllMetrics  \
-                           : centipede::perf::JitProfiler::kMetricsOff, \
-      /*raii_actions=*/centipede::perf::JitProfiler::kAllRaii,          \
-      /*location=*/{__FILE__, __LINE__},                                \
-      /*description=*/absl::StrCat(__func__, "()")                      \
+#define RPROF_THIS_FUNCTION_WITH_REPORT(enable)                            \
+  centipede::perf::RUsageProfiler FUNCTION_LEVEL_RPROF_NAME = {            \
+      /*metrics=*/(enable) ? centipede::perf::RUsageProfiler::kAllMetrics  \
+                           : centipede::perf::RUsageProfiler::kMetricsOff, \
+      /*raii_actions=*/centipede::perf::RUsageProfiler::kAllRaii,          \
+      /*location=*/{__FILE__, __LINE__},                                   \
+      /*description=*/absl::StrCat(__func__, "()")                         \
   }
 // clang-format on
 
-// Same as JPROF_THIS_FUNCTION, but immediately initiates timelapse snapshots
+// Same as RPROF_THIS_FUNCTION, but immediately initiates timelapse snapshots
 // at the specified `interval` and prints a final report for them. Additional
-// snapshots can still be taken with JPROF_SNAPSHOT*.
+// snapshots can still be taken with RPROF_SNAPSHOT*.
 // clang-format off
-#define JPROF_THIS_FUNCTION_WITH_TIMELAPSE(                             \
-    enable, timelapse_interval, also_log_timelapses)                    \
-  centipede::perf::JitProfiler FUNCTION_LEVEL_JPROF_NAME = {            \
-      /*metrics=*/(enable) ? centipede::perf::JitProfiler::kAllMetrics  \
-                           : centipede::perf::JitProfiler::kMetricsOff, \
-      /*timelapse_interval=*/timelapse_interval,                        \
-      /*also_log_timelapses=*/also_log_timelapses,                      \
-      /*location=*/{__FILE__, __LINE__},                                \
-      /*description=*/absl::StrCat(__func__, "()")                      \
+#define RPROF_THIS_FUNCTION_WITH_TIMELAPSE(                                \
+    enable, timelapse_interval, also_log_timelapses)                       \
+  centipede::perf::RUsageProfiler FUNCTION_LEVEL_RPROF_NAME = {            \
+      /*metrics=*/(enable) ? centipede::perf::RUsageProfiler::kAllMetrics  \
+                           : centipede::perf::RUsageProfiler::kMetricsOff, \
+      /*timelapse_interval=*/timelapse_interval,                           \
+      /*also_log_timelapses=*/also_log_timelapses,                         \
+      /*location=*/{__FILE__, __LINE__},                                   \
+      /*description=*/absl::StrCat(__func__, "()")                         \
   }
 // clang-format on
 
-// Sets an existing JitProfiler as this function's profiler such that it can be
-// used with `JPROF_SNAPSHOT` and other similar macros below, which normally
-// work with the other `JPROF_THIS_FUNCTION.*` macros.
+// Sets an existing RUsageProfiler as this function's profiler such that it can
+// be used with `RPROF_SNAPSHOT` and other similar macros below, which normally
+// work with the other `RPROF_THIS_FUNCTION.*` macros.
 // clang-format off
-#define JPROF_THIS_FUNCTION_BY_EXISTING_JPROF(jit_profiler)                 \
-  ::centipede::perf::JitProfiler& FUNCTION_LEVEL_JPROF_NAME = jit_profiler; \
+#define RPROF_THIS_FUNCTION_BY_EXISTING_JPROF(profiler)                 \
+  ::centipede::perf::JitProfiler& FUNCTION_LEVEL_JPROF_NAME = profiler; \
 // clang-format on
 
 // Records and returns an intermediate snapshot using the profiler defined by an
-// earlier JPROF_THIS_FUNCTION in the same function. An optional snapshot
+// earlier RPROF_THIS_FUNCTION in the same function. An optional snapshot
 // title can be passed as a macro argument.
 // NOTE: Here and below, the '##' in front of __VA_ARGS__ eats up the preceding
 // comma in case __VA_ARGS__ is empty, thus avoiding a malformed expression.
 // clang-format off
-#define JPROF_SNAPSHOT(...) \
-  FUNCTION_LEVEL_JPROF_NAME.TakeSnapshot( \
+#define RPROF_SNAPSHOT(...) \
+  FUNCTION_LEVEL_RPROF_NAME.TakeSnapshot( \
       {__FILE__, __LINE__}, ##__VA_ARGS__);
 // clang-format on
 
 // Records AND logs an intermediate snapshot using the profiler defined by an
-// earlier JPROF_THIS_FUNCTION() in the same function. An optional snapshot
+// earlier RPROF_THIS_FUNCTION() in the same function. An optional snapshot
 // title can be passed as a macro argument.
 // clang-format off
-#define JPROF_SNAPSHOT_AND_LOG(...) \
-  FUNCTION_LEVEL_JPROF_NAME.TakeSnapshot( \
+#define RPROF_SNAPSHOT_AND_LOG(...) \
+  FUNCTION_LEVEL_RPROF_NAME.TakeSnapshot( \
       {__FILE__, __LINE__}, ##__VA_ARGS__).Log();
 // clang-format on
 
 // Starts taking periodic snapshots using the function-level snapshot created by
-// an earlier JPROF_THIS_FUNCTION*(). `interval` is an absl::Duration.
+// an earlier RPROF_THIS_FUNCTION*(). `interval` is an absl::Duration.
 // `also_log` will also log the snapshots. An optional snapshot title can be
 // passed as the last macro argument.
 // clang-format off
-#define JPROF_START_TIMELAPSE(interval, also_log, ...) \
-  FUNCTION_LEVEL_JPROF_NAME.StartTimelapse( \
+#define RPROF_START_TIMELAPSE(interval, also_log, ...) \
+  FUNCTION_LEVEL_RPROF_NAME.StartTimelapse( \
       {__FILE__, __LINE__}, interval, also_log, ##__VA_ARGS__);
 // clang-format on
 
-#define JPROF_STOP_TIMELAPSE() FUNCTION_LEVEL_JPROF_NAME.StopTimelapse()
+#define RPROF_STOP_TIMELAPSE() FUNCTION_LEVEL_RPROF_NAME.StopTimelapse()
 
 // Prints a final report to the log using the profiler defined by an earlier
-// JPROF_THIS_FUNCTION in the same function. An optional report title can be
+// RPROF_THIS_FUNCTION in the same function. An optional report title can be
 // passed as a macro argument.
 // clang-format off
-#define JPROF_DUMP_REPORT_TO_LOG(...) \
-  FUNCTION_LEVEL_JPROF_NAME.PrintReport({__FILE__, __LINE__}, ##__VA_ARGS__);
+#define RPROF_DUMP_REPORT_TO_LOG(...) \
+  FUNCTION_LEVEL_RPROF_NAME.PrintReport({__FILE__, __LINE__}, ##__VA_ARGS__);
 // clang-format on
 
 // Profiles a given scope: a snapshot and a delta of the system timing and
 // resource usage are logged at the call site and at the scope exit.
 //
-// Unlike, JPROF_THIS_FUNCTION, JPROF_THIS_SCOPE can be called any number of
+// Unlike, RPROF_THIS_FUNCTION, RPROF_THIS_SCOPE can be called any number of
 // times per scope, provided the calls are on different lines. That includes
 // nested scopes.
 //
-// Also unlike JPROF_THIS_FUNCTION, JPROF_THIS_SCOPE lacks a complimentary
+// Also unlike RPROF_THIS_FUNCTION, RPROF_THIS_SCOPE lacks a complimentary
 // macro for intermediate snapshotting using the same profiler: this macro is
 // intended as a simple, fast way to profile a scope; for anything more
-// involved, use JPROF_THIS_FUNCTION() or JitProfiler directly.
+// involved, use RPROF_THIS_FUNCTION() or RUsageProfiler directly.
 // clang-format off
-#define JPROF_THIS_SCOPE(enable, description)                           \
-  centipede::perf::JitProfiler SCOPE_LEVEL_JPROF_NAME = {               \
-      /*metrics=*/(enable) ? centipede::perf::JitProfiler::kAllMetrics  \
-                           : centipede::perf::JitProfiler::kMetricsOff, \
-      /*raii_actions=*/centipede::perf::JitProfiler::kRaiiSnapshots,    \
-      /*location=*/{__FILE__, __LINE__},                                \
-      /*description=*/description                                       \
+#define RPROF_THIS_SCOPE(enable, description)                              \
+  centipede::perf::RUsageProfiler SCOPE_LEVEL_RPROF_NAME = {               \
+      /*metrics=*/(enable) ? centipede::perf::RUsageProfiler::kAllMetrics  \
+                           : centipede::perf::RUsageProfiler::kMetricsOff, \
+      /*raii_actions=*/centipede::perf::RUsageProfiler::kRaiiSnapshots,    \
+      /*location=*/{__FILE__, __LINE__},                                   \
+      /*description=*/description                                          \
   }
 // clang-format on
 
 // clang-format off
-#define JPROF_THIS_SCOPE_WITH_TIMELAPSE(                                \
-    enable, timelapse_interval, also_log_timelapses, description)       \
-  centipede::perf::JitProfiler SCOPE_LEVEL_JPROF_NAME = {               \
-      /*metrics=*/(enable) ? centipede::perf::JitProfiler::kAllMetrics  \
-                           : centipede::perf::JitProfiler::kMetricsOff, \
-      /*timelapse_interval=*/timelapse_interval,                        \
-      /*also_log_timelapses=*/also_log_timelapses,                      \
-      /*location=*/{__FILE__, __LINE__},                                \
-      /*description=*/description                                       \
+#define RPROF_THIS_SCOPE_WITH_TIMELAPSE(                                   \
+    enable, timelapse_interval, also_log_timelapses, description)          \
+  centipede::perf::RUsageProfiler SCOPE_LEVEL_RPROF_NAME = {               \
+      /*metrics=*/(enable) ? centipede::perf::RUsageProfiler::kAllMetrics  \
+                           : centipede::perf::RUsageProfiler::kMetricsOff, \
+      /*timelapse_interval=*/timelapse_interval,                           \
+      /*also_log_timelapses=*/also_log_timelapses,                         \
+      /*location=*/{__FILE__, __LINE__},                                   \
+      /*description=*/description                                          \
   }
 // clang-format on
 
-#endif  // THIRD_PARTY_CENTIPEDE_JIT_PROFILER_H_
+#endif  // THIRD_PARTY_CENTIPEDE_RUSAGE_PROFILER_H_
