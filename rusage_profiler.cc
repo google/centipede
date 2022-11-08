@@ -60,7 +60,7 @@ std::string RUsageProfiler::Snapshot::FormattedMetricsStr() const {
   absl::StrAppendFormat(                      //
       &s, "  [P.%d:S.%d] TIMING   | %s |\n",  //
       profiler_id, id, timing.FormattedStr());
-  if (delta_timing != SysTiming::Zero()) {
+  if (delta_timing != RUsageTiming::Zero()) {
     absl::StrAppendFormat(                      //
         &s, "  [P.%d:S.%d] TIMING Δ | %s |\n",  //
         profiler_id, id, delta_timing.FormattedStr());
@@ -68,7 +68,7 @@ std::string RUsageProfiler::Snapshot::FormattedMetricsStr() const {
   absl::StrAppendFormat(                      //
       &s, "  [P.%d:S.%d] MEMORY   | %s |\n",  //
       profiler_id, id, memory.FormattedStr());
-  if (delta_memory != SysMemory::Zero()) {
+  if (delta_memory != RUsageMemory::Zero()) {
     absl::StrAppendFormat(                      //
         &s, "  [P.%d:S.%d] MEMORY Δ | %s |\n",  //
         profiler_id, id, delta_memory.FormattedStr());
@@ -80,13 +80,13 @@ std::string RUsageProfiler::Snapshot::ShortMetricsStr() const {
   std::string s;
   absl::StrAppendFormat(  //
       &s, "TIMING { %s } ", timing.ShortStr());
-  if (delta_timing != SysTiming::Zero()) {
+  if (delta_timing != RUsageTiming::Zero()) {
     absl::StrAppendFormat(  //
         &s, "TIMING Δ { %s } ", delta_timing.ShortStr());
   }
   absl::StrAppendFormat(  //
       &s, "MEMORY { %s } ", memory.ShortStr());
-  if (delta_memory != SysMemory::Zero()) {
+  if (delta_memory != RUsageMemory::Zero()) {
     absl::StrAppendFormat(  //
         &s, "MEMORY Δ { %s } ", delta_memory.ShortStr());
   }
@@ -176,22 +176,22 @@ class ProfileReportGenerator {
       RUsageProfiler::ReportSink* report_sink)
       : snapshots_{snapshots}, report_sink_{report_sink} {
     for (const auto& snapshot : snapshots_) {
-      timing_low_ = SysTiming::LowWater(  //
+      timing_low_ = RUsageTiming::LowWater(  //
           timing_low_, snapshot.timing);
-      timing_high_ = SysTiming::HighWater(  //
+      timing_high_ = RUsageTiming::HighWater(  //
           timing_high_, snapshot.timing);
-      delta_timing_low_ = SysTiming::LowWater(  //
+      delta_timing_low_ = RUsageTiming::LowWater(  //
           delta_timing_low_, snapshot.delta_timing);
-      delta_timing_high_ = SysTiming::HighWater(  //
+      delta_timing_high_ = RUsageTiming::HighWater(  //
           delta_timing_high_, snapshot.delta_timing);
 
-      memory_low_ = SysMemory::LowWater(  //
+      memory_low_ = RUsageMemory::LowWater(  //
           memory_low_, snapshot.memory);
-      memory_high_ = SysMemory::HighWater(  //
+      memory_high_ = RUsageMemory::HighWater(  //
           memory_high_, snapshot.memory);
-      delta_memory_low_ = SysMemory::LowWater(  //
+      delta_memory_low_ = RUsageMemory::LowWater(  //
           delta_memory_low_, snapshot.delta_memory);
-      delta_memory_high_ = SysMemory::HighWater(  //
+      delta_memory_high_ = RUsageMemory::HighWater(  //
           delta_memory_high_, snapshot.delta_memory);
 
       max_where_len_ =  //
@@ -207,7 +207,7 @@ class ProfileReportGenerator {
   template <typename MetricT>
   void GenChart(                       //
       const std::string& chart_title,  //
-      const MetricT SysTiming::*metric_field) {
+      const MetricT RUsageTiming::*metric_field) {
     GenChartImpl(                                                      //
         chart_title, &RUsageProfiler::Snapshot::timing, metric_field,  //
         timing_low_, timing_high_, /*is_delta=*/false);
@@ -215,7 +215,7 @@ class ProfileReportGenerator {
   template <typename MetricT>
   void GenChart(                       //
       const std::string& chart_title,  //
-      const MetricT SysMemory::*metric_field) const {
+      const MetricT RUsageMemory::*metric_field) const {
     GenChartImpl(                                                      //
         chart_title, &RUsageProfiler::Snapshot::memory, metric_field,  //
         memory_low_, memory_high_, /*is_delta=*/false);
@@ -225,7 +225,7 @@ class ProfileReportGenerator {
   template <typename MetricT>
   void GenDeltaChart(                  //
       const std::string& chart_title,  //
-      const MetricT SysTiming::*metric_field) {
+      const MetricT RUsageTiming::*metric_field) {
     GenChartImpl(                                                            //
         chart_title, &RUsageProfiler::Snapshot::delta_timing, metric_field,  //
         delta_timing_low_, delta_timing_high_, /*is_delta=*/true);
@@ -233,7 +233,7 @@ class ProfileReportGenerator {
   template <typename MetricT>
   void GenDeltaChart(                  //
       const std::string& chart_title,  //
-      const MetricT SysMemory::*metric_field) const {
+      const MetricT RUsageMemory::*metric_field) const {
     GenChartImpl(                                                            //
         chart_title, &RUsageProfiler::Snapshot::delta_memory, metric_field,  //
         delta_memory_low_, delta_memory_high_, /*is_delta=*/true);
@@ -242,8 +242,8 @@ class ProfileReportGenerator {
  private:
   // The actual chart generator. For better understanding of the code: an
   // example of `metric_field` is `&RUsageProfiler::Snapshot::delta_timing`
-  // which has type `SysTiming`; an example of a matching `submetric_field` for
-  // that is `&SysTiming::wall_time`.
+  // which has type `RUsageTiming`; an example of a matching `submetric_field`
+  // for that is `&RUsageTiming::wall_time`.
   template <typename MetricT, typename SubmetricT>
   void GenChartImpl(                                          //
       const std::string& chart_title,                         //
@@ -338,14 +338,14 @@ class ProfileReportGenerator {
   const std::deque<RUsageProfiler::Snapshot>& snapshots_;
   RUsageProfiler::ReportSink* report_sink_;
 
-  SysMemory memory_low_ = SysMemory::Max();
-  SysMemory memory_high_ = SysMemory::Min();
-  SysMemory delta_memory_low_ = SysMemory::Max();
-  SysMemory delta_memory_high_ = SysMemory::Min();
-  SysTiming timing_low_ = SysTiming::Max();
-  SysTiming timing_high_ = SysTiming::Min();
-  SysTiming delta_timing_low_ = SysTiming::Max();
-  SysTiming delta_timing_high_ = SysTiming::Min();
+  RUsageMemory memory_low_ = RUsageMemory::Max();
+  RUsageMemory memory_high_ = RUsageMemory::Min();
+  RUsageMemory delta_memory_low_ = RUsageMemory::Max();
+  RUsageMemory delta_memory_high_ = RUsageMemory::Min();
+  RUsageTiming timing_low_ = RUsageTiming::Max();
+  RUsageTiming timing_high_ = RUsageTiming::Min();
+  RUsageTiming delta_timing_low_ = RUsageTiming::Max();
+  RUsageTiming delta_timing_high_ = RUsageTiming::Min();
 
   // NOTE: The values are negated, so have to be signed.
   int max_where_len_ = 0;
@@ -423,13 +423,13 @@ const RUsageProfiler::Snapshot& RUsageProfiler::TakeSnapshot(  //
 
   absl::WriterMutexLock lock{&mutex_};
 
-  SysTiming snap_timing = SysTiming::Zero();
-  SysTiming delta_timing = SysTiming::Zero();
-  SysMemory snap_memory = SysMemory::Zero();
-  SysMemory delta_memory = SysMemory::Zero();
+  RUsageTiming snap_timing = RUsageTiming::Zero();
+  RUsageTiming delta_timing = RUsageTiming::Zero();
+  RUsageMemory snap_memory = RUsageMemory::Zero();
+  RUsageMemory delta_memory = RUsageMemory::Zero();
 
   if (metrics_ & kTiming) {
-    const auto current = SysTiming::Snapshot(timer_);
+    const auto current = RUsageTiming::Snapshot(timer_);
     if (metrics_ & kSnapTiming) {
       snap_timing = current;
     }
@@ -440,7 +440,7 @@ const RUsageProfiler::Snapshot& RUsageProfiler::TakeSnapshot(  //
   }
 
   if (metrics_ & kMemory) {
-    const auto current = SysMemory::Snapshot();
+    const auto current = RUsageMemory::Snapshot();
     if (metrics_ & kSnapMemory) {
       snap_memory = current;
     }
@@ -533,38 +533,38 @@ void RUsageProfiler::GenerateReport(ReportSink* report_sink) const {
   if (metrics_ & kSnapTiming) {
     *report_sink << absl::StrFormat(  //
         "\n=== TIMING [P.%d %s] ===\n", id_, description_);
-    gen.GenChart("\nWALL TIME:\n", &SysTiming::wall_time);
-    gen.GenChart("\nUSER TIME:\n", &SysTiming::user_time);
-    gen.GenChart("\nSYSTEM TIME:\n", &SysTiming::sys_time);
-    gen.GenChart("\nCPU UTILIZATION:\n", &SysTiming::cpu_utilization);
-    gen.GenChart("\nAVERAGE CORES:\n", &SysTiming::cpu_hyper_cores);
+    gen.GenChart("\nWALL TIME:\n", &RUsageTiming::wall_time);
+    gen.GenChart("\nUSER TIME:\n", &RUsageTiming::user_time);
+    gen.GenChart("\nSYSTEM TIME:\n", &RUsageTiming::sys_time);
+    gen.GenChart("\nCPU UTILIZATION:\n", &RUsageTiming::cpu_utilization);
+    gen.GenChart("\nAVERAGE CORES:\n", &RUsageTiming::cpu_hyper_cores);
   }
   if (metrics_ & kDeltaTiming) {
     *report_sink << absl::StrFormat(  //
         "\n=== Δ TIMING [P.%d %s] ===\n", id_, description_);
-    gen.GenDeltaChart("\nΔ WALL TIME:\n", &SysTiming::wall_time);
-    gen.GenDeltaChart("\nΔ USER TIME:\n", &SysTiming::user_time);
-    gen.GenDeltaChart("\nΔ SYSTEM TIME:\n", &SysTiming::sys_time);
-    gen.GenDeltaChart("\nΔ CPU UTILIZATION:\n", &SysTiming::cpu_utilization);
-    gen.GenDeltaChart("\nΔ AVERAGE CORES:\n", &SysTiming::cpu_hyper_cores);
+    gen.GenDeltaChart("\nΔ WALL TIME:\n", &RUsageTiming::wall_time);
+    gen.GenDeltaChart("\nΔ USER TIME:\n", &RUsageTiming::user_time);
+    gen.GenDeltaChart("\nΔ SYSTEM TIME:\n", &RUsageTiming::sys_time);
+    gen.GenDeltaChart("\nΔ CPU UTILIZATION:\n", &RUsageTiming::cpu_utilization);
+    gen.GenDeltaChart("\nΔ AVERAGE CORES:\n", &RUsageTiming::cpu_hyper_cores);
   }
   if (metrics_ & kSnapMemory) {
     *report_sink << absl::StrFormat(  //
         "\n=== MEMORY USAGE [P.%d %s] ===\n", id_, description_);
-    gen.GenChart("\nRESIDENT SET SIZE:\n", &SysMemory::mem_rss);
-    gen.GenChart("\nVIRTUAL SIZE:\n", &SysMemory::mem_vsize);
-    gen.GenChart("\nVIRTUAL PEAK:\n", &SysMemory::mem_vpeak);
-    gen.GenChart("\nDATA SEGMENT:\n", &SysMemory::mem_data);
-    gen.GenChart("\nSHARED MEMORY:\n", &SysMemory::mem_shared);
+    gen.GenChart("\nRESIDENT SET SIZE:\n", &RUsageMemory::mem_rss);
+    gen.GenChart("\nVIRTUAL SIZE:\n", &RUsageMemory::mem_vsize);
+    gen.GenChart("\nVIRTUAL PEAK:\n", &RUsageMemory::mem_vpeak);
+    gen.GenChart("\nDATA SEGMENT:\n", &RUsageMemory::mem_data);
+    gen.GenChart("\nSHARED MEMORY:\n", &RUsageMemory::mem_shared);
   }
   if (metrics_ & kDeltaMemory) {
     *report_sink << absl::StrFormat(  //
         "\n=== Δ MEMORY USAGE [P.%d %s] ===\n", id_, description_);
-    gen.GenDeltaChart("\nΔ RESIDENT SET SIZE:\n", &SysMemory::mem_rss);
-    gen.GenDeltaChart("\nΔ VIRTUAL SIZE:\n", &SysMemory::mem_vsize);
-    gen.GenDeltaChart("\nΔ VIRTUAL PEAK:\n", &SysMemory::mem_vpeak);
-    gen.GenDeltaChart("\nΔ DATA SEGMENT:\n", &SysMemory::mem_data);
-    gen.GenDeltaChart("\nΔ SHARED MEMORY:\n", &SysMemory::mem_shared);
+    gen.GenDeltaChart("\nΔ RESIDENT SET SIZE:\n", &RUsageMemory::mem_rss);
+    gen.GenDeltaChart("\nΔ VIRTUAL SIZE:\n", &RUsageMemory::mem_vsize);
+    gen.GenDeltaChart("\nΔ VIRTUAL PEAK:\n", &RUsageMemory::mem_vpeak);
+    gen.GenDeltaChart("\nΔ DATA SEGMENT:\n", &RUsageMemory::mem_data);
+    gen.GenDeltaChart("\nΔ SHARED MEMORY:\n", &RUsageMemory::mem_shared);
   }
 }
 

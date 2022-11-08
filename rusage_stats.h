@@ -18,8 +18,8 @@
 // Utility classes to capture and log system resource usage of the current
 // process.
 
-#ifndef THIRD_PARTY_CENTIPEDE_RESOURCE_USAGE_H_
-#define THIRD_PARTY_CENTIPEDE_RESOURCE_USAGE_H_
+#ifndef THIRD_PARTY_CENTIPEDE_RUSAGE_STATS_H_
+#define THIRD_PARTY_CENTIPEDE_RUSAGE_STATS_H_
 
 #include <sys/resource.h>
 
@@ -52,7 +52,7 @@ using CpuUtilization = long double;
 //
 // Measures the system, user, and wall times of the process. Can be a global
 // variable because the implementation depends on nothing but syscalls.
-// The parameterless SysTiming::Snapshot() uses the default global timer that
+// The parameterless RUsageTiming::Snapshot() uses the default global timer that
 // starts with the process; clients also have an option to define and pass a
 // custom timer to count from some other point in time.
 //------------------------------------------------------------------------------
@@ -68,55 +68,55 @@ class ProcessTimer {
 };
 
 //------------------------------------------------------------------------------
-//                                SysTiming
+//                                RUsageTiming
 //
 // An interfaces to measure, store, and log the system time usage of the current
 // process.
 //------------------------------------------------------------------------------
 
-struct SysTiming {
+struct RUsageTiming {
   //----------------------------------------------------------------------------
   //             Static factory ctors and friend operators
 
-  static SysTiming Zero();
-  static SysTiming Min();
-  static SysTiming Max();
+  static RUsageTiming Zero();
+  static RUsageTiming Min();
+  static RUsageTiming Max();
 
   // Returns system time usage since this process started.
-  static SysTiming Snapshot();
+  static RUsageTiming Snapshot();
   // Same as above, but using a custom timer. The caller is responsible for
   // setting up and passing the same timer object to all Snapshot() calls to get
   // consistent results.
-  static SysTiming Snapshot(const ProcessTimer& timer);
+  static RUsageTiming Snapshot(const ProcessTimer& timer);
 
   // Comparisons. NOTE: `is_delta` is always ignored.
-  friend bool operator==(const SysTiming& t1, const SysTiming& t2);
-  friend bool operator!=(const SysTiming& t1, const SysTiming& t2);
-  friend bool operator<(const SysTiming& t1, const SysTiming& t2);
-  friend bool operator<=(const SysTiming& t1, const SysTiming& t2);
-  friend bool operator>(const SysTiming& t1, const SysTiming& t2);
-  friend bool operator>=(const SysTiming& t1, const SysTiming& t2);
+  friend bool operator==(const RUsageTiming& t1, const RUsageTiming& t2);
+  friend bool operator!=(const RUsageTiming& t1, const RUsageTiming& t2);
+  friend bool operator<(const RUsageTiming& t1, const RUsageTiming& t2);
+  friend bool operator<=(const RUsageTiming& t1, const RUsageTiming& t2);
+  friend bool operator>(const RUsageTiming& t1, const RUsageTiming& t2);
+  friend bool operator>=(const RUsageTiming& t1, const RUsageTiming& t2);
 
   // Returns the low-water resource usage between the two args.
-  static SysTiming LowWater(const SysTiming& t1, const SysTiming& t2);
+  static RUsageTiming LowWater(const RUsageTiming& t1, const RUsageTiming& t2);
   // Returns the high-water value between the two args.
-  static SysTiming HighWater(const SysTiming& t1, const SysTiming& t2);
+  static RUsageTiming HighWater(const RUsageTiming& t1, const RUsageTiming& t2);
 
   // Returns the value with `is_delta` set to true. Useful for signed logging.
-  friend SysTiming operator+(const SysTiming& t);
+  friend RUsageTiming operator+(const RUsageTiming& t);
   // Returns the negated value with `is_delta` set to true.
-  friend SysTiming operator-(const SysTiming& t);
+  friend RUsageTiming operator-(const RUsageTiming& t);
   // Returns the signed delta between two stats, with `is_delta` set to true.
-  friend SysTiming operator-(const SysTiming& t1, const SysTiming& t2);
+  friend RUsageTiming operator-(const RUsageTiming& t1, const RUsageTiming& t2);
   // Returns the sum of two stats, with `is_delta` set to true iff `t1` or `t2`
   // or both are deltas.
-  friend SysTiming operator+(const SysTiming& t1, const SysTiming& t2);
-  // Returns a SysTiming where every field is divided by `div`. `is_delta` is
+  friend RUsageTiming operator+(const RUsageTiming& t1, const RUsageTiming& t2);
+  // Returns a RUsageTiming where every field is divided by `div`. `is_delta` is
   // carried over from `t`.
-  friend SysTiming operator/(const SysTiming& t, int64_t div);
+  friend RUsageTiming operator/(const RUsageTiming& t, int64_t div);
 
   // Streams `t.ShortStr()`.
-  friend std::ostream& operator<<(std::ostream& os, const SysTiming& t);
+  friend std::ostream& operator<<(std::ostream& os, const RUsageTiming& t);
 
   //----------------------------------------------------------------------------
   //                           Non-static methods
@@ -142,51 +142,51 @@ struct SysTiming {
 };
 
 //------------------------------------------------------------------------------
-//                               SysMemory
+//                               RUsageMemory
 //
 // An interface to measure, store, manipulate, and log the system resource usage
 // of the current process.
 //------------------------------------------------------------------------------
 
-struct SysMemory {
+struct RUsageMemory {
   //----------------------------------------------------------------------------
   //              Static factory ctors and friend operators
 
-  static SysMemory Zero();
-  static SysMemory Min();
-  static SysMemory Max();
+  static RUsageMemory Zero();
+  static RUsageMemory Min();
+  static RUsageMemory Max();
 
   // Returns the current process's resource usage.
-  static SysMemory Snapshot();
+  static RUsageMemory Snapshot();
 
   // Comparisons. NOTE: `is_delta` is always ignored.
-  friend bool operator==(const SysMemory& m1, const SysMemory& m2);
-  friend bool operator!=(const SysMemory& m1, const SysMemory& m2);
-  friend bool operator<(const SysMemory& m1, const SysMemory& m2);
-  friend bool operator<=(const SysMemory& m1, const SysMemory& m2);
-  friend bool operator>(const SysMemory& m1, const SysMemory& m2);
-  friend bool operator>=(const SysMemory& m1, const SysMemory& m2);
+  friend bool operator==(const RUsageMemory& m1, const RUsageMemory& m2);
+  friend bool operator!=(const RUsageMemory& m1, const RUsageMemory& m2);
+  friend bool operator<(const RUsageMemory& m1, const RUsageMemory& m2);
+  friend bool operator<=(const RUsageMemory& m1, const RUsageMemory& m2);
+  friend bool operator>(const RUsageMemory& m1, const RUsageMemory& m2);
+  friend bool operator>=(const RUsageMemory& m1, const RUsageMemory& m2);
 
   // Returns the low-water value between the two args.
-  static SysMemory LowWater(const SysMemory& m1, const SysMemory& m2);
+  static RUsageMemory LowWater(const RUsageMemory& m1, const RUsageMemory& m2);
   // Returns the high-water value usage between the two args.
-  static SysMemory HighWater(const SysMemory& m1, const SysMemory& m2);
+  static RUsageMemory HighWater(const RUsageMemory& m1, const RUsageMemory& m2);
 
   // Returns the value with `is_delta` set to true. Useful for signed logging.
-  friend SysMemory operator+(const SysMemory& m);
+  friend RUsageMemory operator+(const RUsageMemory& m);
   // Returns the negated value with `is_delta` set to true.
-  friend SysMemory operator-(const SysMemory& m);
+  friend RUsageMemory operator-(const RUsageMemory& m);
   // Returns the signed delta of two stats, with `is_delta` set to true.
-  friend SysMemory operator-(const SysMemory& m1, const SysMemory& m2);
+  friend RUsageMemory operator-(const RUsageMemory& m1, const RUsageMemory& m2);
   // Returns the sum of two stats, with `is_delta` set to true iff `m1` or `m2`
   // or both are deltas.
-  friend SysMemory operator+(const SysMemory& m1, const SysMemory& m2);
+  friend RUsageMemory operator+(const RUsageMemory& m1, const RUsageMemory& m2);
   // Returns a value with every metric divided by `div`. `is_delta` is
   // carried over from `m`.
-  friend SysMemory operator/(const SysMemory& m, int64_t div);
+  friend RUsageMemory operator/(const RUsageMemory& m, int64_t div);
 
   // Streams `m.ShortStr()`.
-  friend std::ostream& operator<<(std::ostream& os, const SysMemory& m);
+  friend std::ostream& operator<<(std::ostream& os, const RUsageMemory& m);
 
   //----------------------------------------------------------------------------
   //                           Non-static methods
@@ -241,4 +241,4 @@ std::string FormatInOptimalUnits(CpuHyperCores cores, bool always_signed);
 
 }  // namespace centipede::perf
 
-#endif  // THIRD_PARTY_CENTIPEDE_RESOURCE_USAGE_H_
+#endif  // THIRD_PARTY_CENTIPEDE_RUSAGE_STATS_H_

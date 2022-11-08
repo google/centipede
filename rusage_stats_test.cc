@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "./resource_usage.h"
+#include "./rusage_stats.h"
 
 #include <cmath>
 #include <iosfwd>
@@ -155,7 +155,7 @@ class Histogram {
 
 }  // namespace
 
-TEST(SysTimingTest, Accuracy) {
+TEST(RUsageTimingTest, Accuracy) {
   constexpr int kNumRuns = 4;
   constexpr double kIdleSecs = 2.;
   constexpr double kHogSecs = 10.;
@@ -181,7 +181,7 @@ TEST(SysTimingTest, Accuracy) {
   for (int i = 0; i < kNumRuns; ++i) {
     const ProcessTimer timer;
     absl::Notification hogging_started, hogging_stopped;
-    const auto before = SysTiming::Snapshot(timer);
+    const auto before = RUsageTiming::Snapshot(timer);
 
     // clang-format off
     [[maybe_unused]] CpuHog cpu_hog{
@@ -195,12 +195,12 @@ TEST(SysTimingTest, Accuracy) {
 
     hogging_started.WaitForNotification();
     do {
-      const auto sample = SysTiming::Snapshot(timer);
+      const auto sample = RUsageTiming::Snapshot(timer);
       cpu_util_histo.Add(sample.cpu_utilization);
       // NOTE: Do NOT sleep here: that throws off the measurements.
     } while (!hogging_stopped.HasBeenNotified());
 
-    const auto after = SysTiming::Snapshot(timer);
+    const auto after = RUsageTiming::Snapshot(timer);
     const auto delta = after - before;
 
     user_time_histo.Add(absl::ToDoubleSeconds(delta.user_time));
@@ -240,7 +240,7 @@ TEST(SysTimingTest, Accuracy) {
   }
 }
 
-TEST(SysMemoryTest, Accuracy) {
+TEST(RUsageMemoryTest, Accuracy) {
   constexpr int kNumRuns = 20;
   constexpr MemSize kBytes = 100 * 1024 * 1024;
   // The RSS should grow almost exactly by kBytes, since we're staying well
@@ -256,9 +256,9 @@ TEST(SysMemoryTest, Accuracy) {
   // then fit new allocations in the just freed up space.
   [[maybe_unused]] std::vector<BigThing> big_things;
   for (int i = 0; i < kNumRuns; ++i) {
-    const auto before = SysMemory::Snapshot();
+    const auto before = RUsageMemory::Snapshot();
     big_things.emplace_back(kBytes);
-    const auto after = SysMemory::Snapshot();
+    const auto after = RUsageMemory::Snapshot();
     const auto delta = after - before;
 
     if (absl::GetFlag(FLAGS_verbose)) {
@@ -304,8 +304,8 @@ TEST(SysMemoryTest, Accuracy) {
 #endif
 }
 
-TEST(SysTimingTest, ConstantsAndMath) {
-  const SysTiming timing = {
+TEST(RUsageTimingTest, ConstantsAndMath) {
+  const RUsageTiming timing = {
       .wall_time = absl::Seconds(4),
       .user_time = absl::Seconds(2),
       .sys_time = absl::Seconds(1),
@@ -313,7 +313,7 @@ TEST(SysTimingTest, ConstantsAndMath) {
       .cpu_hyper_cores = .6,
       .is_delta = false,
   };
-  const SysTiming half_timing = {
+  const RUsageTiming half_timing = {
       .wall_time = timing.wall_time / 2,
       .user_time = timing.user_time / 2,
       .sys_time = timing.sys_time / 2,
@@ -321,7 +321,7 @@ TEST(SysTimingTest, ConstantsAndMath) {
       .cpu_hyper_cores = timing.cpu_hyper_cores / 2,
       .is_delta = false,
   };
-  const SysTiming quarter_timing = {
+  const RUsageTiming quarter_timing = {
       .wall_time = timing.wall_time / 4,
       .user_time = timing.user_time / 4,
       .sys_time = timing.sys_time / 4,
@@ -330,12 +330,12 @@ TEST(SysTimingTest, ConstantsAndMath) {
       .is_delta = false,
   };
 
-  EXPECT_LT(SysTiming::Min(), SysTiming::Max());
-  EXPECT_GT(timing, SysTiming::Min());
-  EXPECT_LT(timing, SysTiming::Max());
+  EXPECT_LT(RUsageTiming::Min(), RUsageTiming::Max());
+  EXPECT_GT(timing, RUsageTiming::Min());
+  EXPECT_LT(timing, RUsageTiming::Max());
 
-  EXPECT_EQ(timing + SysTiming::Zero(), timing);
-  EXPECT_EQ(timing - timing, SysTiming::Zero());
+  EXPECT_EQ(timing + RUsageTiming::Zero(), timing);
+  EXPECT_EQ(timing - timing, RUsageTiming::Zero());
   EXPECT_EQ(timing - quarter_timing, half_timing + quarter_timing);
   EXPECT_EQ(timing / 2, half_timing);
   EXPECT_EQ(timing / 4, quarter_timing);
@@ -353,14 +353,14 @@ TEST(SysTimingTest, ConstantsAndMath) {
 }
 
 TEST(SysRecourcesTest, ConstantsAndMath) {
-  const SysMemory memory = {
+  const RUsageMemory memory = {
       .mem_vsize = 1000,
       .mem_vpeak = 2000,
       .mem_rss = 500,
       .mem_data = 400,
       .mem_shared = 20,
   };
-  const SysMemory half_memory = {
+  const RUsageMemory half_memory = {
       .mem_vsize = memory.mem_vsize / 2,
       .mem_vpeak = memory.mem_vpeak / 2,
       .mem_rss = memory.mem_rss / 2,
@@ -368,7 +368,7 @@ TEST(SysRecourcesTest, ConstantsAndMath) {
       .mem_shared = memory.mem_shared / 2,
       .is_delta = false,
   };
-  const SysMemory quarter_memory = {
+  const RUsageMemory quarter_memory = {
       .mem_vsize = memory.mem_vsize / 4,
       .mem_vpeak = memory.mem_vpeak / 4,
       .mem_rss = memory.mem_rss / 4,
@@ -377,12 +377,12 @@ TEST(SysRecourcesTest, ConstantsAndMath) {
       .is_delta = false,
   };
 
-  EXPECT_LT(SysMemory::Min(), SysMemory::Max());
-  EXPECT_GT(memory, SysMemory::Min());
-  EXPECT_LT(memory, SysMemory::Max());
+  EXPECT_LT(RUsageMemory::Min(), RUsageMemory::Max());
+  EXPECT_GT(memory, RUsageMemory::Min());
+  EXPECT_LT(memory, RUsageMemory::Max());
 
-  EXPECT_EQ(memory + SysMemory::Zero(), memory);
-  EXPECT_EQ(memory - memory, SysMemory::Zero());
+  EXPECT_EQ(memory + RUsageMemory::Zero(), memory);
+  EXPECT_EQ(memory - memory, RUsageMemory::Zero());
   EXPECT_EQ(memory - quarter_memory, half_memory + quarter_memory);
   EXPECT_EQ(memory / 2, half_memory);
   EXPECT_EQ(memory / 4, quarter_memory);
@@ -399,19 +399,19 @@ TEST(SysRecourcesTest, ConstantsAndMath) {
   EXPECT_TRUE(((memory - half_memory) / 2).is_delta);
 }
 
-TEST(SysTimingTest, HighLowWater) {
+TEST(RUsageTimingTest, HighLowWater) {
   constexpr absl::Duration kLowTime = absl::Seconds(1);
   constexpr absl::Duration kHighTime = absl::Seconds(3);
   constexpr CpuUtilization kLowCpu = 0.1;
   constexpr CpuUtilization kHighCpu = 0.9;
-  const SysTiming timing1 = {
+  const RUsageTiming timing1 = {
       .wall_time = kHighTime,
       .user_time = kLowTime,
       .sys_time = kLowTime,
       .cpu_utilization = kHighCpu,
       .cpu_hyper_cores = kLowCpu,
   };
-  const SysTiming timing2 = {
+  const RUsageTiming timing2 = {
       .wall_time = kLowTime,
       .user_time = kHighTime,
       .sys_time = kHighTime,
@@ -419,8 +419,8 @@ TEST(SysTimingTest, HighLowWater) {
       .cpu_hyper_cores = kHighCpu,
   };
 
-  const SysTiming low_water = SysTiming::LowWater(timing1, timing2);
-  const SysTiming kExpectedLowWater = {
+  const RUsageTiming low_water = RUsageTiming::LowWater(timing1, timing2);
+  const RUsageTiming kExpectedLowWater = {
       .wall_time = kLowTime,
       .user_time = kLowTime,
       .sys_time = kLowTime,
@@ -429,8 +429,8 @@ TEST(SysTimingTest, HighLowWater) {
   };
   EXPECT_EQ(low_water, kExpectedLowWater);
 
-  const SysTiming high_water = SysTiming::HighWater(timing1, timing2);
-  const SysTiming kExpectedHighWater = {
+  const RUsageTiming high_water = RUsageTiming::HighWater(timing1, timing2);
+  const RUsageTiming kExpectedHighWater = {
       .wall_time = kHighTime,
       .user_time = kHighTime,
       .sys_time = kHighTime,
@@ -440,25 +440,25 @@ TEST(SysTimingTest, HighLowWater) {
   EXPECT_EQ(high_water, kExpectedHighWater);
 }
 
-TEST(SysMemoryTest, HighLowWater) {
+TEST(RUsageMemoryTest, HighLowWater) {
   constexpr MemSize kLowMem = 1000;
   constexpr MemSize kHighMem = 1000000;
-  const SysMemory memory1 = {
+  const RUsageMemory memory1 = {
       .mem_vsize = kLowMem,
       .mem_vpeak = kHighMem,
       .mem_rss = kLowMem,
       .mem_data = kHighMem,
       .mem_shared = kLowMem,
   };
-  const SysMemory memory2 = {
+  const RUsageMemory memory2 = {
       .mem_vsize = kHighMem,
       .mem_vpeak = kLowMem,
       .mem_rss = kHighMem,
       .mem_data = kLowMem,
       .mem_shared = kHighMem,
   };
-  const SysMemory low_water = SysMemory::LowWater(memory1, memory2);
-  const SysMemory kExpectedLowWater = {
+  const RUsageMemory low_water = RUsageMemory::LowWater(memory1, memory2);
+  const RUsageMemory kExpectedLowWater = {
       .mem_vsize = kLowMem,
       .mem_vpeak = kLowMem,
       .mem_rss = kLowMem,
@@ -467,8 +467,8 @@ TEST(SysMemoryTest, HighLowWater) {
   };
   EXPECT_EQ(low_water, kExpectedLowWater);
 
-  const SysMemory high_water = SysMemory::HighWater(memory1, memory2);
-  const SysMemory kExpectedHighWater = {
+  const RUsageMemory high_water = RUsageMemory::HighWater(memory1, memory2);
+  const RUsageMemory kExpectedHighWater = {
       .mem_vsize = kHighMem,
       .mem_vpeak = kHighMem,
       .mem_rss = kHighMem,
@@ -478,8 +478,8 @@ TEST(SysMemoryTest, HighLowWater) {
   EXPECT_EQ(high_water, kExpectedHighWater);
 }
 
-TEST(SysTimingTest, Logging) {
-  SysTiming timing = {
+TEST(RUsageTimingTest, Logging) {
+  RUsageTiming timing = {
       .wall_time = absl::Seconds(303.3),
       .user_time = absl::Microseconds(101.1),
       .sys_time = absl::Milliseconds(202.2),
@@ -511,7 +511,7 @@ TEST(SysTimingTest, Logging) {
       "Wall:      +303.30s | User:        +101us | Sys:         +202ms | "
       "CpuUtil:    +40.00% | CpuCores:      +0.6");
 
-  SysTiming timing2 = timing / -2;
+  RUsageTiming timing2 = timing / -2;
   EXPECT_EQ(  //
       timing2.ShortStr(),
       "Wall: -151.65s | User: -51us | Sys: -101ms | "
@@ -522,8 +522,8 @@ TEST(SysTimingTest, Logging) {
       "CpuUtil:    -20.00% | CpuCores:      -0.3");
 }
 
-TEST(SysMemoryTest, Logging) {
-  SysMemory memory = {
+TEST(RUsageMemoryTest, Logging) {
+  RUsageMemory memory = {
       .mem_vsize = 1L * 1024 * 1024 * 1024,
       .mem_vpeak = 2L * 1024 * 1024 * 1024,
       .mem_rss = 500L * 1024 * 1024,
@@ -555,7 +555,7 @@ TEST(SysMemoryTest, Logging) {
       "RSS:       +500.00M | VSize:       +1.00G | VPeak:       +2.00G | "
       "Data:      +750.00M | ShMem:      +250.0K");
 
-  SysMemory memory2 = memory / -2;
+  RUsageMemory memory2 = memory / -2;
   EXPECT_EQ(  //
       memory2.ShortStr(),
       "RSS: -250.00M | VSize: -512.00M | VPeak: -1.00G | "

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "./resource_usage.h"
+#include "./rusage_stats.h"
 
 #include <unistd.h>
 
@@ -36,8 +36,7 @@ namespace centipede::perf {
 //                               ProcessTimer
 //------------------------------------------------------------------------------
 
-ProcessTimer::ProcessTimer()
-    : start_time_{absl::Now()}, start_rusage_{} {
+ProcessTimer::ProcessTimer() : start_time_{absl::Now()}, start_rusage_{} {
   getrusage(RUSAGE_SELF, &start_rusage_);
 }
 
@@ -106,11 +105,12 @@ std::string NormalizeSign(T* value, bool always_signed) {
 }
 
 template <template <typename T> typename Op>
-SysTiming SysTimingOp(const SysTiming& t1, const SysTiming& t2, bool is_delta) {
+RUsageTiming RUsageTimingOp(  //
+    const RUsageTiming& t1, const RUsageTiming& t2, bool is_delta) {
   const Op<absl::Duration> time_op;
   const Op<double> cpu_op;
   // clang-format off
-  return SysTiming{
+  return RUsageTiming{
       .wall_time = time_op(t1.wall_time, t2.wall_time),
       .user_time = time_op(t1.user_time, t2.user_time),
       .sys_time = time_op(t1.sys_time, t2.sys_time),
@@ -122,7 +122,7 @@ SysTiming SysTimingOp(const SysTiming& t1, const SysTiming& t2, bool is_delta) {
 }
 
 template <template <typename T> typename Cmp>
-bool SysTimingCmp(const SysTiming& t1, const SysTiming& t2) {
+bool RUsageTimingCmp(const RUsageTiming& t1, const RUsageTiming& t2) {
   Cmp<absl::Duration> time_cmp;
   Cmp<double> cpu_cmp;
   // clang-format off
@@ -136,10 +136,11 @@ bool SysTimingCmp(const SysTiming& t1, const SysTiming& t2) {
 }
 
 template <template <typename T> typename Op>
-SysMemory SysMemoryOp(const SysMemory& t1, const SysMemory& t2, bool is_delta) {
+RUsageMemory RUsageMemoryOp(  //
+    const RUsageMemory& t1, const RUsageMemory& t2, bool is_delta) {
   const Op<MemSize> mem_op;
   // clang-format off
-  return SysMemory{
+  return RUsageMemory{
       .mem_vsize = mem_op(t1.mem_vsize, t2.mem_vsize),
       .mem_vpeak = mem_op(t1.mem_vpeak, t2.mem_vpeak),
       .mem_rss = mem_op(t1.mem_rss, t2.mem_rss),
@@ -151,7 +152,7 @@ SysMemory SysMemoryOp(const SysMemory& t1, const SysMemory& t2, bool is_delta) {
 }
 
 template <template <typename T> typename Cmp>
-bool SysMemoryCmp(const SysMemory& t1, const SysMemory& t2) {
+bool RUsageMemoryCmp(const RUsageMemory& t1, const RUsageMemory& t2) {
   Cmp<MemSize> mem_cmp;
   // clang-format off
   return
@@ -230,14 +231,14 @@ std::string FormatInOptimalUnits(CpuHyperCores cores, bool always_signed) {
 }
 
 //------------------------------------------------------------------------------
-//                              SysTiming
+//                              RUsageTiming
 //------------------------------------------------------------------------------
 
-SysTiming SysTiming::Zero() { return {}; }
+RUsageTiming RUsageTiming::Zero() { return {}; }
 
-SysTiming SysTiming::Min() {
+RUsageTiming RUsageTiming::Min() {
   // clang-format off
-  return SysTiming{
+  return RUsageTiming{
       .wall_time = -absl::InfiniteDuration(),
       .user_time = -absl::InfiniteDuration(),
       .sys_time = -absl::InfiniteDuration(),
@@ -248,9 +249,9 @@ SysTiming SysTiming::Min() {
   // clang-format on
 }
 
-SysTiming SysTiming::Max() {
+RUsageTiming RUsageTiming::Max() {
   // clang-format off
-  return SysTiming{
+  return RUsageTiming{
       .wall_time = absl::InfiniteDuration(),
       .user_time = absl::InfiniteDuration(),
       .sys_time = absl::InfiniteDuration(),
@@ -265,11 +266,11 @@ SysTiming SysTiming::Max() {
   // clang-format on
 }
 
-SysTiming SysTiming::Snapshot() {
+RUsageTiming RUsageTiming::Snapshot() {
   return Snapshot(detail::global_process_timer);
 }
 
-SysTiming SysTiming::Snapshot(const ProcessTimer& timer) {
+RUsageTiming RUsageTiming::Snapshot(const ProcessTimer& timer) {
   double user_time = 0, sys_time = 0, wall_time = 0;
   timer.Get(user_time, sys_time, wall_time);
   // Get the CPU utilization in 1/1024th units of the maximum from
@@ -280,7 +281,7 @@ SysTiming SysTiming::Snapshot(const ProcessTimer& timer) {
   // The max value of the se.avg.util_avg field is SCHED_CAPACITY_SCALE == 1024,
   // defined by the Linux scheduler code.
   constexpr double kLinuxSchedCapacityScale = 1024;
-  return SysTiming{
+  return RUsageTiming{
       .wall_time = absl::Seconds(wall_time),
       .user_time = absl::Seconds(user_time),
       .sys_time = absl::Seconds(sys_time),
@@ -290,7 +291,7 @@ SysTiming SysTiming::Snapshot(const ProcessTimer& timer) {
   };
 }
 
-std::string SysTiming::ShortStr() const {
+std::string RUsageTiming::ShortStr() const {
   return absl::StrFormat(  //
       "Wall: %s | User: %s | Sys: %s | CpuUtil: %s | CpuCores: %s",
       FormatInOptimalUnits(wall_time, /*always_signed=*/is_delta),
@@ -300,7 +301,7 @@ std::string SysTiming::ShortStr() const {
       FormatInOptimalUnits(cpu_hyper_cores, /*always_signed=*/is_delta));
 }
 
-std::string SysTiming::FormattedStr() const {
+std::string RUsageTiming::FormattedStr() const {
   return absl::StrFormat(  //
       "Wall:  %12s | User:  %12s | Sys:   %12s | CpuUtil:  %9s | CpuCores: %9s",
       FormatInOptimalUnits(wall_time, /*always_signed=*/is_delta),
@@ -310,29 +311,29 @@ std::string SysTiming::FormattedStr() const {
       FormatInOptimalUnits(cpu_hyper_cores, /*always_signed=*/is_delta));
 }
 
-SysTiming operator+(const SysTiming& t) {
+RUsageTiming operator+(const RUsageTiming& t) {
   // Subtraction sets `is_delta` to true.
-  return t - SysTiming::Zero();
+  return t - RUsageTiming::Zero();
 }
 
-SysTiming operator-(const SysTiming& t) {
+RUsageTiming operator-(const RUsageTiming& t) {
   // Subtraction negates the value and sets `is_delta` to true.
-  return SysTiming::Zero() - t;
+  return RUsageTiming::Zero() - t;
 }
 
-SysTiming operator-(const SysTiming& t1, const SysTiming& t2) {
-  return detail::SysTimingOp<std::minus>(t1, t2, true);
+RUsageTiming operator-(const RUsageTiming& t1, const RUsageTiming& t2) {
+  return detail::RUsageTimingOp<std::minus>(t1, t2, true);
 }
 
-SysTiming operator+(const SysTiming& t1, const SysTiming& t2) {
-  return detail::SysTimingOp<std::plus>(t1, t2, t1.is_delta || t2.is_delta);
+RUsageTiming operator+(const RUsageTiming& t1, const RUsageTiming& t2) {
+  return detail::RUsageTimingOp<std::plus>(t1, t2, t1.is_delta || t2.is_delta);
 }
 
-SysTiming operator/(const SysTiming& t, int64_t div) {
+RUsageTiming operator/(const RUsageTiming& t, int64_t div) {
   CHECK_NE(div, 0);
-  // NOTE: Can't use SysTimingOp() as this operation is asymmetrical.
+  // NOTE: Can't use RUsageTimingOp() as this operation is asymmetrical.
   // clang-format off
-  return SysTiming{
+  return RUsageTiming{
       .wall_time = t.wall_time / div,
       .user_time = t.user_time / div,
       .sys_time = t.sys_time / div,
@@ -343,51 +344,53 @@ SysTiming operator/(const SysTiming& t, int64_t div) {
   // clang-format on
 }
 
-bool operator==(const SysTiming& t1, const SysTiming& t2) {
-  return detail::SysTimingCmp<std::equal_to>(t1, t2);
+bool operator==(const RUsageTiming& t1, const RUsageTiming& t2) {
+  return detail::RUsageTimingCmp<std::equal_to>(t1, t2);
 }
 
-bool operator!=(const SysTiming& t1, const SysTiming& t2) {
-  return detail::SysTimingCmp<std::not_equal_to>(t1, t2);
+bool operator!=(const RUsageTiming& t1, const RUsageTiming& t2) {
+  return detail::RUsageTimingCmp<std::not_equal_to>(t1, t2);
 }
 
-bool operator<(const SysTiming& t1, const SysTiming& t2) {
-  return detail::SysTimingCmp<std::less>(t1, t2);
+bool operator<(const RUsageTiming& t1, const RUsageTiming& t2) {
+  return detail::RUsageTimingCmp<std::less>(t1, t2);
 }
 
-bool operator<=(const SysTiming& t1, const SysTiming& t2) {
-  return detail::SysTimingCmp<std::less_equal>(t1, t2);
+bool operator<=(const RUsageTiming& t1, const RUsageTiming& t2) {
+  return detail::RUsageTimingCmp<std::less_equal>(t1, t2);
 }
 
-bool operator>(const SysTiming& t1, const SysTiming& t2) {
-  return detail::SysTimingCmp<std::greater>(t1, t2);
+bool operator>(const RUsageTiming& t1, const RUsageTiming& t2) {
+  return detail::RUsageTimingCmp<std::greater>(t1, t2);
 }
 
-bool operator>=(const SysTiming& t1, const SysTiming& t2) {
-  return detail::SysTimingCmp<std::greater_equal>(t1, t2);
+bool operator>=(const RUsageTiming& t1, const RUsageTiming& t2) {
+  return detail::RUsageTimingCmp<std::greater_equal>(t1, t2);
 }
 
-SysTiming SysTiming::LowWater(const SysTiming& t1, const SysTiming& t2) {
-  return detail::SysTimingOp<detail::Min>(t1, t2, false);
+RUsageTiming RUsageTiming::LowWater(  //
+    const RUsageTiming& t1, const RUsageTiming& t2) {
+  return detail::RUsageTimingOp<detail::Min>(t1, t2, false);
 }
 
-SysTiming SysTiming::HighWater(const SysTiming& t1, const SysTiming& t2) {
-  return detail::SysTimingOp<detail::Max>(t1, t2, false);
+RUsageTiming RUsageTiming::HighWater(  //
+    const RUsageTiming& t1, const RUsageTiming& t2) {
+  return detail::RUsageTimingOp<detail::Max>(t1, t2, false);
 }
 
-std::ostream& operator<<(std::ostream& os, const SysTiming& t) {
+std::ostream& operator<<(std::ostream& os, const RUsageTiming& t) {
   return os << t.ShortStr();
 }
 
 //------------------------------------------------------------------------------
-//                              SysMemory
+//                              RUsageMemory
 //------------------------------------------------------------------------------
 
-SysMemory SysMemory::Zero() { return {}; }
+RUsageMemory RUsageMemory::Zero() { return {}; }
 
-SysMemory SysMemory::Min() {
+RUsageMemory RUsageMemory::Min() {
   // clang-format off
-  return SysMemory{
+  return RUsageMemory{
       .mem_vsize = std::numeric_limits<int64_t>::min(),
       .mem_vpeak = std::numeric_limits<int64_t>::min(),
       .mem_rss = std::numeric_limits<int64_t>::min(),
@@ -398,9 +401,9 @@ SysMemory SysMemory::Min() {
   // clang-format on
 }
 
-SysMemory SysMemory::Max() {
+RUsageMemory RUsageMemory::Max() {
   // clang-format off
-  return SysMemory{
+  return RUsageMemory{
       .mem_vsize = std::numeric_limits<int64_t>::max(),
       .mem_vpeak = std::numeric_limits<int64_t>::max(),
       .mem_rss = std::numeric_limits<int64_t>::max(),
@@ -411,7 +414,7 @@ SysMemory SysMemory::Max() {
   // clang-format on
 }
 
-SysMemory SysMemory::Snapshot() {
+RUsageMemory RUsageMemory::Snapshot() {
   // Get memory stats except the VM peak from /proc/self/statm (see `man proc`).
   MemSize vsize = 0, rss = 0, shared = 0, code = 0, unused = 0, data = 0;
   (void)detail::ReadProcFileFields(  // ignore errors (which are unlikely)
@@ -425,7 +428,7 @@ SysMemory SysMemory::Snapshot() {
   // NOTE: The units are specified in the file itself, but they are always kB.
   static constexpr int kVPeakUnits = 1024;
   // clang-format off
-  return SysMemory{
+  return RUsageMemory{
       .mem_vsize = vsize * page_size,
       .mem_vpeak = vpeak * kVPeakUnits,
       .mem_rss = rss * page_size,
@@ -436,7 +439,7 @@ SysMemory SysMemory::Snapshot() {
   // clang-format on
 }
 
-std::string SysMemory::ShortStr() const {
+std::string RUsageMemory::ShortStr() const {
   return absl::StrFormat(  //
       "RSS: %s | VSize: %s | VPeak: %s | Data: %s | ShMem: %s",
       FormatInOptimalUnits(mem_rss, /*always_signed=*/is_delta),
@@ -446,7 +449,7 @@ std::string SysMemory::ShortStr() const {
       FormatInOptimalUnits(mem_shared, /*always_signed=*/is_delta));
 }
 
-std::string SysMemory::FormattedStr() const {
+std::string RUsageMemory::FormattedStr() const {
   return absl::StrFormat(  //
       "RSS:   %12s | VSize: %12s | VPeak: %12s | Data:  %12s | ShMem: %12s",
       FormatInOptimalUnits(mem_rss, /*always_signed=*/is_delta),
@@ -456,29 +459,29 @@ std::string SysMemory::FormattedStr() const {
       FormatInOptimalUnits(mem_shared, /*always_signed=*/is_delta));
 }
 
-SysMemory operator+(const SysMemory& m) {
+RUsageMemory operator+(const RUsageMemory& m) {
   // Subtraction sets `is_delta` to true.
-  return m - SysMemory::Zero();
+  return m - RUsageMemory::Zero();
 }
 
-SysMemory operator-(const SysMemory& m) {
+RUsageMemory operator-(const RUsageMemory& m) {
   // Subtraction negates the value and sets `is_delta` to true.
-  return SysMemory::Zero() - m;
+  return RUsageMemory::Zero() - m;
 }
 
-SysMemory operator-(const SysMemory& m1, const SysMemory& m2) {
-  return detail::SysMemoryOp<std::minus>(m1, m2, true);
+RUsageMemory operator-(const RUsageMemory& m1, const RUsageMemory& m2) {
+  return detail::RUsageMemoryOp<std::minus>(m1, m2, true);
 }
 
-SysMemory operator+(const SysMemory& m1, const SysMemory& m2) {
-  return detail::SysMemoryOp<std::plus>(m1, m2, m1.is_delta || m2.is_delta);
+RUsageMemory operator+(const RUsageMemory& m1, const RUsageMemory& m2) {
+  return detail::RUsageMemoryOp<std::plus>(m1, m2, m1.is_delta || m2.is_delta);
 }
 
-SysMemory operator/(const SysMemory& m, int64_t div) {
+RUsageMemory operator/(const RUsageMemory& m, int64_t div) {
   CHECK_NE(div, 0);
-  // NOTE: Can't use SysMemoryOp() as this operation is asymmetrical.
+  // NOTE: Can't use RUsageMemoryOp() as this operation is asymmetrical.
   // clang-format off
-  return SysMemory{
+  return RUsageMemory{
       .mem_vsize = m.mem_vsize / div,
       .mem_vpeak = m.mem_vpeak / div,
       .mem_rss = m.mem_rss / div,
@@ -489,39 +492,41 @@ SysMemory operator/(const SysMemory& m, int64_t div) {
   // clang-format on
 }
 
-SysMemory SysMemory::LowWater(const SysMemory& m1, const SysMemory& m2) {
-  return detail::SysMemoryOp<detail::Min>(m1, m2, true);
+RUsageMemory RUsageMemory::LowWater(  //
+    const RUsageMemory& m1, const RUsageMemory& m2) {
+  return detail::RUsageMemoryOp<detail::Min>(m1, m2, true);
 }
 
-SysMemory SysMemory::HighWater(const SysMemory& m1, const SysMemory& m2) {
-  return detail::SysMemoryOp<detail::Max>(m1, m2, true);
+RUsageMemory RUsageMemory::HighWater(  //
+    const RUsageMemory& m1, const RUsageMemory& m2) {
+  return detail::RUsageMemoryOp<detail::Max>(m1, m2, true);
 }
 
-bool operator==(const SysMemory& m1, const SysMemory& m2) {
-  return detail::SysMemoryCmp<std::equal_to>(m1, m2);
+bool operator==(const RUsageMemory& m1, const RUsageMemory& m2) {
+  return detail::RUsageMemoryCmp<std::equal_to>(m1, m2);
 }
 
-bool operator!=(const SysMemory& m1, const SysMemory& m2) {
-  return detail::SysMemoryCmp<std::not_equal_to>(m1, m2);
+bool operator!=(const RUsageMemory& m1, const RUsageMemory& m2) {
+  return detail::RUsageMemoryCmp<std::not_equal_to>(m1, m2);
 }
 
-bool operator<(const SysMemory& m1, const SysMemory& m2) {
-  return detail::SysMemoryCmp<std::less>(m1, m2);
+bool operator<(const RUsageMemory& m1, const RUsageMemory& m2) {
+  return detail::RUsageMemoryCmp<std::less>(m1, m2);
 }
 
-bool operator<=(const SysMemory& m1, const SysMemory& m2) {
-  return detail::SysMemoryCmp<std::less_equal>(m1, m2);
+bool operator<=(const RUsageMemory& m1, const RUsageMemory& m2) {
+  return detail::RUsageMemoryCmp<std::less_equal>(m1, m2);
 }
 
-bool operator>(const SysMemory& m1, const SysMemory& m2) {
-  return detail::SysMemoryCmp<std::greater>(m1, m2);
+bool operator>(const RUsageMemory& m1, const RUsageMemory& m2) {
+  return detail::RUsageMemoryCmp<std::greater>(m1, m2);
 }
 
-bool operator>=(const SysMemory& m1, const SysMemory& m2) {
-  return detail::SysMemoryCmp<std::greater_equal>(m1, m2);
+bool operator>=(const RUsageMemory& m1, const RUsageMemory& m2) {
+  return detail::RUsageMemoryCmp<std::greater_equal>(m1, m2);
 }
 
-std::ostream& operator<<(std::ostream& os, const SysMemory& m) {
+std::ostream& operator<<(std::ostream& os, const RUsageMemory& m) {
   return os << m.ShortStr();
 }
 

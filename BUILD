@@ -119,9 +119,9 @@ cc_library(
 )
 
 cc_library(
-    name = "resource_usage",
-    srcs = ["resource_usage.cc"],
-    hdrs = ["resource_usage.h"],
+    name = "rusage_stats",
+    srcs = ["rusage_stats.cc"],
+    hdrs = ["rusage_stats.h"],
     deps = [
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
@@ -136,7 +136,7 @@ cc_library(
     srcs = ["rusage_profiler.cc"],
     hdrs = ["rusage_profiler.h"],
     deps = [
-        ":resource_usage",
+        ":rusage_stats",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/strings",
@@ -591,13 +591,13 @@ cc_test(
 )
 
 cc_test(
-    name = "resource_usage_test",
+    name = "rusage_stats_test",
     size = "medium",
     timeout = "long",
-    srcs = ["resource_usage_test.cc"],
+    srcs = ["rusage_stats_test.cc"],
     deps = [
         ":logging",
-        ":resource_usage",
+        ":rusage_stats",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/synchronization",

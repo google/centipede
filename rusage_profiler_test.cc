@@ -126,9 +126,10 @@ TEST(RUsageProfilerTest, TimelapseSnapshots) {
 // memory blocks to fight small number volatility of the system allocator, but
 // MSAN's custom allocator can't cope and intermittently OOMs.
 #if !defined(MEMORY_SANITIZER)
-// Compare RUsageProfiler's manually taken snapshots against raw SysTiming and
-// SysMemory numbers acquired approximately at the same time. "Approximately the
-// same" is still not *the same*, so some discrepancies are fully expected.
+// Compare RUsageProfiler's manually taken snapshots against raw RUsageTiming
+// and RUsageMemory numbers acquired approximately at the same time.
+// "Approximately the same" is still not *the same*, so some discrepancies are
+// fully expected.
 TEST(RUsageProfilerTest, ValidateManualSnapshots) {
   // Allocate A LOT of memory to fight the small numbers volatility, in
   // particular in the virtual memory size and peak, which grow in page
@@ -142,20 +143,20 @@ TEST(RUsageProfilerTest, ValidateManualSnapshots) {
 
   const RUsageProfiler::Snapshot& before_snapshot =
       rprof.TakeSnapshot({__FILE__, __LINE__});
-  // NOTE: Use rprof's internal timer rather than SysTiming's default global one
-  // (which starts when the process starts) to measure the times on the same
-  // timeline as rprof.
-  const SysTiming before_timing = SysTiming::Snapshot(rprof.timer_);
-  const SysMemory before_memory = SysMemory::Snapshot();
+  // NOTE: Use rprof's internal timer rather than RUsageTiming's default global
+  // one (which starts when the process starts) to measure the times on the same
+  // timeline.
+  const RUsageTiming before_timing = RUsageTiming::Snapshot(rprof.timer_);
+  const RUsageMemory before_memory = RUsageMemory::Snapshot();
 
   const BigSlowThing big_slow_thing{kGobbleBytes, kWasteTime};
 
   const RUsageProfiler::Snapshot& after_snapshot =
       rprof.TakeSnapshot({__FILE__, __LINE__});
-  const SysTiming after_timing = SysTiming::Snapshot(rprof.timer_);
-  const SysMemory after_memory = SysMemory::Snapshot();
-  const SysTiming delta_timing = after_timing - before_timing;
-  const SysMemory delta_memory = after_memory - before_memory;
+  const RUsageTiming after_timing = RUsageTiming::Snapshot(rprof.timer_);
+  const RUsageMemory after_memory = RUsageMemory::Snapshot();
+  const RUsageTiming delta_timing = after_timing - before_timing;
+  const RUsageMemory delta_memory = after_memory - before_memory;
 
   if (absl::GetFlag(FLAGS_verbose)) {
     LOG(INFO) << "before_snapshot:\n" << before_snapshot.FormattedMetricsStr();

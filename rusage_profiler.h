@@ -218,7 +218,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/time/time.h"
-#include "./resource_usage.h"
+#include "./rusage_stats.h"
 
 namespace centipede::perf {
 
@@ -277,10 +277,10 @@ class RUsageProfiler {
     const std::string profiler_desc;
 
     // Recorded metrics.
-    const SysTiming timing = SysTiming::Zero();
-    const SysTiming delta_timing = SysTiming::Zero();
-    const SysMemory memory = SysMemory::Zero();
-    const SysMemory delta_memory = SysMemory::Zero();
+    const RUsageTiming timing = RUsageTiming::Zero();
+    const RUsageTiming delta_timing = RUsageTiming::Zero();
+    const RUsageMemory memory = RUsageMemory::Zero();
+    const RUsageMemory delta_memory = RUsageMemory::Zero();
   };
 
   // An abstract interface used to stream in a profiling report in
@@ -427,7 +427,7 @@ class RUsageProfiler {
   class TimelapseThread;  // Defined in the .cc.
   std::unique_ptr<TimelapseThread> timelapse_thread_ ABSL_GUARDED_BY(mutex_);
 
-  // An auto-starting timer passed to SysTiming::Snapshot() in order to track
+  // An auto-starting timer passed to RUsageTiming::Snapshot() in order to track
   // this RUsageProfiler object's lifetime stats rather than the process's
   // lifetime stats, which is the default.
   ProcessTimer timer_;
