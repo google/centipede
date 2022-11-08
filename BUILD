@@ -132,6 +132,21 @@ cc_library(
 )
 
 cc_library(
+    name = "jit_profiler",
+    srcs = ["jit_profiler.cc"],
+    hdrs = ["jit_profiler.h"],
+    deps = [
+        ":resource_usage",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/time",
+    ],
+)
+
+cc_library(
     name = "stats",
     srcs = ["stats.cc"],
     hdrs = ["stats.h"],
@@ -581,10 +596,26 @@ cc_test(
     timeout = "long",
     srcs = ["resource_usage_test.cc"],
     deps = [
+        ":logging",
         ":resource_usage",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/functional:any_invocable",
         "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/time",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "jit_profiler_test",
+    # Allocates large blocks of memory to fight small number volatility.
+    size = "large",
+    timeout = "long",
+    srcs = ["jit_profiler_test.cc"],
+    deps = [
+        ":jit_profiler",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/log",
         "@com_google_absl//absl/time",
         "@com_google_googletest//:gtest_main",
     ],
