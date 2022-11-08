@@ -51,13 +51,13 @@ class BigThing {
   std::string big_mem_;
 };
 
-// Spawns a separate fiber that idles for a while, then hogs CPU for a while.
-// Just before the hogging ends, the thread sends the `take_sample`
-// notification to the caller: this way, there is a near guarantee that the
-// caller will be able to take a measurement right in the middle of CPU hogging,
-// not after it ends. The latter would make the test sensitive to fluctuations
-// in the OS process scheduling and result flakiness when a measurement is
-// taken a little too late, after the CPU activity subsides too much.
+// Spawns N separate threads that idle for a while, then simultaneously hog the
+// CPU for a while. The caller is notified just before the hogging starts, and
+// just before it ends: this way, the caller can take a measurement right in the
+// middle of hogging, not after it ends. The latter would make the test
+// sensitive to fluctuations in the OS process scheduling and result flakiness
+// when a measurement is taken a little too late, after the CPU activity
+// subsides too much.
 class CpuHog {
  public:
   CpuHog(                                   //
@@ -95,7 +95,7 @@ class CpuHog {
         }
       }
       // Maintain the CPU load for a little longer while the caller wraps up
-      // with their sampling.
+      // its sampling.
       while (absl::Now() - start < hog_time + kPadHogTime) {
         cpu_waster = std::cos(cpu_waster);
       }
@@ -141,12 +141,11 @@ class Histogram {
     }
   }
 
-  std::string ToString() const {
-    std::stringstream ss;
-    for (const auto& v : vs_) {
-      ss << v << " ";
+  friend std::ostream& operator<<(std::ostream& os, const Histogram& histo) {
+    for (const auto& v : histo.vs_) {
+      os << v << " ";
     }
-    return ss.str();
+    return os;
   }
 
  private:
@@ -222,10 +221,10 @@ TEST(SysTimingTest, Accuracy) {
 
   if (absl::GetFlag(FLAGS_enable_system_load_sensitive_tests)) {
     if (absl::GetFlag(FLAGS_verbose)) {
-      LOG(INFO) << "user_time_histo: " << user_time_histo.ToString();
-      LOG(INFO) << "cpu_util_histo: " << cpu_util_histo.ToString();
-      LOG(INFO) << "wall_time_histo: " << wall_time_histo.ToString();
-      LOG(INFO) << "cpu_cores_histo: " << cpu_cores_histo.ToString();
+      LOG(INFO) << "user_time_histo:\n" << user_time_histo;
+      LOG(INFO) << "cpu_util_histo:\n" << cpu_util_histo;
+      LOG(INFO) << "wall_time_histo:\n" << wall_time_histo;
+      LOG(INFO) << "cpu_cores_histo:\n" << cpu_cores_histo;
     }
 
     EXPECT_NEAR(  //
@@ -289,18 +288,16 @@ TEST(SysMemoryTest, Accuracy) {
   }
 
   if (absl::GetFlag(FLAGS_verbose)) {
-    LOG(INFO) << "mem_rss_histo:\n" << mem_rss_histo.ToString();
-    LOG(INFO) << "mem_data_histo:\n" << mem_data_histo.ToString();
+    LOG(INFO) << "mem_rss_histo:\n" << mem_rss_histo;
+    LOG(INFO) << "mem_data_histo:\n" << mem_data_histo;
   }
 
 // NOTE: The sanitizers heavily instrument the code and skew any time
 //  measurements.
 #if !defined(ADDRESS_SANITIZER) && !defined(THREAD_SANITIZER) && \
     !defined(MEMORY_SANITIZER)
-  EXPECT_NEAR(mem_rss_histo.Average(), kBytes, kRssLeeway)
-      << mem_rss_histo.ToString();
-  EXPECT_NEAR(mem_data_histo.Average(), kBytes, kDataLeeway)
-      << mem_data_histo.ToString();
+  EXPECT_NEAR(mem_rss_histo.Average(), kBytes, kRssLeeway) << mem_rss_histo;
+  EXPECT_NEAR(mem_data_histo.Average(), kBytes, kDataLeeway) << mem_data_histo;
 #else
   LOG(WARNING) << "Validation of test results omitted under *SAN: see code";
 #endif
