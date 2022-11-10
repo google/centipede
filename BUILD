@@ -269,6 +269,23 @@ cc_library(
     ],
 )
 
+# Library for dealing with call graph data from
+# https://clang.llvm.org/docs/SanitizerCoverage.html#tracing-control-flow.
+cc_library(
+    name = "call_graph",
+    srcs = [
+        "call_graph.cc",
+    ],
+    hdrs = [
+        "call_graph.h",
+    ],
+    deps = [
+        ":coverage",
+        ":logging",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
 cc_library(
     name = "remote_file",
     srcs = ["remote_file.cc"],
@@ -747,6 +764,17 @@ cc_test(
         "@centipede//:coverage",
         "@centipede//:logging",
         "@centipede//:test_util",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "call_graph_test",
+    srcs = ["call_graph_test.cc"],
+    deps = [
+        "@centipede//:call_graph",
+        "@centipede//:coverage",
+        "@centipede//:logging",
         "@com_google_googletest//:gtest_main",
     ],
 )
