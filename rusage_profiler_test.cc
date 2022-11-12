@@ -136,8 +136,10 @@ TEST(RUsageProfilerTest, ValidateManualSnapshots) {
   // increments.
   constexpr int64_t kGobbleBytes = 10'000'000'000;
   constexpr absl::Duration kWasteTime = absl::Seconds(7);
+  const auto rusage_scope = RUsageScope::ThisProcess();
 
-  RUsageProfiler rprof{RUsageProfiler::kAllMetrics,
+  RUsageProfiler rprof{rusage_scope,
+                       RUsageProfiler::kAllMetrics,
                        RUsageProfiler::kRaiiOff,
                        {__FILE__, __LINE__}};
 
@@ -146,15 +148,17 @@ TEST(RUsageProfilerTest, ValidateManualSnapshots) {
   // NOTE: Use rprof's internal timer rather than RUsageTiming's default global
   // one (which starts when the process starts) to measure the times on the same
   // timeline.
-  const RUsageTiming before_timing = RUsageTiming::Snapshot(rprof.timer_);
-  const RUsageMemory before_memory = RUsageMemory::Snapshot();
+  const RUsageTiming before_timing =
+      RUsageTiming::Snapshot(rusage_scope, rprof.timer_);
+  const RUsageMemory before_memory = RUsageMemory::Snapshot(rusage_scope);
 
   const BigSlowThing big_slow_thing{kGobbleBytes, kWasteTime};
 
   const RUsageProfiler::Snapshot& after_snapshot =
       rprof.TakeSnapshot({__FILE__, __LINE__});
-  const RUsageTiming after_timing = RUsageTiming::Snapshot(rprof.timer_);
-  const RUsageMemory after_memory = RUsageMemory::Snapshot();
+  const RUsageTiming after_timing =
+      RUsageTiming::Snapshot(rusage_scope, rprof.timer_);
+  const RUsageMemory after_memory = RUsageMemory::Snapshot(rusage_scope);
   const RUsageTiming delta_timing = after_timing - before_timing;
   const RUsageMemory delta_memory = after_memory - before_memory;
 
@@ -195,8 +199,11 @@ TEST(RUsageProfilerTest, ValidateTimelapseSnapshots) {
   constexpr int kGobbleBytes = 100'000'000;
   const bool kAlsoLog = absl::GetFlag(FLAGS_verbose);
 
-  RUsageProfiler rprof{
-      RUsageProfiler::kAllMetrics, kInterval, kAlsoLog, {__FILE__, __LINE__}};
+  RUsageProfiler rprof{RUsageScope::ThisProcess(),
+                       RUsageProfiler::kAllMetrics,
+                       kInterval,
+                       kAlsoLog,
+                       {__FILE__, __LINE__}};
   const BigSlowThing big_slow_thing{kGobbleBytes, kWasteTime};
   rprof.StopTimelapse();
 
@@ -219,7 +226,8 @@ TEST(RUsageProfilerTest, ValidateReport) {
   constexpr int kGobbleBytes = 100'000'000;
   constexpr absl::Duration kWasteTime = absl::Seconds(7);
 
-  RUsageProfiler rprof{RUsageProfiler::kAllMetrics,
+  RUsageProfiler rprof{RUsageScope::ThisProcess(),
+                       RUsageProfiler::kAllMetrics,
                        RUsageProfiler::kRaiiOff,
                        {__FILE__, __LINE__}};
   {
@@ -234,8 +242,9 @@ TEST(RUsageProfilerTest, ValidateReport) {
   class ReportCapture : public RUsageProfiler::ReportSink {
    public:
     ~ReportCapture() override = default;
-    void operator<<(const std::string& fragment) override {
+    ReportCapture& operator<<(const std::string& fragment) override {
       LOG(INFO).NoPrefix() << fragment;
+      return *this;
     }
   };
 

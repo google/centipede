@@ -14,6 +14,8 @@
 
 #include "./rusage_stats.h"
 
+#include <sys/syscall.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <cinttypes>
@@ -54,6 +56,50 @@ void ProcessTimer::Get(double& user, double& sys, double& wall) const {
   // clang-format on
 }
 
+//------------------------------------------------------------------------------
+//                               RUsageScope
+//------------------------------------------------------------------------------
+
+RUsageScope RUsageScope::ThisProcess() {  //
+  return RUsageScope{getpid()};
+}
+
+RUsageScope RUsageScope::Process(pid_t pid) {  //
+  return RUsageScope{pid};
+}
+
+RUsageScope RUsageScope::ThisThread() {
+  return RUsageScope{getpid(), static_cast<pid_t>(syscall(__NR_gettid))};
+}
+
+RUsageScope RUsageScope::Thread(pid_t tid) {
+  return RUsageScope{getpid(), tid};
+}
+
+RUsageScope RUsageScope::Thread(pid_t pid, pid_t tid) {
+  return RUsageScope{pid, tid};
+}
+
+RUsageScope::RUsageScope(pid_t pid)
+    : description_{absl::StrFormat("PID=%d", pid)},
+      proc_file_paths_{
+          absl::StrFormat("/proc/%d/sched", pid),
+          absl::StrFormat("/proc/%d/statm", pid),
+          absl::StrFormat("/proc/%d/status", pid),
+      } {}
+
+RUsageScope::RUsageScope(pid_t pid, pid_t tid)
+    : description_{absl::StrFormat("PID=%d TID=%d", pid, tid)},
+      proc_file_paths_{
+          absl::StrFormat("/proc/%d/task/%d/sched", pid, tid),
+          absl::StrFormat("/proc/%d/task/%d/statm", pid, tid),
+          absl::StrFormat("/proc/%d/task/%d/status", pid, tid),
+      } {}
+
+const std::string& RUsageScope::GetProcFilePath(ProcFile file) const {
+  return proc_file_paths_[file];
+}
+
 namespace detail {
 namespace {
 
@@ -65,10 +111,11 @@ const ProcessTimer global_process_timer;
 //                      Read values from /proc/* files
 //------------------------------------------------------------------------------
 
-bool ReadProcFileFields(const char* filename, const char* format, ...) {
+bool ReadProcFileFields(std::string_view path, const char* format, ...) {
   va_list value_list;
   va_start(value_list, format);
-  std::ifstream file{filename};
+  std::ifstream file{path};
+  CHECK(file.good()) << path;
   std::stringstream contents;
   contents << file.rdbuf();
   bool success = vsscanf(contents.str().c_str(), format, value_list);
@@ -77,8 +124,9 @@ bool ReadProcFileFields(const char* filename, const char* format, ...) {
 }
 
 template <typename T>
-bool ReadProcFileKeyword(const char* filename, const char* format, T* value) {
-  std::ifstream file{filename};
+bool ReadProcFileKeyword(std::string_view path, const char* format, T* value) {
+  std::ifstream file{path};
+  CHECK(file.good()) << path;
   constexpr std::streamsize kMaxLineLen = 1024;
   char line[kMaxLineLen] = {0};
   while (file) {
@@ -266,20 +314,22 @@ RUsageTiming RUsageTiming::Max() {
   // clang-format on
 }
 
-RUsageTiming RUsageTiming::Snapshot() {
-  return Snapshot(detail::global_process_timer);
+RUsageTiming RUsageTiming::Snapshot(const RUsageScope& scope) {
+  return Snapshot(scope, detail::global_process_timer);
 }
 
-RUsageTiming RUsageTiming::Snapshot(const ProcessTimer& timer) {
+RUsageTiming RUsageTiming::Snapshot(  //
+    const RUsageScope& scope, const ProcessTimer& timer) {
   double user_time = 0, sys_time = 0, wall_time = 0;
   timer.Get(user_time, sys_time, wall_time);
   // Get the CPU utilization in 1/1024th units of the maximum from
-  // /proc/self/sched.
+  // /proc/self/sched. The maximum se.avg.util_avg field == SCHED_CAPACITY_SCALE
+  // == 1024, as defined by the Linux scheduler code.
   double cpu_utilization = 0;
   (void)detail::ReadProcFileKeyword(  // ignore errors (which are unlikely)
-      "/proc/self/sched", "se.avg.util_avg : %lf", &cpu_utilization);
-  // The max value of the se.avg.util_avg field is SCHED_CAPACITY_SCALE == 1024,
-  // defined by the Linux scheduler code.
+      scope.GetProcFilePath(RUsageScope::ProcFile::kSched),  //
+      "se.avg.util_avg : %lf",                               //
+      &cpu_utilization);
   constexpr double kLinuxSchedCapacityScale = 1024;
   return RUsageTiming{
       .wall_time = absl::Seconds(wall_time),
@@ -414,16 +464,19 @@ RUsageMemory RUsageMemory::Max() {
   // clang-format on
 }
 
-RUsageMemory RUsageMemory::Snapshot() {
+RUsageMemory RUsageMemory::Snapshot(const RUsageScope& scope) {
   // Get memory stats except the VM peak from /proc/self/statm (see `man proc`).
   MemSize vsize = 0, rss = 0, shared = 0, code = 0, unused = 0, data = 0;
   (void)detail::ReadProcFileFields(  // ignore errors (which are unlikely)
-      "/proc/self/statm", "%lld %lld %lld %lld %lld %lld",  //
+      scope.GetProcFilePath(RUsageScope::ProcFile::kStatm),  //
+      "%lld %lld %lld %lld %lld %lld",                       //
       &vsize, &rss, &shared, &code, &unused, &data);
   // Get the VM peak from /proc/self/status (see `man proc`).
   MemSize vpeak = 0;
   (void)detail::ReadProcFileKeyword(  // ignore errors (which are unlikely)
-      "/proc/self/status", "VmPeak : %" SCNd64 " kB", &vpeak);
+      scope.GetProcFilePath(RUsageScope::ProcFile::kStatus),  //
+      "VmPeak : %" SCNd64 " kB",                              //
+      &vpeak);
   static const int page_size = getpagesize();
   // NOTE: The units are specified in the file itself, but they are always kB.
   static constexpr int kVPeakUnits = 1024;

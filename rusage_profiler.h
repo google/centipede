@@ -289,7 +289,7 @@ class RUsageProfiler {
   class ReportSink {
    public:
     virtual ~ReportSink() = default;
-    virtual void operator<<(const std::string& fragment) = 0;
+    virtual ReportSink& operator<<(const std::string& fragment) = 0;
   };
 
   //----------------------------------------------------------------------------
@@ -326,6 +326,7 @@ class RUsageProfiler {
   // the caller, as if the caller printed them. That makes it easy to attribute
   // the logged resource usage to the actual user rather than RUsageProfiler.
   RUsageProfiler(                     //
+      RUsageScope scope,              //
       MetricsMask metrics,            // Which metrics to track
       RaiiActionsMask raii_actions,   // Which RAII logs to enable
       SourceLocation location,        // Pass SourceLocation{__FILE__, __LINE__}
@@ -342,6 +343,7 @@ class RUsageProfiler {
   // the client can still request explicit snapshots at any time, interleaved
   // with timelapse ones.
   RUsageProfiler(                         //
+      RUsageScope scope,                  //
       MetricsMask metrics,                // Which metrics to track
       absl::Duration timelapse_interval,  // Take timelapse snapshots this often
       bool also_log_timelapses,           // Log timelapse snapshots as taken
@@ -402,6 +404,8 @@ class RUsageProfiler {
   // Global instance counter.
   static std::atomic<int> next_id_;
 
+  // Scope (the current process or the current thread).
+  const RUsageScope scope_;
   // Metrics and report flavors to keep track of and print.
   const Metrics metrics_;
   // Enabled RAII actions.
@@ -439,6 +443,8 @@ class RUsageProfiler {
 //               Convenience macros for easy use of RUsageProfiler
 //------------------------------------------------------------------------------
 
+// TODO(ussuri): The macros all use RUsageScope::ThisProcess(). Parameterize.
+
 #define RPROF_NAME(prefix, line) RPROF_NAME_CONCAT(prefix, line)
 #define RPROF_NAME_CONCAT(prefix, line) prefix##line
 #define FUNCTION_LEVEL_RPROF_NAME RPROF_NAME(rprof_, 0)
@@ -455,6 +461,7 @@ class RUsageProfiler {
 // clang-format off
 #define RPROF_THIS_FUNCTION(enable)                                        \
   centipede::perf::RUsageProfiler FUNCTION_LEVEL_RPROF_NAME = {            \
+      /*scope=*/centipede::perf::RUsageScope::ThisProcess(),               \
       /*metrics=*/(enable) ? centipede::perf::RUsageProfiler::kAllMetrics  \
                            : centipede::perf::RUsageProfiler::kMetricsOff, \
       /*raii_actions=*/centipede::perf::RUsageProfiler::kRaiiSnapshots,    \
@@ -468,6 +475,7 @@ class RUsageProfiler {
 // clang-format off
 #define RPROF_THIS_FUNCTION_WITH_REPORT(enable)                            \
   centipede::perf::RUsageProfiler FUNCTION_LEVEL_RPROF_NAME = {            \
+      /*scope=*/centipede::perf::RUsageScope::ThisProcess(),               \
       /*metrics=*/(enable) ? centipede::perf::RUsageProfiler::kAllMetrics  \
                            : centipede::perf::RUsageProfiler::kMetricsOff, \
       /*raii_actions=*/centipede::perf::RUsageProfiler::kAllRaii,          \
@@ -483,6 +491,7 @@ class RUsageProfiler {
 #define RPROF_THIS_FUNCTION_WITH_TIMELAPSE(                                \
     enable, timelapse_interval, also_log_timelapses)                       \
   centipede::perf::RUsageProfiler FUNCTION_LEVEL_RPROF_NAME = {            \
+      /*scope=*/centipede::perf::RUsageScope::ThisProcess(),               \
       /*metrics=*/(enable) ? centipede::perf::RUsageProfiler::kAllMetrics  \
                            : centipede::perf::RUsageProfiler::kMetricsOff, \
       /*timelapse_interval=*/timelapse_interval,                           \
@@ -554,6 +563,7 @@ class RUsageProfiler {
 // clang-format off
 #define RPROF_THIS_SCOPE(enable, description)                              \
   centipede::perf::RUsageProfiler SCOPE_LEVEL_RPROF_NAME = {               \
+      /*scope=*/centipede::perf::RUsageScope::ThisProcess(),               \
       /*metrics=*/(enable) ? centipede::perf::RUsageProfiler::kAllMetrics  \
                            : centipede::perf::RUsageProfiler::kMetricsOff, \
       /*raii_actions=*/centipede::perf::RUsageProfiler::kRaiiSnapshots,    \
@@ -566,6 +576,7 @@ class RUsageProfiler {
 #define RPROF_THIS_SCOPE_WITH_TIMELAPSE(                                   \
     enable, timelapse_interval, also_log_timelapses, description)          \
   centipede::perf::RUsageProfiler SCOPE_LEVEL_RPROF_NAME = {               \
+      /*scope=*/centipede::perf::RUsageScope::ThisProcess(),               \
       /*metrics=*/(enable) ? centipede::perf::RUsageProfiler::kAllMetrics  \
                            : centipede::perf::RUsageProfiler::kMetricsOff, \
       /*timelapse_interval=*/timelapse_interval,                           \

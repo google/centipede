@@ -362,11 +362,13 @@ class ProfileReportGenerator {
 std::atomic<int> RUsageProfiler::next_id_;
 
 RUsageProfiler::RUsageProfiler(    //
+    RUsageScope scope,             //
     MetricsMask metrics,           //
     RaiiActionsMask raii_actions,  //
     SourceLocation location,       //
     std::string description)
-    : metrics_{metrics},
+    : scope_{std::move(scope)},
+      metrics_{metrics},
       raii_actions_{raii_actions},
       ctor_loc_{location},
       description_{std::move(description)},
@@ -379,12 +381,14 @@ RUsageProfiler::RUsageProfiler(    //
 }
 
 RUsageProfiler::RUsageProfiler(         //
+    RUsageScope scope,                  //
     MetricsMask metrics,                //
     absl::Duration timelapse_interval,  //
     bool also_log_timelapses,           //
     SourceLocation location,            //
     std::string description)
-    : metrics_{metrics},
+    : scope_{std::move(scope)},
+      metrics_{metrics},
       raii_actions_{kDtorSnapshot | kDtorReport},
       ctor_loc_{location},
       description_{std::move(description)},
@@ -429,7 +433,7 @@ const RUsageProfiler::Snapshot& RUsageProfiler::TakeSnapshot(  //
   RUsageMemory delta_memory = RUsageMemory::Zero();
 
   if (metrics_ & kTiming) {
-    const auto current = RUsageTiming::Snapshot(timer_);
+    const auto current = RUsageTiming::Snapshot(scope_, timer_);
     if (metrics_ & kSnapTiming) {
       snap_timing = current;
     }
@@ -440,7 +444,7 @@ const RUsageProfiler::Snapshot& RUsageProfiler::TakeSnapshot(  //
   }
 
   if (metrics_ & kMemory) {
-    const auto current = RUsageMemory::Snapshot();
+    const auto current = RUsageMemory::Snapshot(scope_);
     if (metrics_ & kSnapMemory) {
       snap_memory = current;
     }
@@ -501,7 +505,7 @@ void RUsageProfiler::PrintReport(  //
       }
     }
 
-    void operator<<(const std::string& fragment) override {
+    ReportLogger& operator<<(const std::string& fragment) override {
       const auto last_newline = fragment.rfind('\n');
       if (last_newline == std::string::npos) {
         // Accumulate no-'\n' fragments: LOG() always wraps around.
@@ -511,6 +515,7 @@ void RUsageProfiler::PrintReport(  //
         LOG(INFO).NoPrefix() << buffer_ << fragment.substr(0, last_newline);
         buffer_ = fragment.substr(last_newline + 1);
       }
+      return *this;
     }
 
    private:
@@ -529,6 +534,8 @@ void RUsageProfiler::GenerateReport(ReportSink* report_sink) const {
   absl::WriterMutexLock logging_lock{&report_generation_mutex_};
 
   ProfileReportGenerator gen{snapshots_, report_sink};
+
+  *report_sink << "SCOPE: " << scope_ << "\n";
 
   if (metrics_ & kSnapTiming) {
     *report_sink << absl::StrFormat(  //

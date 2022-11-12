@@ -23,11 +23,11 @@
 
 #include <sys/resource.h>
 
+#include <array>
 #include <cstdint>
 #include <iosfwd>
 #include <ostream>
 #include <string>
-#include <vector>
 
 #include "absl/status/status.h"
 #include "absl/time/time.h"
@@ -46,6 +46,45 @@ using CpuHyperCores = double;
 // however the value can go slightly higher due to rounding errors in the system
 // scheduler's accounting logic.
 using CpuUtilization = long double;
+
+//------------------------------------------------------------------------------
+//                               RUsageScope
+//
+// Specifies the scope of resource usage measurements: a process or a thread.
+//------------------------------------------------------------------------------
+class RUsageScope {
+ public:
+  enum ProcFile : size_t { kSched = 0, kStatm = 1, kStatus = 2, kNum = 3 };
+
+  // Static ctors for supported use cases. If the same scope is used repeatedly,
+  // callers should prefer caching it, as construction may involve syscalls.
+  static RUsageScope ThisProcess();
+  static RUsageScope Process(pid_t pid);
+  static RUsageScope ThisThread();
+  static RUsageScope Thread(pid_t pid, pid_t tid);
+  static RUsageScope Thread(pid_t tid);
+
+  // Copyable and movable.
+  RUsageScope(const RUsageScope&) = default;
+  RUsageScope& operator=(const RUsageScope&) = default;
+  RUsageScope(RUsageScope&&) = default;
+  RUsageScope& operator=(RUsageScope&&) = default;
+
+  // Returns a path to the /proc/<pid>/<file> or /proc/<pid>/task/<tid>/<file>.
+  [[nodiscard]] const std::string& GetProcFilePath(ProcFile file) const;
+
+  template <typename OStream>
+  friend OStream& operator<<(OStream& os, const RUsageScope& s) {
+      return os << s.description_;
+  }
+
+ private:
+  explicit RUsageScope(pid_t pid);
+  RUsageScope(pid_t pid, pid_t tid);
+
+  const std::string description_;
+  const std::array<std::string, ProcFile::kNum> proc_file_paths_;
+};
 
 //------------------------------------------------------------------------------
 //                               ProcessTimer
@@ -70,8 +109,8 @@ class ProcessTimer {
 //------------------------------------------------------------------------------
 //                                RUsageTiming
 //
-// An interfaces to measure, store, and log the system time usage of the current
-// process.
+// An interface to measure, store, manipulate, and log the system timing stats
+// of a process or a thread.
 //------------------------------------------------------------------------------
 
 struct RUsageTiming {
@@ -82,12 +121,15 @@ struct RUsageTiming {
   static RUsageTiming Min();
   static RUsageTiming Max();
 
-  // Returns system time usage since this process started.
-  static RUsageTiming Snapshot();
+  // Returns the system timing stats for the specified rusage scope.
+  // NOTE: Clients must cache the r-value returned by `RUsageScope` static ctors
+  // to be able to call this (this is on purpose).
+  static RUsageTiming Snapshot(const RUsageScope& scope);
   // Same as above, but using a custom timer. The caller is responsible for
   // setting up and passing the same timer object to all Snapshot() calls to get
   // consistent results.
-  static RUsageTiming Snapshot(const ProcessTimer& timer);
+  static RUsageTiming Snapshot(  //
+      const RUsageScope& scope, const ProcessTimer& timer);
 
   // Comparisons. NOTE: `is_delta` is always ignored.
   friend bool operator==(const RUsageTiming& t1, const RUsageTiming& t2);
@@ -144,8 +186,8 @@ struct RUsageTiming {
 //------------------------------------------------------------------------------
 //                               RUsageMemory
 //
-// An interface to measure, store, manipulate, and log the system resource usage
-// of the current process.
+// An interface to measure, store, manipulate, and log the system memory usage
+// of a process or a thread.
 //------------------------------------------------------------------------------
 
 struct RUsageMemory {
@@ -156,8 +198,10 @@ struct RUsageMemory {
   static RUsageMemory Min();
   static RUsageMemory Max();
 
-  // Returns the current process's resource usage.
-  static RUsageMemory Snapshot();
+  // Returns the system memory stats for the specified rusage scope.
+  // NOTE: Clients must cache the r-value returned by `RUsageScope` static ctors
+  // to be able to call this (this is on purpose).
+  static RUsageMemory Snapshot(const RUsageScope& scope);
 
   // Comparisons. NOTE: `is_delta` is always ignored.
   friend bool operator==(const RUsageMemory& m1, const RUsageMemory& m2);

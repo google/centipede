@@ -181,7 +181,8 @@ TEST(RUsageTimingTest, Accuracy) {
   for (int i = 0; i < kNumRuns; ++i) {
     const ProcessTimer timer;
     absl::Notification hogging_started, hogging_stopped;
-    const auto before = RUsageTiming::Snapshot(timer);
+    const auto before =
+        RUsageTiming::Snapshot(RUsageScope::ThisProcess(), timer);
 
     // clang-format off
     [[maybe_unused]] CpuHog cpu_hog{
@@ -195,12 +196,14 @@ TEST(RUsageTimingTest, Accuracy) {
 
     hogging_started.WaitForNotification();
     do {
-      const auto sample = RUsageTiming::Snapshot(timer);
+      const auto sample =
+          RUsageTiming::Snapshot(RUsageScope::ThisProcess(), timer);
       cpu_util_histo.Add(sample.cpu_utilization);
       // NOTE: Do NOT sleep here: that throws off the measurements.
     } while (!hogging_stopped.HasBeenNotified());
 
-    const auto after = RUsageTiming::Snapshot(timer);
+    const auto after =
+        RUsageTiming::Snapshot(RUsageScope::ThisProcess(), timer);
     const auto delta = after - before;
 
     user_time_histo.Add(absl::ToDoubleSeconds(delta.user_time));
@@ -256,9 +259,9 @@ TEST(RUsageMemoryTest, Accuracy) {
   // then fit new allocations in the just freed up space.
   [[maybe_unused]] std::vector<BigThing> big_things;
   for (int i = 0; i < kNumRuns; ++i) {
-    const auto before = RUsageMemory::Snapshot();
+    const auto before = RUsageMemory::Snapshot(RUsageScope::ThisProcess());
     big_things.emplace_back(kBytes);
-    const auto after = RUsageMemory::Snapshot();
+    const auto after = RUsageMemory::Snapshot(RUsageScope::ThisProcess());
     const auto delta = after - before;
 
     if (absl::GetFlag(FLAGS_verbose)) {
