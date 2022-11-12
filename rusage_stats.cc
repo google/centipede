@@ -275,7 +275,7 @@ std::string FormatInOptimalUnits(CpuUtilization util, bool always_signed) {
 
 std::string FormatInOptimalUnits(CpuHyperCores cores, bool always_signed) {
   std::string sign = detail::NormalizeSign(&cores, always_signed);
-  return absl::StrFormat("%s%.1f", sign, cores);
+  return absl::StrFormat("%s%.2f", sign, cores);
 }
 
 //------------------------------------------------------------------------------

@@ -498,31 +498,31 @@ TEST(RUsageTimingTest, Logging) {
   EXPECT_EQ(  //
       timing.ShortStr(),
       "Wall: 303.30s | User: 101us | Sys: 202ms | "
-      "CpuUtil: 40.00% | CpuCores: 0.6");
+      "CpuUtil: 40.00% | CpuCores: 0.60");
   EXPECT_EQ(  //
       timing.FormattedStr(),
       "Wall:       303.30s | User:         101us | Sys:          202ms | "
-      "CpuUtil:     40.00% | CpuCores:       0.6");
+      "CpuUtil:     40.00% | CpuCores:      0.60");
 
   timing.is_delta = true;
   EXPECT_EQ(  //
       timing.ShortStr(),
       "Wall: +303.30s | User: +101us | Sys: +202ms | "
-      "CpuUtil: +40.00% | CpuCores: +0.6");
+      "CpuUtil: +40.00% | CpuCores: +0.60");
   EXPECT_EQ(  //
       timing.FormattedStr(),
       "Wall:      +303.30s | User:        +101us | Sys:         +202ms | "
-      "CpuUtil:    +40.00% | CpuCores:      +0.6");
+      "CpuUtil:    +40.00% | CpuCores:     +0.60");
 
   RUsageTiming timing2 = timing / -2;
   EXPECT_EQ(  //
       timing2.ShortStr(),
       "Wall: -151.65s | User: -51us | Sys: -101ms | "
-      "CpuUtil: -20.00% | CpuCores: -0.3");
+      "CpuUtil: -20.00% | CpuCores: -0.30");
   EXPECT_EQ(  //
       timing2.FormattedStr(),
       "Wall:      -151.65s | User:         -51us | Sys:         -101ms | "
-      "CpuUtil:    -20.00% | CpuCores:      -0.3");
+      "CpuUtil:    -20.00% | CpuCores:     -0.30");
 }
 
 TEST(RUsageMemoryTest, Logging) {
