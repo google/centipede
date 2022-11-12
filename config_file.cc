@@ -67,11 +67,13 @@ ABSL_FLAG(std::string, save_config, "",
           "This format can be parsed back by both --config and --flagfile. "
           "Unlike those two flags, this flag is not position-sensitive and "
           "always saves the final resolved config.\n"
-          "Special case: if the file's extension is .sh, a runnable shell "
-          "script is saved instead.");
+          "Tips: 1) If the file's extension is .sh, a runnable shell script is "
+          "saved instead. 2) Use --dry_run to just save the config file, "
+          "validate the command line, and exit.");
 ABSL_FLAG(bool, update_config, false,
           "Must be used in combination with --config=<file>. Writes the final "
-          "resolved config back to the same file.");
+          "resolved config back to the same file. See also --save_config for "
+          "details and tips.");
 ABSL_FLAG(bool, print_config, false,
           "Print the config to stderr upon starting Centipede.");
 
@@ -224,7 +226,9 @@ std::filesystem::path MaybeSaveConfigToFile(
         FLAGS_config.Name(),
         FLAGS_save_config.Name(),
         FLAGS_update_config.Name(),
-        FLAGS_print_config.Name(),
+        // TODO(ussuri): Comes from :environment. Find a better way to keep
+        //  the two places in-sync.
+        "dry_run",
     };
     const FlagInfosPerSource flags =
         GetFlagsPerSource("third_party/centipede/", excluded_flags);
@@ -233,7 +237,7 @@ std::filesystem::path MaybeSaveConfigToFile(
     std::string file_contents;
     if (path.extension() == ".sh") {
       // NOTES: 1) The first element of `leftover_argv` is expected to be the
-      // /path/to/centipede, so the $1 in the stub will run it.
+      // /path/to/centipede, so the $0 in the stub will run it.
       // 2) absl::Substitute() replaces the escaped $$ with a $.
       constexpr std::string_view kScriptStub =
           R"(#!/bin/bash -eu
@@ -301,13 +305,11 @@ std::vector<std::string> InitCentipede(
     LOG(INFO) << "Final resolved config:\n" << flags_str;
   }
 
-  // If --save_config was passed, save the final resolved flags to the requested
-  // file and exit the program.
+  // If --save_config or --update_config was passed, save the final resolved
+  // flags to the requested file.
   const auto path = MaybeSaveConfigToFile(leftover_argv);
   if (!path.empty()) {
     LOG(INFO) << "Config written to file: " << VV(path);
-    LOG(INFO) << "Nothing left to do; exiting";
-    exit(EXIT_SUCCESS);
   }
 
   return leftover_argv;
