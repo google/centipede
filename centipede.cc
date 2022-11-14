@@ -67,6 +67,7 @@
 #include "./feature.h"
 #include "./logging.h"
 #include "./remote_file.h"
+#include "./rusage_stats.h"
 #include "./shard_reader.h"
 #include "./util.h"
 
@@ -177,6 +178,7 @@ void Centipede::Log(std::string_view log_type, size_t min_log_level) {
   auto [max, avg] = corpus_.MaxAndAvgSize();
   stats_.corpus_size = corpus_.NumActive();
   stats_.num_covered_pcs = fs_.ToCoveragePCs().size();
+  static const auto rusage_scope = perf::RUsageScope::ThisProcess();
   LOG(INFO) << env_.experiment_name << "[" << num_runs_ << "]"
             << " " << log_type << ":"
             << " ft: " << fs_.size() << " cov: " << fs_.ToCoveragePCs().size()
@@ -189,7 +191,8 @@ void Centipede::Log(std::string_view log_type, size_t min_log_level) {
             << " fr: " << coverage_frontier_.NumFunctionsInFrontier()
             << " max/avg " << max << " " << avg << " "
             << corpus_.MemoryUsageString() << " exec/s: " << exec_speed
-            << " mb: " << (MemoryUsage() >> 20);
+            << " mb: "
+            << (perf::RUsageMemory::Snapshot(rusage_scope).mem_rss >> 20);
 }
 
 void Centipede::LogFeaturesAsSymbols(const FeatureVec &fv) {

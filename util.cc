@@ -199,15 +199,6 @@ std::string HashOfFileContents(std::string_view file_path) {
   return Hash(ba);
 }
 
-int64_t MemoryUsage() {
-  // Read VmRSS from statm. Not the most accurate, but (probably?) good enough.
-  std::ifstream f(std::string{"/proc/self/statm"});
-  int64_t value;
-  f >> value;  // skip the first value.
-  f >> value;
-  return value * getpagesize();  // value is in pages.
-}
-
 std::string ProcessAndThreadUniqueID(std::string_view prefix) {
   // operator << is the only way to serialize std::this_thread::get_id().
   std::ostringstream oss;

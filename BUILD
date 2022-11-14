@@ -381,6 +381,7 @@ cc_library(
         ":feature",
         ":logging",
         ":remote_file",
+        ":rusage_stats",
         ":shard_reader",
         ":stats",
         ":util",

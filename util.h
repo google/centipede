@@ -79,8 +79,6 @@ void WriteToLocalFile(std::string_view file_path, const FeatureVec &data);
 // Writes `data` to `dir_path`/Hash(`data`). Does nothing if `dir_path.empty()`.
 void WriteToLocalHashedFileInDir(std::string_view dir_path,
                                  absl::Span<const uint8_t> data);
-// Returns the current process's memory usage in bytes or -1 on error.
-int64_t MemoryUsage();
 // Returns a path string suitable to create a temporary local directory.
 // Will return the same value every time it is called within one thread,
 // but different values for different threads and difference processes.
