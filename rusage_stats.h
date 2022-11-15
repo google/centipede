@@ -82,8 +82,8 @@ class RUsageScope {
   explicit RUsageScope(pid_t pid);
   RUsageScope(pid_t pid, pid_t tid);
 
-  const std::string description_;
-  const std::array<std::string, ProcFile::kNum> proc_file_paths_;
+  std::string description_;
+  std::array<std::string, ProcFile::kNum> proc_file_paths_;
 };
 
 //------------------------------------------------------------------------------

@@ -111,7 +111,7 @@ const ProcessTimer global_process_timer;
 //                      Read values from /proc/* files
 //------------------------------------------------------------------------------
 
-bool ReadProcFileFields(std::string_view path, const char* format, ...) {
+bool ReadProcFileFields(const std::string& path, const char* format, ...) {
   va_list value_list;
   va_start(value_list, format);
   std::ifstream file{path};
@@ -124,7 +124,8 @@ bool ReadProcFileFields(std::string_view path, const char* format, ...) {
 }
 
 template <typename T>
-bool ReadProcFileKeyword(std::string_view path, const char* format, T* value) {
+bool ReadProcFileKeyword(  //
+    const std::string& path, const char* format, T* value) {
   std::ifstream file{path};
   CHECK(file.good()) << path;
   constexpr std::streamsize kMaxLineLen = 1024;
