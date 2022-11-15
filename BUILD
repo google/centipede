@@ -304,6 +304,7 @@ cc_library(
     srcs = ["corpus.cc"],
     hdrs = ["corpus.h"],
     deps = [
+        ":control_flow",
         ":coverage",
         ":defs",
         ":feature",
@@ -720,6 +721,7 @@ cc_test(
     name = "corpus_test",
     srcs = ["corpus_test.cc"],
     deps = [
+        ":control_flow",
         ":corpus",
         ":coverage",
         ":defs",
