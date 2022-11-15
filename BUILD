@@ -283,6 +283,7 @@ cc_library(
         ":coverage",
         ":logging",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/log:check",
     ],
 )
 

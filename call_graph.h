@@ -21,7 +21,9 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/log/check.h"
 #include "./coverage.h"
+#include "./logging.h"
 
 namespace centipede {
 
@@ -33,10 +35,16 @@ class CallGraph {
                        const Coverage::PCTable& pc_table);
 
   const std::vector<uintptr_t>& GetFunctionCallees(uintptr_t pc) const {
-    return call_graph_.at(pc);
+    const auto it = call_graph_.find(pc);
+    CHECK(it != call_graph_.cend())
+        << "Couldn't find function callees for " << VV(pc);
+    return it->second;
   }
   const std::vector<uintptr_t>& GetBasicBlockCallees(uintptr_t pc) const {
-    return basic_block_callees_.at(pc);
+    const auto it = basic_block_callees_.find(pc);
+    CHECK(it != basic_block_callees_.cend())
+        << "Couldn't find basic block callees for " << VV(pc);
+    return it->second;
   }
   const absl::flat_hash_set<uintptr_t>& GetFunctionEntries() const {
     return function_entries_;
