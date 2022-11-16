@@ -383,6 +383,7 @@ cc_library(
         ":feature",
         ":logging",
         ":remote_file",
+        ":rusage_profiler",
         ":rusage_stats",
         ":shard_reader",
         ":stats",

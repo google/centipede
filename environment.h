@@ -122,19 +122,35 @@ struct Environment {
     return my_shard_index < log_features_shards;
   }
   // Returns the path for the coverage report file for my_shard_index.
-  // The coverage report is generated before fuzzing begins and after it ends.
   // Non-default `annotation` becomes a part of the returned filename.
   // `annotation` must not start with a '.'.
   std::string MakeCoverageReportPath(std::string_view annotation = "") const;
   // Returns the path for the corpus stats report file for my_shard_index.
-  // The corpus stats report is regenerated periodically during fuzzing.
+  // Non-default `annotation` becomes a part of the returned filename.
+  // `annotation` must not start with a '.'.
   std::string MakeCorpusStatsPath(std::string_view annotation = "") const;
   // Returns the path to the source-based coverage report directory.
   std::string MakeSourceBasedCoverageReportPath(
       std::string_view annotation = "") const;
-  // Returns true if we want to generate the telemetry files (coverage report,
-  // corpus stats, etc.) in this shard.
-  bool DumpTelemetryInThisShard() const { return my_shard_index == 0; }
+  // Returns the path for the performance report file for my_shard_index.
+  // Non-default `annotation` becomes a part of the returned filename.
+  // `annotation` must not start with a '.'.
+  std::string MakeRUsageReportPath(std::string_view annotation = "") const;
+  // Returns true if we want to generate the corpus telemetry files (coverage
+  // report, corpus stats, etc.) in this shard.
+  bool DumpCorpusTelemetryInThisShard() const {
+    // Corpus stats are global across all shards on all machines.
+    return my_shard_index == 0;
+  }
+  // Returns true if we want to generate the resource usage report in this
+  // shard. See the related RUsageTelemetryScope().
+  bool DumpRUsageTelemetryInThisShard() const {
+    // Unlike the corpus stats, we want to measure/dump rusage stats for each
+    // Centipede process running on a separate machine: assign that to the first
+    // shard (i.e. thread) on the machine.
+    return my_shard_index % num_threads == 0;
+  }
+
   // Returns true if we want to generate the telemetry files (coverage report,
   // the corpus stats, etc.) after processing `batch_index`-th batch.
   bool DumpTelemetryForThisBatch(size_t batch_index) const {

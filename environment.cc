@@ -440,6 +440,13 @@ std::vector<std::string> Environment::EnumerateRawCoverageProfiles() const {
   return raw_profiles;
 }
 
+std::string Environment::MakeRUsageReportPath(
+    std::string_view annotation) const {
+  return std::filesystem::path(workdir).append(absl::StrFormat(
+      "rusage-report-%s.%0*d%s.txt", binary_name, kDigitsInShardIndex,
+      my_shard_index, NormalizeAnnotation(annotation)));
+}
+
 // Returns true if `value` is one of "1", "true".
 // Returns true if `value` is one of "0", "false".
 // CHECK-fails otherwise.

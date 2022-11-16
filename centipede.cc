@@ -67,11 +67,14 @@
 #include "./feature.h"
 #include "./logging.h"
 #include "./remote_file.h"
+#include "./rusage_profiler.h"
 #include "./rusage_stats.h"
 #include "./shard_reader.h"
 #include "./util.h"
 
 namespace centipede {
+
+using perf::RUsageProfiler;
 
 Centipede::Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
                      const Coverage::PCTable &pc_table,
@@ -91,7 +94,15 @@ Centipede::Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
       input_filter_path_(std::filesystem::path(TemporaryLocalDirPath())
                              .append("filter-input")),
       input_filter_cmd_(env_.input_filter, {input_filter_path_}, {/*env*/},
-                        "/dev/null", "/dev/null") {
+                        "/dev/null", "/dev/null"),
+      rusage_profiler_(
+          /*scope=*/perf::RUsageScope::ThisProcess(),
+          /*metrics=*/env.DumpRUsageTelemetryInThisShard()
+              ? RUsageProfiler::kAllMetrics
+              : RUsageProfiler::kMetricsOff,
+          /*raii_actions=*/RUsageProfiler::kRaiiOff,
+          /*location=*/{__FILE__, __LINE__},
+          /*description=*/"Engine") {
   CHECK(env_.seed) << "env_.seed must not be zero";
   if (!env_.input_filter.empty() && env_.fork_server)
     input_filter_cmd_.StartForkServer(TemporaryLocalDirPath(), "input_filter");
@@ -448,13 +459,50 @@ void Centipede::GenerateSourceBasedCoverageReport(std::string_view annotation,
   }
 }
 
+void Centipede::GenerateRUsageReport(std::string_view annotation,
+                                     size_t batch_index) {
+  class ReportDumper : public RUsageProfiler::ReportSink {
+   public:
+    explicit ReportDumper(std::string_view path)
+        : file_{RemoteFileOpen(path, "w")} {}
+
+    ~ReportDumper() override { RemoteFileClose(file_); }
+
+    ReportDumper &operator<<(const std::string &fragment) override {
+      RemoteFileAppend(file_, ByteArray{fragment.cbegin(), fragment.cend()});
+      return *this;
+    }
+
+   private:
+    RemoteFile *file_;
+  };
+
+  const auto description = absl::StrCat("Batch ", batch_index);
+  const auto &snapshot =
+      rusage_profiler_.TakeSnapshot({__FILE__, __LINE__}, description);
+  VLOG(1) << "Rusage @ " << description << ": " << snapshot.ShortMetricsStr();
+  // The very first call with `batch_index`==0 is for the initial state: just
+  // take a baseline snapshot, but skip the report.
+  if (batch_index > 0) {
+    auto path = env_.MakeRUsageReportPath(annotation);
+    LOG(INFO) << "Generate rusage report: " << VV(env_.my_shard_index)
+              << VV(batch_index) << VV(path);
+    ReportDumper dumper{path};
+    rusage_profiler_.GenerateReport(&dumper);
+  }
+}
+
 void Centipede::MaybeGenerateTelemetry(std::string_view annotation,
                                        size_t batch_index) {
-  if (env_.DumpTelemetryInThisShard() &&
-      env_.DumpTelemetryForThisBatch(batch_index)) {
-    GenerateCoverageReport(annotation, batch_index);
-    GenerateCorpusStats(annotation, batch_index);
-    GenerateSourceBasedCoverageReport(annotation, batch_index);
+  if (env_.DumpTelemetryForThisBatch(batch_index)) {
+    if (env_.DumpCorpusTelemetryInThisShard()) {
+      GenerateCoverageReport(annotation, batch_index);
+      GenerateCorpusStats(annotation, batch_index);
+      GenerateSourceBasedCoverageReport(annotation, batch_index);
+    }
+    if (env_.DumpRUsageTelemetryInThisShard()) {
+      GenerateRUsageReport(annotation, batch_index);
+    }
   }
 }
 
