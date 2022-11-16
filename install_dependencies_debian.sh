@@ -50,6 +50,8 @@ apt install -y git bazel binutils libssl-dev
 # Get Clang-14, the earliest version that supports dataflow tracing:
 #   * Download Clang from Chromium to support old OS (e.g. Ubuntu 16).
 #   * Alternatively, download the fresh Clang from https://releases.llvm.org/
-mkdir /clang
-curl https://commondatastorage.googleapis.com/chromium-browser-clang/Linux_x64/clang-llvmorg-14-init-9436-g65120988-1.tgz -o /clang-14.tgz
-tar zxvf /clang-14.tgz -C /clang
+declare -r clang_url="https://commondatastorage.googleapis.com/chromium-browser-clang/Linux_x64/clang-llvmorg-14-init-9436-g65120988-1.tgz"
+declare -r clang_dir="/clang"
+mkdir "${clang_dir}"
+tar zxvf <(curl "${clang_url}") -C "${clang_dir}"
+export CLANG_BIN_DIR="${clang_dir}/bin"
