@@ -138,40 +138,13 @@ struct Environment {
   std::string MakeRUsageReportPath(std::string_view annotation = "") const;
   // Returns true if we want to generate the corpus telemetry files (coverage
   // report, corpus stats, etc.) in this shard.
-  bool DumpCorpusTelemetryInThisShard() const {
-    // Corpus stats are global across all shards on all machines.
-    return my_shard_index == 0;
-  }
+  bool DumpCorpusTelemetryInThisShard() const;
   // Returns true if we want to generate the resource usage report in this
   // shard. See the related RUsageTelemetryScope().
-  bool DumpRUsageTelemetryInThisShard() const {
-    // Unlike the corpus stats, we want to measure/dump rusage stats for each
-    // Centipede process running on a separate machine: assign that to the first
-    // shard (i.e. thread) on the machine.
-    return my_shard_index % num_threads == 0;
-  }
-
+  bool DumpRUsageTelemetryInThisShard() const;
   // Returns true if we want to generate the telemetry files (coverage report,
   // the corpus stats, etc.) after processing `batch_index`-th batch.
-  bool DumpTelemetryForThisBatch(size_t batch_index) const {
-    // Always dump for batch 0 (i.e. at the beginning of execution).
-    if (batch_index == 0) {
-      return true;
-    }
-    // Special mode for negative --telemetry_frequency: dump when batch_index
-    // is a power-of-two and is >= than 2^abs(--telemetry_frequency).
-    if (((telemetry_frequency < 0) &&
-         (batch_index >= (1 << -telemetry_frequency)) &&
-         ((batch_index - 1) & batch_index) == 0)) {
-      return true;
-    }
-    // Normal mode: dump when requested number of batches get processed.
-    if (((telemetry_frequency > 0) &&
-         (batch_index % telemetry_frequency == 0))) {
-      return true;
-    }
-    return false;
-  }
+  bool DumpTelemetryForThisBatch(size_t batch_index) const;
 
   // Sets flag 'name' to `value`. CHECK-fails on invalid name/value combination.
   void SetFlag(std::string_view name, std::string_view value);
