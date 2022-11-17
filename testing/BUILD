@@ -83,6 +83,8 @@ sh_binary(
 
 cc_test(
     name = "coverage_test",
+    size = "medium",
+    timeout = "moderate",
     srcs = ["coverage_test.cc"],
     data = [
         ":test_fuzz_target",
@@ -107,6 +109,7 @@ cc_test(
 
 cc_test(
     name = "centipede_test",
+    size = "medium",
     timeout = "long",
     srcs = ["centipede_test.cc"],
     data = [
@@ -137,6 +140,7 @@ cc_test(
 # Runs common Centipede scenarios with local files.
 sh_test(
     name = "centipede_main_test",
+    size = "medium",
     timeout = "long",
     srcs = ["centipede_main_test.sh"],
     data = [
@@ -149,6 +153,8 @@ sh_test(
 
 sh_test(
     name = "runner_test",
+    size = "small",
+    timeout = "short",
     srcs = ["runner_test.sh"],
     data = [
         ":test_fuzz_target",
@@ -158,6 +164,8 @@ sh_test(
 
 sh_test(
     name = "instrumentation_test",
+    size = "small",
+    timeout = "short",
     srcs = ["instrumentation_test.sh"],
     data = [
         ":empty_fuzz_target",

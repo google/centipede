@@ -566,6 +566,8 @@ sh_library(
 
 cc_test(
     name = "environment_test",
+    size = "small",
+    timeout = "short",
     srcs = ["environment_test.cc"],
     deps = [
         ":environment",
@@ -575,6 +577,8 @@ cc_test(
 
 cc_test(
     name = "util_test",
+    size = "small",
+    timeout = "short",
     srcs = ["util_test.cc"],
     deps = [
         ":defs",
@@ -588,6 +592,8 @@ cc_test(
 
 cc_test(
     name = "config_util_test",
+    size = "small",
+    timeout = "short",
     srcs = ["config_util_test.cc"],
     deps = [
         # Include this just to get some flags external to the test itself.
@@ -602,6 +608,8 @@ cc_test(
 
 cc_test(
     name = "config_file_test",
+    size = "small",
+    timeout = "short",
     srcs = ["config_file_test.cc"],
     deps = [
         ":config_file",
@@ -614,7 +622,7 @@ cc_test(
 cc_test(
     name = "rusage_stats_test",
     size = "medium",
-    timeout = "long",
+    timeout = "moderate",
     srcs = ["rusage_stats_test.cc"],
     deps = [
         ":logging",
@@ -630,8 +638,8 @@ cc_test(
 cc_test(
     name = "rusage_profiler_test",
     # Allocates large blocks of memory to fight small number volatility.
-    size = "large",
-    timeout = "long",
+    size = "medium",
+    timeout = "moderate",
     srcs = ["rusage_profiler_test.cc"],
     deps = [
         ":rusage_profiler",
@@ -644,6 +652,8 @@ cc_test(
 
 cc_test(
     name = "stats_test",
+    size = "small",
+    timeout = "short",
     srcs = ["stats_test.cc"],
     deps = [
         ":stats",
@@ -655,6 +665,8 @@ cc_test(
 
 cc_test(
     name = "analyze_corpora_test",
+    size = "small",
+    timeout = "short",
     srcs = ["analyze_corpora_test.cc"],
     deps = [
         ":analyze_corpora",
@@ -665,6 +677,8 @@ cc_test(
 
 cc_test(
     name = "blob_file_test",
+    size = "small",
+    timeout = "short",
     srcs = ["blob_file_test.cc"],
     deps = [
         ":blob_file",
@@ -678,6 +692,8 @@ cc_test(
 
 cc_test(
     name = "shared_memory_blob_sequence_test",
+    size = "small",
+    timeout = "short",
     srcs = ["shared_memory_blob_sequence_test.cc"],
     deps = [
         ":shared_memory_blob_sequence",
@@ -687,6 +703,8 @@ cc_test(
 
 cc_test(
     name = "execution_result_test",
+    size = "small",
+    timeout = "short",
     srcs = ["execution_result_test.cc"],
     deps = [
         ":execution_result",
@@ -698,6 +716,8 @@ cc_test(
 
 cc_test(
     name = "byte_array_mutator_test",
+    size = "medium",
+    timeout = "moderate",
     srcs = ["byte_array_mutator_test.cc"],
     deps = [
         ":byte_array_mutator",
@@ -709,6 +729,8 @@ cc_test(
 
 cc_test(
     name = "feature_test",
+    size = "medium",
+    timeout = "moderate",
     srcs = ["feature_test.cc"],
     deps = [
         ":feature",
@@ -720,6 +742,8 @@ cc_test(
 
 cc_test(
     name = "corpus_test",
+    size = "medium",
+    timeout = "moderate",
     srcs = ["corpus_test.cc"],
     deps = [
         ":control_flow",
@@ -740,6 +764,8 @@ cc_binary(
 
 cc_test(
     name = "command_test",
+    size = "small",
+    timeout = "short",
     srcs = ["command_test.cc"],
     data = [":command_test_helper"],
     deps = [
@@ -754,6 +780,8 @@ cc_test(
 
 cc_test(
     name = "runner_cmp_trace_test",
+    size = "small",
+    timeout = "short",
     srcs = ["runner_cmp_trace_test.cc"],
     deps = [
         ":runner_cmp_trace",
@@ -763,6 +791,8 @@ cc_test(
 
 cc_test(
     name = "control_flow_test",
+    size = "small",
+    timeout = "short",
     srcs = ["control_flow_test.cc"],
     deps = [
         "@centipede//:control_flow",
@@ -775,6 +805,8 @@ cc_test(
 
 cc_test(
     name = "call_graph_test",
+    size = "small",
+    timeout = "short",
     srcs = ["call_graph_test.cc"],
     deps = [
         "@centipede//:call_graph",
@@ -792,6 +824,8 @@ cc_test(
 # expected name.
 sh_test(
     name = "centipede_binary_test",
+    size = "small",
+    timeout = "short",
     srcs = ["centipede_binary_test.sh"],
     data = [
         ":centipede",

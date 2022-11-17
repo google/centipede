@@ -35,6 +35,8 @@ def puzzle(name):
         native.sh_test(
             name = "run_" + seed + "_" + name,
             srcs = ["run_puzzle.sh"],
+            size = "small",
+            timeout = "short",
             data = [
                 ":" + name,
                 name + ".cc",
