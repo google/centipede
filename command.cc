@@ -143,18 +143,19 @@ int Command::Execute() {
     // The fork server forks, the child is running. Block until some readable
     // data appears in the pipe (that is, after the fork server writes the
     // execution result to it).
-    const int poll_timeout_ms =
-        static_cast<int>(absl::ToInt64Milliseconds(timeout_));
-    // The `poll()` syscall can get interrupted: it sets errno==EINTR in that
-    // case. We should tolerate that.
     struct pollfd poll_fd = {};
     int poll_ret = -1;
+    auto poll_deadline = absl::Now() + timeout_;
+    // The `poll()` syscall can get interrupted: it sets errno==EINTR in that
+    // case. We should tolerate that.
     do {
       // NOTE: `poll_fd` has to be reset every time.
       poll_fd = {
           .fd = pipe_[1],    // The file descriptor to wait for.
           .events = POLLIN,  // Wait until `fd` gets readable data.
       };
+      const int poll_timeout_ms = static_cast<int>(absl::ToInt64Milliseconds(
+          std::max(poll_deadline - absl::Now(), absl::Milliseconds(1))));
       poll_ret = poll(&poll_fd, 1, poll_timeout_ms);
     } while (poll_ret < 0 && errno == EINTR);
 
@@ -166,9 +167,8 @@ int Command::Execute() {
         ReadFromLocalFile(out_, fork_server_log);
       }
       if (poll_ret == 0) {
-        LOG(FATAL) << "Timeout while waiting for fork server: "
-                   << VV(poll_timeout_ms) << VV(fork_server_log)
-                   << VV(command_line_);
+        LOG(FATAL) << "Timeout while waiting for fork server: " << VV(timeout_)
+                   << VV(fork_server_log) << VV(command_line_);
       } else {
         PLOG(FATAL) << "Error or interrupt while waiting for fork server: "
                     << VV(poll_ret) << VV(poll_fd.revents)
