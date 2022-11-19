@@ -190,6 +190,10 @@ cc_library(
     srcs = ["shared_memory_blob_sequence.cc"],
     hdrs = ["shared_memory_blob_sequence.h"],
     linkopts = ["-lrt"],  # for shm_open.
+    deps = [
+        ":logging",
+        "@com_google_absl//absl/log:check",
+    ],
     # don't add any dependencies.
 )
 
@@ -527,7 +531,10 @@ cc_library(
     srcs = RUNNER_SOURCES_NO_MAIN,
     copts = RUNNER_COPTS,
     linkopts = RUNNER_LINKOPTS,
-    deps = RUNNER_DEPS,
+    deps = RUNNER_DEPS + [
+        ":logging",
+        "@com_google_absl//absl/log:check",
+    ],
 )
 
 # A full self-contained library archive that external clients should link to
@@ -538,7 +545,10 @@ cc_library(
     srcs = RUNNER_SOURCES_WITH_MAIN,
     copts = RUNNER_COPTS,
     linkopts = RUNNER_LINKOPTS,
-    deps = RUNNER_DEPS,
+    deps = RUNNER_DEPS + [
+        ":logging",
+        "@com_google_absl//absl/log:check",
+    ],
 )
 
 ################################################################################

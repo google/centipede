@@ -19,6 +19,9 @@
 #include <cstdint>
 #include <type_traits>
 
+#include "absl/log/check.h"
+#include "./logging.h"
+
 // This library must not depend on anything other than libc,
 // so that it does not introduce any dependencies to its users.
 // Any such dependencies may get coverage-instrumented, introducing noise
@@ -91,9 +94,14 @@ class SharedMemoryBlobSequence {
   struct Blob {
     using SizeAndTagT = size_t;
     Blob(SizeAndTagT tag, SizeAndTagT size, const uint8_t *data)
-        : tag(tag), size(size), data(data) {}
+        : tag(tag), size(size), data(data) {
+      CHECK(tag != 0 && ((size == 0) == (data == nullptr)))
+          << VV(tag) << VV(size) << VV(data);
+    }
     Blob() = default;  // Construct an invalid Blob.
-    bool IsValid() const { return tag != 0; }
+    bool IsValid() const {
+      return tag != 0 && ((size == 0) == (data == nullptr));
+    }
 
     const SizeAndTagT tag = 0;
     const SizeAndTagT size = 0;
