@@ -52,12 +52,12 @@ void CentipedeCallbacks::PopulateSymbolAndPcTables(
     }
     LOG(INFO) << "Could not get PCTable, debug symbols will not be used";
   } else {
+    std::vector<std::string> coverage_binary_argv = absl::StrSplit(
+        env_.coverage_binary, absl::ByAnyChar{" \t\n"}, absl::SkipWhitespace{});
+    CHECK(!coverage_binary_argv.empty());
+    std::string binary_name = coverage_binary_argv[0];
     std::string tmp1 = std::filesystem::path(temp_dir_).append("sym-tmp1");
     std::string tmp2 = std::filesystem::path(temp_dir_).append("sym-tmp2");
-    CHECK(!env_.coverage_binary.empty());
-    std::vector<std::string> binary_flags =
-        absl::StrSplit(env_.coverage_binary, ' ');
-    std::string binary_name = binary_flags[0];
     symbols.GetSymbolsFromBinary(pc_table, binary_name, env_.symbolizer_path,
                                  tmp1, tmp2);
   }
