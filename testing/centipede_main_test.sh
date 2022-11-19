@@ -67,7 +67,7 @@ test_crashing_target() {
   # Expecting a crash to be observed and reported.
   abort_test_fuzz --workdir="${WD}" --num_runs=0 | tee "${LOG}"
   centipede::assert_regex_in_file "2 inputs to rerun" "${LOG}"
-  centipede::assert_regex_in_file "Batch execution failed; exit code:" "${LOG}"
+  centipede::assert_regex_in_file "Batch execution failed:" "${LOG}"
 
   # Comes from test_fuzz_target.cc
   centipede::assert_regex_in_file "I AM ABOUT TO ABORT" "${LOG}"
