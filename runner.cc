@@ -732,8 +732,8 @@ extern "C" int CentipedeRunnerMain(
     if (centipede::execution_request::IsMutationRequest(request_type_blob)) {
       // Mutation request.
       inputs_blobseq.Reset();
-      state.byte_array_mutator =
-          new centipede::ByteArrayMutator(centipede::GetRandomSeed());
+      state.byte_array_mutator = new centipede::ByteArrayMutator(
+          state.knobs, centipede::GetRandomSeed());
       return MutateInputsFromShmem(inputs_blobseq, outputs_blobseq,
                                    custom_mutator_cb, custom_crossover_cb);
     }

@@ -28,6 +28,7 @@
 #include "./byte_array_mutator.h"
 #include "./execution_result.h"
 #include "./feature.h"
+#include "./knobs.h"
 #include "./runner_cmp_trace.h"
 
 namespace centipede {
@@ -91,6 +92,7 @@ struct ThreadLocalRunnerState {
 struct GlobalRunnerState {
   // Used by LLVMFuzzerMutate and initialized in main().
   ByteArrayMutator *byte_array_mutator = nullptr;
+  Knobs knobs;
 
   GlobalRunnerState();
   ~GlobalRunnerState();

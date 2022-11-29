@@ -64,6 +64,17 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "knobs",
+    srcs = ["knobs.cc"],
+    hdrs = ["knobs.h"],
+    # Avoid non-trivial dependencies here, as this library will be linked to target binaries.
+    deps = [
+        ":defs",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
 # simple definitions only, no code, no deps other than span.
 cc_library(
     name = "defs",
@@ -222,9 +233,10 @@ cc_library(
     name = "byte_array_mutator",
     srcs = ["byte_array_mutator.cc"],
     hdrs = ["byte_array_mutator.h"],
-    # Avoid dependencies here, as this library will be linked to target binaries.
+    # Avoid non-trivial dependencies here, as this library will be linked to target binaries.
     deps = [
         ":defs",
+        ":knobs",
     ],
 )
 
@@ -344,6 +356,7 @@ cc_library(
         ":environment",
         ":execution_request",
         ":execution_result",
+        ":knobs",
         ":logging",
         ":shared_memory_blob_sequence",
         ":util",
@@ -494,6 +507,8 @@ RUNNER_SOURCES_NO_MAIN = [
     "execution_result.h",
     "feature.cc",
     "feature.h",
+    "knobs.h",
+    "knobs.cc",
     "runner.cc",
     "runner.h",
     "runner_cmp_trace.h",
@@ -714,6 +729,17 @@ cc_test(
         ":feature",
         ":logging",
         "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "knobs_test",
+    srcs = ["knobs_test.cc"],
+    deps = [
+        ":knobs",
+        ":logging",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_googletest//:gtest_main",
     ],
 )

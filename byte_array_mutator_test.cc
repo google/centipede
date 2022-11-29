@@ -32,7 +32,8 @@ namespace centipede {
 // Note: This test cannot be in an anonymous namespace due to the FRIEND_TEST in
 // ByteArrayMutator.
 TEST(ByteArrayMutator, RoundUpToAddCorrectly) {
-  ByteArrayMutator mutator(/*seed=*/1);
+  Knobs knobs;
+  ByteArrayMutator mutator(knobs, /*seed=*/1);
   EXPECT_TRUE(mutator.set_size_alignment(4));
 
   EXPECT_EQ(mutator.RoundUpToAdd(/*curr_size=*/0, /*to_add=*/0), 0);
@@ -59,7 +60,8 @@ TEST(ByteArrayMutator, RoundUpToAddCorrectly) {
 // Note: This test cannot be in an anonymous namespace due to the FRIEND_TEST in
 // ByteArrayMutator.
 TEST(ByteArrayMutator, RoundDownToRemoveCorrectly) {
-  ByteArrayMutator mutator(/*seed=*/1);
+  Knobs knobs;
+  ByteArrayMutator mutator(knobs, /*seed=*/1);
   EXPECT_TRUE(mutator.set_size_alignment(4));
 
   EXPECT_EQ(mutator.RoundDownToRemove(/*curr_size=*/0, /*to_remove=*/0), 0);
@@ -167,7 +169,8 @@ TEST(CmpDictionary, CmpDictionary) {
 // Tests that two mutators seeded with different rng seeds produce different
 // results.
 TEST(ByteArrayMutator, Randomness) {
-  ByteArrayMutator mutator[2]{1, 2};
+  Knobs knobs;
+  ByteArrayMutator mutator[2]{{knobs, 1}, {knobs, 2}};
 
   std::vector<ByteArray> res[2];
   for (size_t i = 0; i < 2; i++) {
@@ -183,7 +186,8 @@ TEST(ByteArrayMutator, Randomness) {
 
 // Tests that max length is always a multiple of size alignment.
 TEST(ByteArrayMutator, CheckSizeAlignmentWithMaxLength) {
-  ByteArrayMutator mutator(1);
+  Knobs knobs;
+  ByteArrayMutator mutator(knobs, /*seed=*/1);
 
   EXPECT_TRUE(mutator.set_size_alignment(1000));
   EXPECT_TRUE(mutator.set_size_alignment(4));
@@ -208,7 +212,8 @@ void TestMutatorFn(ByteArrayMutator::Fn fn, const ByteArray &seed,
                    size_t max_len = std::numeric_limits<size_t>::max(),
                    const std::vector<ByteArray> &dictionary = {},
                    ByteSpan cmp_data = {}, size_t num_iterations = 100000000) {
-  ByteArrayMutator mutator(1);
+  Knobs knobs;
+  ByteArrayMutator mutator(knobs, 1);
   EXPECT_TRUE(mutator.set_size_alignment(size_alignment));
   EXPECT_TRUE(mutator.set_max_len(max_len));
   mutator.AddToDictionary(dictionary);
@@ -512,7 +517,8 @@ TEST(ByteArrayMutator, MutateDecreaseSizeWithAlignmentAndMaxLen) {
 // Tests that MutateSameSize will eventually produce all possible mutants of
 // size 1 and 2. Also tests some of the 3-byte mutants.
 TEST(ByteArrayMutator, MutateSameSize) {
-  ByteArrayMutator mutator(1);
+  Knobs knobs;
+  ByteArrayMutator mutator(knobs, 1);
   for (size_t size = 1; size <= 2; size++) {
     ByteArray data(size);
     absl::flat_hash_set<ByteArray> set;
@@ -661,7 +667,8 @@ void TestCrossOver(void (ByteArrayMutator::*fn)(ByteArray &, const ByteArray &),
                    const ByteArray &seed, const ByteArray &other,
                    const std::vector<ByteArray> &all_possible_mutants,
                    size_t size_alignment = 1) {
-  ByteArrayMutator mutator(1);
+  Knobs knobs;
+  ByteArrayMutator mutator(knobs, 1);
   EXPECT_TRUE(mutator.set_size_alignment(size_alignment));
   absl::flat_hash_set<ByteArray> expected(all_possible_mutants.begin(),
                                           all_possible_mutants.end());
@@ -853,7 +860,8 @@ TEST(ByteArrayMutator, CrossOver) {
 TEST(ByteArrayMutator, FailedMutations) {
   const int kNumIter = 1000000;
   ByteArray data = {1, 2, 3, 4, 5};
-  ByteArrayMutator mutator(1);
+  Knobs knobs;
+  ByteArrayMutator mutator(knobs, 1);
   size_t num_failed_erase = 0;
   size_t num_failed_generic = 0;
   for (int i = 0; i < kNumIter; i++) {
@@ -869,7 +877,8 @@ TEST(ByteArrayMutator, FailedMutations) {
 
 TEST(ByteArrayMutator, MutateManyWithAlignedInputs) {
   constexpr size_t kSizeAlignment = 4;
-  ByteArrayMutator mutator(/*seed=*/1);
+  Knobs knobs;
+  ByteArrayMutator mutator(knobs, /*seed=*/1);
   EXPECT_TRUE(mutator.set_size_alignment(kSizeAlignment));
   constexpr size_t kNumMutantsToGenerate = 10000;
   std::vector<ByteArray> mutants;
@@ -890,7 +899,8 @@ TEST(ByteArrayMutator, MutateManyWithAlignedInputs) {
 
 TEST(ByteArrayMutator, MutateManyWithUnalignedInputs) {
   constexpr size_t kSizeAlignment = 4;
-  ByteArrayMutator mutator(/*seed=*/1);
+  Knobs knobs;
+  ByteArrayMutator mutator(knobs, /*seed=*/1);
   EXPECT_TRUE(mutator.set_size_alignment(kSizeAlignment));
   constexpr size_t kNumMutantsToGenerate = 10000;
   std::vector<ByteArray> mutants;
@@ -921,7 +931,8 @@ TEST(ByteArrayMutator, MutateManyWithUnalignedInputs) {
 
 TEST(ByteArrayMutator, MutateManyWithMaxLen) {
   constexpr size_t kMaxLen = 4;
-  ByteArrayMutator mutator(/*seed=*/1);
+  Knobs knobs;
+  ByteArrayMutator mutator(knobs, /*seed=*/1);
   EXPECT_TRUE(mutator.set_max_len(kMaxLen));
   constexpr size_t kNumMutantsToGenerate = 10000;
   std::vector<ByteArray> mutants;
@@ -943,7 +954,8 @@ TEST(ByteArrayMutator, MutateManyWithMaxLen) {
 
 TEST(ByteArrayMutator, MutateManyWithMaxLenWithStartingLargeInput) {
   constexpr size_t kMaxLen = 4;
-  ByteArrayMutator mutator(/*seed=*/1);
+  Knobs knobs;
+  ByteArrayMutator mutator(knobs, /*seed=*/1);
   EXPECT_TRUE(mutator.set_max_len(kMaxLen));
   constexpr size_t kNumMutantsToGenerate = 10000;
   std::vector<ByteArray> mutants;
