@@ -95,7 +95,7 @@ function centipede::maybe_set_var_to_built_executable_path() {
 # Makes sure that an empty directory "$1" exists. Works for local and CNS.
 function centipede::ensure_empty_dir() {
   fileop mkdir -p "$1"
-  fileop rm -R -f "${1:?}/*"
+  fileop rm -R -f "${1:?}"/*
 }
 
 # Makes sure that string "$1" exists in file "$2". Works for local and CNS.
