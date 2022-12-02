@@ -24,7 +24,6 @@
 #include <vector>
 
 #include "./defs.h"
-#include "./knobs.h"
 
 namespace centipede {
 
@@ -92,9 +91,7 @@ class CmpDictionary {
 class ByteArrayMutator {
  public:
   // CTOR. Initializes the internal RNG with `seed` (`seed` != 0).
-  // Keeps a const reference to `knobs` throughout the lifetime.
-  ByteArrayMutator(const Knobs &knobs, uintptr_t seed)
-      : rng_(seed), knobs_(knobs) {
+  ByteArrayMutator(uintptr_t seed) : rng_(seed) {
     if (seed == 0) __builtin_trap();  // We don't include logging.h here.
   }
 
@@ -113,9 +110,6 @@ class ByteArrayMutator {
   // 0 means no crossover. Larger values mean more aggressive crossover.
   void MutateMany(const std::vector<ByteArray> &inputs, size_t num_mutants,
                   int crossover_level, std::vector<ByteArray> &mutants);
-
-  using CrossOverFn = void (ByteArrayMutator::*)(ByteArray &,
-                                                 const ByteArray &);
 
   // Mutates `data` by inserting a random part from `other`.
   void CrossOverInsert(ByteArray &data, const ByteArray &other);
@@ -252,7 +246,6 @@ class ByteArrayMutator {
   size_t max_len_ = std::numeric_limits<size_t>::max();
 
   Rng rng_;
-  const Knobs &knobs_;
   std::vector<DictEntry> dictionary_;
   CmpDictionary cmp_dictionary_;
 };

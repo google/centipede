@@ -271,20 +271,11 @@ void ByteArrayMutator::CrossOverOverwrite(ByteArray &data,
             data.begin() + pos);
 }
 
-static const KnobId knob_cross_over_insert = Knobs::NewId("cross_over_insert");
-static const KnobId knob_cross_over_overwrite =
-    Knobs::NewId("cross_over_overwrite");
-
 void ByteArrayMutator::CrossOver(ByteArray &data, const ByteArray &other) {
-  if (data.size() >= max_len_) {
-    CrossOverOverwrite(data, other);
+  if (rng_() % 2 && data.size() < max_len_) {
+    CrossOverInsert(data, other);
   } else {
-    CrossOverFn fn = knobs_.Choose<CrossOverFn>(
-        {knob_cross_over_insert, knob_cross_over_overwrite},
-        {&ByteArrayMutator::CrossOverInsert,
-         &ByteArrayMutator::CrossOverOverwrite},
-        rng_());
-    (this->*fn)(data, other);
+    CrossOverOverwrite(data, other);
   }
 }
 
