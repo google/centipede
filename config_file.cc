@@ -23,6 +23,7 @@
 #include "absl/flags/declare.h"
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
+#include "absl/flags/reflection.h"
 #include "absl/log/check.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
@@ -240,10 +241,24 @@ std::filesystem::path MaybeSaveConfigToFile(
 declare -ra flags=(
 $0)
 
-$1 "$${flags[@]}"
+if [[ -n "$1" ]]; then
+  wd=$1
+else
+  wd=$$PWD
+fi
+read -e -p "Clear workdir (which is '$$wd') [y/N]? " yn
+# Tip: To default to 'y', change 'yY' to 'nN' below.
+if [[ "$${yn}" =~ [yY] ]]; then
+  rm -rf "$$wd"/corpus* "$$wd"/*report*.txt "$$wd"/*/features*
+fi
+
+set -x
+$2 "$${flags[@]}"
 )";
+      const auto workdir = absl::GetAllFlags()["workdir"]->CurrentValue();
       const auto argv_str = absl::StrJoin(leftover_argv, " ");
-      file_contents = absl::Substitute(kScriptStub, flags_str, argv_str);
+      file_contents =
+          absl::Substitute(kScriptStub, flags_str, workdir, argv_str);
     } else {
       file_contents = flags_str;
     }

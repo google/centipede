@@ -124,6 +124,7 @@ cc_library(
         ":util",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
+        "@com_google_absl//absl/flags:reflection",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/strings",
     ],
