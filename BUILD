@@ -446,7 +446,9 @@ cc_library(
         "environment.h",
     ],
     deps = [
+        ":knobs",
         ":logging",
+        ":remote_file",
         ":util",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/flags:flag",

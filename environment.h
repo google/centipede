@@ -19,6 +19,8 @@
 #include <string>
 #include <vector>
 
+#include "./knobs.h"
+
 namespace centipede {
 
 // Fuzzing environment that is initialized at startup and doesn't change.
@@ -69,6 +71,7 @@ struct Environment {
   int telemetry_frequency;
   size_t distill_shards;
   size_t log_features_shards;
+  std::string knobs_file;
   std::string save_corpus_to_local_dir;
   std::string export_corpus_from_local_dir;
   std::vector<std::string> corpus_dir;
@@ -98,6 +101,8 @@ struct Environment {
   const std::string binary_name;  // Name of coverage_binary, w/o directories.
   const std::string binary_hash;  // Hash of the coverage_binary file.
   bool has_input_wildcards = false;  // Set to true iff `binary` contains "@@"
+
+  Knobs knobs;  // read from a file by ReadKnobsFileIfSpecified, see knobs.h.
 
   // Returns the path to the coverage dir.
   std::string MakeCoverageDirPath() const;
@@ -173,6 +178,9 @@ struct Environment {
   // Sets this->experiment_name to a string like "E01",
   // which means "value #0 is used for foo and value #1 is used for bar".
   void UpdateForExperiment();
+
+  // Reads `knobs` from `knobs_file`. Does nothing if the `knobs_file` is empty.
+  void ReadKnobsFileIfSpecified();
 };
 
 }  // namespace centipede

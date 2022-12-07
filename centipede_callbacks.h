@@ -45,7 +45,7 @@ class CentipedeCallbacks {
   // `env` is used to pass flags to `this`, it must outlive `this`.
   CentipedeCallbacks(const Environment &env)
       : env_(env),
-        byte_array_mutator_(knobs_, GetRandomSeed(env.seed)),
+        byte_array_mutator_(env.knobs, GetRandomSeed(env.seed)),
         inputs_blobseq_(shmem_name1_.c_str(), env.shmem_size_mb << 20),
         outputs_blobseq_(shmem_name2_.c_str(), env.shmem_size_mb << 20) {
     CHECK(byte_array_mutator_.set_max_len(env.max_len));
@@ -119,7 +119,6 @@ class CentipedeCallbacks {
 
  protected:
   const Environment &env_;
-  Knobs knobs_;
   ByteArrayMutator byte_array_mutator_;
 
  private:

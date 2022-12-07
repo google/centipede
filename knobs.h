@@ -17,6 +17,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <numeric>
 #include <string_view>
 
@@ -120,6 +121,15 @@ class Knobs {
   value_type Value(KnobId knob_id) const {
     if (knob_id.id() >= kNumKnobs) __builtin_trap();
     return knobs_[knob_id.id()];
+  }
+
+  // Calls `callback(Name, Value)` for every KnobId created by NewId().
+  void ForEachKnob(
+      const std::function<void(std::string_view, Knobs::value_type)>& callback)
+      const {
+    for (size_t i = 0; i < next_id_; ++i) {
+      callback(Name(i), Value(i));
+    }
   }
 
   // Retuns one of the `choices`.

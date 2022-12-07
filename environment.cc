@@ -28,6 +28,7 @@
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "./logging.h"
+#include "./remote_file.h"
 #include "./util.h"
 
 // TODO(kcc): document usage of standalone binaries and how to use @@ wildcard.
@@ -175,6 +176,9 @@ ABSL_FLAG(int, telemetry_frequency, 0,
           "--telemetry_frequency=-5, dump on batches 32, 64, 128,...). Zero "
           "means no telemetry. Note that the before-fuzzing and after-fuzzing "
           "telemetry are always dumped.");
+ABSL_FLAG(std::string, knobs_file, "",
+          "If not empty, knobs will be read from this (possibly remote) file."
+          " The feature is experimental, not yet fully functional.");
 ABSL_FLAG(std::string, save_corpus_to_local_dir, "",
           "Save the remote corpus from working to the given directory, one "
           "file per corpus.");
@@ -289,6 +293,7 @@ Environment::Environment(const std::vector<std::string> &argv)
       telemetry_frequency(absl::GetFlag(FLAGS_telemetry_frequency)),
       distill_shards(absl::GetFlag(FLAGS_distill_shards)),
       log_features_shards(absl::GetFlag(FLAGS_log_features_shards)),
+      knobs_file(absl::GetFlag(FLAGS_knobs_file)),
       save_corpus_to_local_dir(absl::GetFlag(FLAGS_save_corpus_to_local_dir)),
       export_corpus_from_local_dir(
           absl::GetFlag(FLAGS_export_corpus_from_local_dir)),
@@ -572,6 +577,22 @@ void Environment::UpdateForExperiment() {
   }
   experiment_name = "E" + experiment_name;
   load_other_shard_frequency = 0;  // The experiments should be independent.
+}
+
+void Environment::ReadKnobsFileIfSpecified() {
+  const std::string_view knobs_file_path = knobs_file;
+  if (knobs_file_path.empty()) return;
+  ByteArray knob_bytes;
+  auto f = RemoteFileOpen(knobs_file, "r");
+  CHECK(f) << "Failed to open remote file " << knobs_file;
+  RemoteFileRead(f, knob_bytes);
+  RemoteFileClose(f);
+  VLOG(1) << "Knobs: " << knob_bytes.size() << " knobs read from "
+          << knobs_file;
+  knobs.Set(knob_bytes);
+  knobs.ForEachKnob([](std::string_view name, Knobs::value_type value) {
+    VLOG(1) << "knob " << name << ": " << static_cast<uint32_t>(value);
+  });
 }
 
 }  // namespace centipede
