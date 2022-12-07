@@ -156,9 +156,9 @@ class Histogram {
 }  // namespace
 
 TEST(RUsageTimingTest, Accuracy) {
-  constexpr int kNumRuns = 4;
-  constexpr double kIdleSecs = 2.;
-  constexpr double kHogSecs = 10.;
+  constexpr int kNumRuns = 3;
+  constexpr double kIdleSecs = 1.;
+  constexpr double kHogSecs = 4.;
   constexpr int kNumHogs = 5;
   constexpr double kWallSecs = kIdleSecs + kHogSecs;
   // The wall time is sensitive to the system load, but it is measured only

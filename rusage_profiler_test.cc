@@ -77,11 +77,11 @@ struct BigSlowThing {
 void WasteTimeAndGobbleBytes(bool profile) {
   RPROF_THIS_FUNCTION_WITH_REPORT(profile);
   {
-    BigSlowThing big_slow_1{50'000'000, absl::Seconds(3)};
+    BigSlowThing big_slow_1{50'000'000, absl::Seconds(1)};
     RPROF_SNAPSHOT_AND_LOG("Scope 1");
   }
   {
-    BigSlowThing big_slow_2{20'000'000, absl::Seconds(2)};
+    BigSlowThing big_slow_2{20'000'000, absl::Seconds(1)};
     RPROF_SNAPSHOT("Scope 2");
     for (int i = 0; i < 3; ++i) {
       BigSlowThing big_slow_3{10'000'000, absl::Seconds(1)};
@@ -91,27 +91,6 @@ void WasteTimeAndGobbleBytes(bool profile) {
 }
 
 }  // namespace
-
-TEST(RUsageProfilerTest, FunctionLevelMacros) {
-  LOG(INFO) << "Without profiling:";
-  WasteTimeAndGobbleBytes(/*profile=*/false);
-  LOG(INFO) << "With profiling:";
-  WasteTimeAndGobbleBytes(/*profile=*/true);
-}
-
-TEST(RUsageProfilerTest, ScopeLevelMacros) {
-  {
-    RPROF_THIS_SCOPE(/*enable=*/true, "Outer scope");
-    std::vector<BigSlowThing> big_slow_things;
-    for (int i = 1; i < 4; i++) {
-      RPROF_THIS_SCOPE(/*enable=*/true, "Inner scope");
-      big_slow_things.emplace_back(i * 10'000'000, absl::Seconds(i));
-    }
-    // the BigSlowThings free up their memories, so the top-level scope
-    // profiler's dtor should show that in the memory deltas of the final
-    // snapshot.
-  }
-}
 
 TEST(RUsageProfilerTest, TimelapseSnapshots) {
   RPROF_THIS_FUNCTION_WITH_REPORT(/*enable=*/true);
@@ -135,7 +114,7 @@ TEST(RUsageProfilerTest, ValidateManualSnapshots) {
   // particular in the virtual memory size and peak, which grow in page
   // increments.
   constexpr int64_t kGobbleBytes = 10'000'000'000;
-  constexpr absl::Duration kWasteTime = absl::Seconds(7);
+  constexpr absl::Duration kWasteTime = absl::Seconds(2);
   const auto rusage_scope = RUsageScope::ThisProcess();
 
   RUsageProfiler rprof{rusage_scope,
@@ -180,12 +159,19 @@ TEST(RUsageProfilerTest, ValidateManualSnapshots) {
   EXPECT_EQ(after_snapshot.delta_memory,
             after_snapshot.memory - before_snapshot.memory);
 
-  // The "before" timing numbers are close to 0 and extremely volatile,
-  // especially for the CPU utilization. Therefore, exclude it, as well as the
-  // delta timing partially determined by it, from validation.
+  // NOTES: 1) The "before" timing numbers are close to 0 and extremely
+  // volatile, especially for the CPU utilization. Therefore, exclude it, as
+  // well as the delta timing partially determined by it, from validation.
+  // 2) All *SANs slow down execution, so skip timing checks under them.
+  // However, still run RUsageProfiler under them to catch any respective bugs.
+#if !defined(MEMORY_SANITIZER) && !defined(ADDRESS_SANITIZER) && \
+    !defined(THREAD_SANITIZER)
   // EXPECT_SYS_TIMING_NEAR(before_snapshot.timing, before_timing);
   EXPECT_SYS_TIMING_NEAR(after_snapshot.timing, after_timing);
   // EXPECT_SYS_TIMING_NEAR(after_snapshot.delta_timing, delta_timing);
+#else
+  LOG(WARNING) << "Validation of some test results omitted under *SANs";
+#endif
 
   EXPECT_SYS_MEMORY_NEAR(before_snapshot.memory, before_memory);
   EXPECT_SYS_MEMORY_NEAR(after_snapshot.memory, after_memory);
@@ -194,8 +180,8 @@ TEST(RUsageProfilerTest, ValidateManualSnapshots) {
 #endif  // MSAN is now back on.
 
 TEST(RUsageProfilerTest, ValidateTimelapseSnapshots) {
-  constexpr absl::Duration kWasteTime = absl::Seconds(7);
-  constexpr absl::Duration kInterval = absl::Seconds(1);
+  constexpr absl::Duration kWasteTime = absl::Seconds(2);
+  constexpr absl::Duration kInterval = absl::Milliseconds(500);
   constexpr int kGobbleBytes = 100'000'000;
   const bool kAlsoLog = absl::GetFlag(FLAGS_verbose);
 
@@ -214,17 +200,16 @@ TEST(RUsageProfilerTest, ValidateTimelapseSnapshots) {
   const auto& snapshots = rprof.GetSnapshots();
   ASSERT_NEAR(snapshots.size(), absl::FDivDuration(kWasteTime, kInterval), 1);
   for (int i = 1; i < snapshots.size(); ++i) {
-    EXPECT_TIME_NEAR(  //
-        snapshots[i].time - snapshots[i - 1].time, kInterval, .05);
+    EXPECT_TIME_NEAR(snapshots[i].time - snapshots[i - 1].time, kInterval, .05);
   }
 #else
-  LOG(WARNING) << "Validation of test results omitted under *SAN: see code";
+  LOG(WARNING) << "Validation of some test results omitted under *SANs";
 #endif
 }
 
 TEST(RUsageProfilerTest, ValidateReport) {
   constexpr int kGobbleBytes = 100'000'000;
-  constexpr absl::Duration kWasteTime = absl::Seconds(7);
+  constexpr absl::Duration kWasteTime = absl::Seconds(3);
 
   RUsageProfiler rprof{RUsageScope::ThisProcess(),
                        RUsageProfiler::kAllMetrics,
