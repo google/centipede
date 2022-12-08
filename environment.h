@@ -102,6 +102,8 @@ struct Environment {
   const std::string binary_hash;  // Hash of the coverage_binary file.
   bool has_input_wildcards = false;  // Set to true iff `binary` contains "@@"
 
+  bool dry_run = false;
+
   Knobs knobs;  // read from a file by ReadKnobsFileIfSpecified, see knobs.h.
 
   // Returns the path to the coverage dir.

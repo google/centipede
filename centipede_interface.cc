@@ -191,6 +191,9 @@ int CentipedeMain(const Environment &env,
   auto thread_callback = [&](Environment &my_env, Stats &stats) {
     CreateLocalDirRemovedAtExit(TemporaryLocalDirPath());  // creates temp dir.
     my_env.seed = GetRandomSeed(env.seed);  // uses TID, call in this thread.
+
+    if (env.dry_run) return;
+
     auto user_callbacks = callbacks_factory.create(my_env);
     my_env.ReadKnobsFileIfSpecified();
     Centipede centipede(my_env, *user_callbacks, pc_table, symbols,

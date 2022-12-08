@@ -246,6 +246,13 @@ ABSL_FLAG(std::string, function_filter, "",
 ABSL_FLAG(size_t, shmem_size_mb, 1024,
           "Size of the shared memory regions used to communicate between the "
           "ending and the runner.");
+ABSL_FLAG(bool, dry_run, false,
+          "Initializes as much of Centipede as possible without actually "
+          "running any fuzzing. Useful to validate the rest of the command "
+          "line, verify existence of all the input directories and files, "
+          "etc. Also useful in combination with --save_config or "
+          "--update_config to stop execution immediately after writing the "
+          "(updated) config file.");
 
 namespace centipede {
 
@@ -312,7 +319,8 @@ Environment::Environment(const std::vector<std::string> &argv)
       shmem_size_mb(absl::GetFlag(FLAGS_shmem_size_mb)),
       cmd(binary),
       binary_name(std::filesystem::path(coverage_binary).filename().string()),
-      binary_hash(HashOfFileContents(coverage_binary)) {
+      binary_hash(HashOfFileContents(coverage_binary)),
+      dry_run(absl::GetFlag(FLAGS_dry_run)){
   if (size_t j = absl::GetFlag(FLAGS_j)) {
     total_shards = j;
     num_threads = j;
