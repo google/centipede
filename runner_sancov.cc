@@ -136,10 +136,17 @@ NO_SANITIZE
 void __sanitizer_cov_trace_switch(uint64_t Val, uint64_t *Cases) {}
 
 // https://clang.llvm.org/docs/SanitizerCoverage.html#pc-table
-// This function it called at the DSO init time.
+// This function is called at the DSO init time.
 void __sanitizer_cov_pcs_init(const uintptr_t *beg, const uintptr_t *end) {
   state.pcs_beg = beg;
   state.pcs_end = end;
+}
+
+// https://clang.llvm.org/docs/SanitizerCoverage.html#tracing-control-flow
+// This function is called at the DSO init time.
+void __sanitizer_cov_cfs_init(const uintptr_t *beg, const uintptr_t *end) {
+  state.cfs_beg = beg;
+  state.cfs_end = end;
 }
 
 // TODO(kcc): [impl] actually implement this callback.
@@ -149,7 +156,7 @@ void __sanitizer_cov_pcs_init(const uintptr_t *beg, const uintptr_t *end) {
 // this variant.
 void __sanitizer_cov_trace_pc() {}
 
-// This function it called at the DSO init time.
+// This function is called at the DSO init time.
 void __sanitizer_cov_trace_pc_guard_init(uint32_t *start, uint32_t *stop) {
   state.pc_guard_start = start;
   state.pc_guard_stop = stop;

@@ -22,6 +22,7 @@
 
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/strip.h"
 #include "./command.h"
 #include "./coverage.h"
 #include "./logging.h"
@@ -31,19 +32,18 @@ namespace centipede {
 
 void SymbolTable::ReadFromLLVMSymbolizer(std::istream &in) {
   // We remove some useless file prefixes for better human readability.
-  const std::string file_prefixes_to_remove[] = {"/proc/self/cwd/", "./"};
+  const std::string_view file_prefixes_to_remove[] = {"/proc/self/cwd/", "./"};
   while (in) {
     // We (mostly) blindly trust the input format is correct.
     std::string func, file, empty;
     std::getline(in, func);
     std::getline(in, file);
     std::getline(in, empty);
-    CHECK(empty.empty());
+    CHECK(empty.empty()) << "Unexpected symbolizer output format: " << VV(func)
+                         << VV(file) << VV(empty);
     if (!in) break;
     for (auto &bad_prefix : file_prefixes_to_remove) {
-      if (absl::StartsWith(file, bad_prefix)) {
-        file = file.substr(bad_prefix.size());
-      }
+      file = absl::StripPrefix(file, bad_prefix);
     }
     AddEntry(func, file);
   }
@@ -69,9 +69,14 @@ void SymbolTable::GetSymbolsFromBinary(const Coverage::PCTable &pc_table,
     WriteToLocalFile(pcs_path, pcs_string);
     // Run the symbolizer.
     Command cmd(symbolizer_path,
-                {"--no-inlines", "-e", std::string(binary_path), "<",
-                 std::string(pcs_path)},
-                {/*env*/}, symbols_path);
+                {
+                    "--no-inlines",
+                    "-e",
+                    std::string(binary_path),
+                    "<",
+                    std::string(pcs_path),
+                },
+                /*env=*/{}, symbols_path);
     int exit_code = cmd.Execute();
     if (exit_code != EXIT_SUCCESS) {
       LOG(ERROR) << "system() failed: " << VV(cmd.ToString()) << VV(exit_code);

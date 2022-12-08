@@ -19,6 +19,8 @@
 #include <string>
 #include <vector>
 
+#include "./knobs.h"
+
 namespace centipede {
 
 // Fuzzing environment that is initialized at startup and doesn't change.
@@ -34,6 +36,7 @@ struct Environment {
 
   std::string binary;
   std::string coverage_binary;
+  std::string clang_coverage_binary;
   std::vector<std::string> extra_binaries;
   std::string workdir;
   std::string merge_from;
@@ -68,6 +71,7 @@ struct Environment {
   int telemetry_frequency;
   size_t distill_shards;
   size_t log_features_shards;
+  std::string knobs_file;
   std::string save_corpus_to_local_dir;
   std::string export_corpus_from_local_dir;
   std::vector<std::string> corpus_dir;
@@ -96,6 +100,9 @@ struct Environment {
   const std::string cmd;
   const std::string binary_name;  // Name of coverage_binary, w/o directories.
   const std::string binary_hash;  // Hash of the coverage_binary file.
+  bool has_input_wildcards = false;  // Set to true iff `binary` contains "@@"
+
+  Knobs knobs;  // read from a file by ReadKnobsFileIfSpecified, see knobs.h.
 
   // Returns the path to the coverage dir.
   std::string MakeCoverageDirPath() const;
@@ -105,6 +112,12 @@ struct Environment {
   std::string MakeCorpusPath(size_t shard_index) const;
   // Returns the path for a features file by its shard_index.
   std::string MakeFeaturesPath(size_t shard_index) const;
+  // Returns the path to the coverage profile for this shard.
+  std::string MakeSourceBasedCoverageRawProfilePath() const;
+  // Returns all shards' raw profile paths by scanning the coverage directory.
+  std::vector<std::string> EnumerateRawCoverageProfiles() const;
+  // Returns the path to the indexed code coverage file.
+  std::string MakeSourceBasedCoverageIndexedProfilePath() const;
   // Returns the path for the distilled corpus file for my_shard_index.
   std::string MakeDistilledPath() const;
   // Returns true if we want to distill the corpus in this shard before fuzzing.
@@ -114,37 +127,29 @@ struct Environment {
     return my_shard_index < log_features_shards;
   }
   // Returns the path for the coverage report file for my_shard_index.
-  // The coverage report is generated before fuzzing begins and after it ends.
   // Non-default `annotation` becomes a part of the returned filename.
   // `annotation` must not start with a '.'.
   std::string MakeCoverageReportPath(std::string_view annotation = "") const;
   // Returns the path for the corpus stats report file for my_shard_index.
-  // The corpus stats report is regenerated periodically during fuzzing.
+  // Non-default `annotation` becomes a part of the returned filename.
+  // `annotation` must not start with a '.'.
   std::string MakeCorpusStatsPath(std::string_view annotation = "") const;
-  // Returns true if we want to generate the telemetry files (coverage report,
-  // corpus stats, etc.) in this shard.
-  bool DumpTelemetryInThisShard() const { return my_shard_index == 0; }
+  // Returns the path to the source-based coverage report directory.
+  std::string MakeSourceBasedCoverageReportPath(
+      std::string_view annotation = "") const;
+  // Returns the path for the performance report file for my_shard_index.
+  // Non-default `annotation` becomes a part of the returned filename.
+  // `annotation` must not start with a '.'.
+  std::string MakeRUsageReportPath(std::string_view annotation = "") const;
+  // Returns true if we want to generate the corpus telemetry files (coverage
+  // report, corpus stats, etc.) in this shard.
+  bool DumpCorpusTelemetryInThisShard() const;
+  // Returns true if we want to generate the resource usage report in this
+  // shard. See the related RUsageTelemetryScope().
+  bool DumpRUsageTelemetryInThisShard() const;
   // Returns true if we want to generate the telemetry files (coverage report,
   // the corpus stats, etc.) after processing `batch_index`-th batch.
-  bool DumpTelemetryForThisBatch(size_t batch_index) const {
-    // Always dump for batch 0 (i.e. at the beginning of execution).
-    if (batch_index == 0) {
-      return true;
-    }
-    // Special mode for negative --telemetry_frequency: dump when batch_index
-    // is a power-of-two and is >= than 2^abs(--telemetry_frequency).
-    if (((telemetry_frequency < 0) &&
-         (batch_index >= (1 << -telemetry_frequency)) &&
-         ((batch_index - 1) & batch_index) == 0)) {
-      return true;
-    }
-    // Normal mode: dump when requested number of batches get processed.
-    if (((telemetry_frequency > 0) &&
-         (batch_index % telemetry_frequency == 0))) {
-      return true;
-    }
-    return false;
-  }
+  bool DumpTelemetryForThisBatch(size_t batch_index) const;
 
   // Sets flag 'name' to `value`. CHECK-fails on invalid name/value combination.
   void SetFlag(std::string_view name, std::string_view value);
@@ -173,6 +178,9 @@ struct Environment {
   // Sets this->experiment_name to a string like "E01",
   // which means "value #0 is used for foo and value #1 is used for bar".
   void UpdateForExperiment();
+
+  // Reads `knobs` from `knobs_file`. Does nothing if the `knobs_file` is empty.
+  void ReadKnobsFileIfSpecified();
 };
 
 }  // namespace centipede

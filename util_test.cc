@@ -26,14 +26,51 @@
 #include "absl/container/flat_hash_map.h"
 #include "./defs.h"
 #include "./logging.h"
+#include "./test_util.h"
 
 namespace centipede {
+
+TEST(UtilTest, ResolveExecutablePath) {
+  const std::filesystem::path dir{GetTestTempDir(test_info_->name())};
+  const std::filesystem::path exe = dir / "exe";
+  WriteToLocalFile(exe.string(), "echo 'hi'");
+  std::filesystem::permissions(exe, std::filesystem::perms::all);
+  const std::filesystem::path not_exe = dir / "not_exe";
+  WriteToLocalFile(not_exe.string(), "echo 'hi'");
+
+  EXPECT_DEATH(ResolveExecutablePath("exe", "x", false, false), "not found");
+  EXPECT_DEATH(ResolveExecutablePath("exe", "x", true, false), "not found");
+  EXPECT_EQ(ResolveExecutablePath("exe", "x", false, true), "");
+  EXPECT_EQ(ResolveExecutablePath("exe", "x", true, true), "");
+
+  PrependDirToPathEnvvar(dir.string());
+
+  EXPECT_EQ(ResolveExecutablePath("exe", "x", false, false), exe);
+  EXPECT_EQ(ResolveExecutablePath("exe", "x", true, false), exe);
+  EXPECT_EQ(ResolveExecutablePath("exe", "x", false, true), exe);
+  EXPECT_EQ(ResolveExecutablePath("exe", "x", true, true), exe);
+
+  EXPECT_DEATH(ResolveExecutablePath("not_exe", "x", false, false), "not exe");
+  EXPECT_DEATH(ResolveExecutablePath("not_exe", "x", true, false), "not exe");
+  EXPECT_EQ(ResolveExecutablePath("not_exe", "x", false, true), "");
+  EXPECT_EQ(ResolveExecutablePath("not_exe", "x", true, true), "");
+
+  EXPECT_DEATH(ResolveExecutablePath("", "x", false, false), "empty");
+  EXPECT_EQ(ResolveExecutablePath("/dev/null", "x", true, false), "");
+  EXPECT_DEATH(ResolveExecutablePath("", "x", false, true), "empty");
+  EXPECT_EQ(ResolveExecutablePath("/dev/null", "x", true, true), "");
+
+  EXPECT_DEATH(ResolveExecutablePath("miss", "x", false, false), "not found");
+  EXPECT_DEATH(ResolveExecutablePath("miss", "x", true, false), "not found");
+  EXPECT_EQ(ResolveExecutablePath("miss", "x", false, true), "");
+  EXPECT_EQ(ResolveExecutablePath("miss", "x", true, true), "");
+}
 
 static void Append(ByteArray &to, const ByteArray &from) {
   to.insert(to.end(), from.begin(), from.end());
 }
 
-TEST(AppendFile, t1) {
+TEST(UtilTest, AppendFile) {
   ByteArray packed;
   ByteArray a{1, 2, 3};
   ByteArray b{3, 4, 5};
@@ -48,7 +85,7 @@ TEST(AppendFile, t1) {
   EXPECT_EQ(c, unpacked[2]);
 }
 
-TEST(Util, Hash) {
+TEST(UtilTest, Hash) {
   // The current implementation of Hash() is sha1.
   // Here we test a couple of inputs against their known sha1 values
   // obtained from the sha1sum command line utility.
@@ -56,7 +93,7 @@ TEST(Util, Hash) {
   EXPECT_EQ(Hash({'x', 'y'}), "5f8459982f9f619f4b0d9af2542a2086e56a4bef");
 }
 
-TEST(Util, AsString) {
+TEST(UtilTest, AsString) {
   EXPECT_EQ(AsString({'a', 'b', 'c'}, 3), "abc");
   EXPECT_EQ(AsString({'a', 'b', 'C'}, 4), "abC");
   EXPECT_EQ(AsString({'a', 'b', 'c'}, 2), "ab");
@@ -69,7 +106,7 @@ TEST(Util, AsString) {
   EXPECT_EQ(AsString({'a', '\xAB', '\xCD', 'z'}, 5), "a\\xAB\\xCDz");
 }
 
-TEST(Centipede, ExtractHashFromArray) {
+TEST(UtilTest, ExtractHashFromArray) {
   const ByteArray a{1, 2, 3, 4};
   const ByteArray b{100, 111, 122, 133, 145};
   auto hash1 = Hash({4, 5, 6});
@@ -90,38 +127,43 @@ TEST(Centipede, ExtractHashFromArray) {
   EXPECT_EQ(a1, a);
 }
 
-// Tests that TemporaryLocalDirPath() returns a valid path for a temp dir.
-static void Test_TemporaryLocalDirPath() {
-  auto tmpdir = TemporaryLocalDirPath();
-  LOG(INFO) << tmpdir;
-  EXPECT_EQ(tmpdir, TemporaryLocalDirPath());  // second call returns the same.
-  // Create dir, create a file there, write to file, read from it, remove dir.
-  std::filesystem::create_directories(tmpdir);
-  std::string temp_file_path = std::filesystem::path(tmpdir).append("blah");
-  ByteArray written_data{1, 2, 3};
-  WriteToLocalFile(temp_file_path, written_data);
-  ByteArray read_data;
-  ReadFromLocalFile(temp_file_path, read_data);
-  EXPECT_EQ(read_data, written_data);
-  std::filesystem::remove_all(tmpdir);
-  // temp_file_path should be gone by now.
-  read_data.clear();
-  ReadFromLocalFile(temp_file_path, read_data);
-  EXPECT_TRUE(read_data.empty());
-}
-
 // Tests TemporaryLocalDirPath from several threads.
-TEST(Centipede, TemporaryLocalDirPath) {
-  Test_TemporaryLocalDirPath();
+TEST(UtilTest, TemporaryLocalDirPath) {
+  {
+    // Check that repeated calls return the same path.
+    auto temp_dir = TemporaryLocalDirPath();
+    LOG(INFO) << temp_dir;
+    EXPECT_EQ(temp_dir, TemporaryLocalDirPath());
+  }
 
-  std::string temp_dir_from_other_thread;
-  std::thread get_temp_dir_thread(
-      [&]() { temp_dir_from_other_thread = TemporaryLocalDirPath(); });
-  get_temp_dir_thread.join();
-  EXPECT_NE(TemporaryLocalDirPath(), temp_dir_from_other_thread);
+  {
+    auto temp_dir = TemporaryLocalDirPath();
+    // Create dir, create a file there, write to file, read from it, remove dir.
+    std::filesystem::create_directories(temp_dir);
+    std::string temp_file_path = std::filesystem::path(temp_dir).append("blah");
+    ByteArray written_data{1, 2, 3};
+    WriteToLocalFile(temp_file_path, written_data);
+    ByteArray read_data;
+    ReadFromLocalFile(temp_file_path, read_data);
+    EXPECT_EQ(read_data, written_data);
+    std::filesystem::remove_all(temp_dir);
+    // temp_file_path should be gone by now.
+    read_data.clear();
+    ReadFromLocalFile(temp_file_path, read_data);
+    EXPECT_TRUE(read_data.empty());
+  }
+
+  {
+    // Create dir in a thread.
+    std::string temp_dir_from_other_thread;
+    std::thread get_temp_dir_thread(
+        [&]() { temp_dir_from_other_thread = TemporaryLocalDirPath(); });
+    get_temp_dir_thread.join();
+    EXPECT_NE(TemporaryLocalDirPath(), temp_dir_from_other_thread);
+  }
 }
 
-TEST(Centipede, CreateLocalDirRemovedAtExit) {
+TEST(UtilTest, CreateLocalDirRemovedAtExit) {
   // We need to test that dirs created via CreateLocalDirRemovedAtExit
   // are removed at exit.
   // To do that, we run death tests and check if the dirs exist afterwards.
@@ -167,7 +209,7 @@ TEST(Centipede, CreateLocalDirRemovedAtExit) {
   EXPECT_FALSE(std::filesystem::exists(subdir2));
 }
 
-TEST(Centipede, ParseAFLDictionary) {
+TEST(UtilTest, ParseAFLDictionary) {
   std::vector<ByteArray> dict;
   EXPECT_TRUE(ParseAFLDictionary("", dict));                      // Empty text.
   EXPECT_FALSE(ParseAFLDictionary("\xAB", dict));                 // Non-ascii.
@@ -195,7 +237,7 @@ TEST(Centipede, ParseAFLDictionary) {
   EXPECT_EQ(dict, std::vector<ByteArray>({{'\\', 'g', '\\', 'h'}}));
 }
 
-TEST(Centipede, RandomWeightedSubset) {
+TEST(UtilTest, RandomWeightedSubset) {
   using v = std::vector<size_t>;  // to make test code more compact.
   std::vector<uint32_t> set{20, 10, 0, 40, 50};
   Rng rng(0);
@@ -246,7 +288,7 @@ TEST(Centipede, RandomWeightedSubset) {
                                    v{0, 1, 2, 3}));
 }
 
-TEST(Centipede, RemoveSubset) {
+TEST(UtilTest, RemoveSubset) {
   std::vector<int> set;
   auto Remove = [](const std::vector<size_t> &subset_indices,
                    std::vector<int> set) {

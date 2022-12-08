@@ -53,7 +53,6 @@ cc_library(
     name = "feature",
     srcs = ["feature.cc"],
     hdrs = ["feature.h"],
-    copts = ["-fsanitize-coverage=0"],
 )
 
 cc_library(
@@ -65,11 +64,21 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "knobs",
+    srcs = ["knobs.cc"],
+    hdrs = ["knobs.h"],
+    # Avoid non-trivial dependencies here, as this library will be linked to target binaries.
+    deps = [
+        ":defs",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
 # simple definitions only, no code, no deps other than span.
 cc_library(
     name = "defs",
     hdrs = ["defs.h"],
-    copts = ["-fsanitize-coverage=0"],
     deps = ["@com_google_absl//absl/types:span"],
 )
 
@@ -115,8 +124,37 @@ cc_library(
         ":util",
         "@com_google_absl//absl/flags:flag",
         "@com_google_absl//absl/flags:parse",
+        "@com_google_absl//absl/flags:reflection",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "rusage_stats",
+    srcs = ["rusage_stats.cc"],
+    hdrs = ["rusage_stats.h"],
+    deps = [
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/time",
+    ],
+)
+
+cc_library(
+    name = "rusage_profiler",
+    srcs = ["rusage_profiler.cc"],
+    hdrs = ["rusage_profiler.h"],
+    deps = [
+        ":rusage_stats",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/time",
     ],
 )
 
@@ -163,7 +201,6 @@ cc_library(
     name = "shared_memory_blob_sequence",
     srcs = ["shared_memory_blob_sequence.cc"],
     hdrs = ["shared_memory_blob_sequence.h"],
-    copts = ["-fsanitize-coverage=0"],
     linkopts = ["-lrt"],  # for shm_open.
     # don't add any dependencies.
 )
@@ -172,10 +209,9 @@ cc_library(
     name = "execution_result",
     srcs = ["execution_result.cc"],
     hdrs = ["execution_result.h"],
-    copts = ["-fsanitize-coverage=0"],
     deps = [
         # This target must have a minimal set of dependencies since it is
-        # used in fuzz_target_runner.
+        # used in centipede_runner.
         ":feature",
         ":runner_cmp_trace",
         ":shared_memory_blob_sequence",
@@ -186,10 +222,9 @@ cc_library(
     name = "execution_request",
     srcs = ["execution_request.cc"],
     hdrs = ["execution_request.h"],
-    copts = ["-fsanitize-coverage=0"],
     deps = [
         # This target must have a minimal set of dependencies since it is
-        # used in fuzz_target_runner.
+        # used in centipede_runner.
         ":shared_memory_blob_sequence",
         ":defs",
     ],
@@ -199,10 +234,10 @@ cc_library(
     name = "byte_array_mutator",
     srcs = ["byte_array_mutator.cc"],
     hdrs = ["byte_array_mutator.h"],
-    copts = ["-fsanitize-coverage=0"],
-    # Avoid dependencies here, as this library will be linked to target binaries.
+    # Avoid non-trivial dependencies here, as this library will be linked to target binaries.
     deps = [
         ":defs",
+        ":knobs",
     ],
 )
 
@@ -230,6 +265,41 @@ cc_library(
     ],
 )
 
+# Library for dealing with control flow data from
+# https://clang.llvm.org/docs/SanitizerCoverage.html#tracing-control-flow.
+cc_library(
+    name = "control_flow",
+    srcs = [
+        "control_flow.cc",
+    ],
+    hdrs = [
+        "control_flow.h",
+    ],
+    deps = [
+        ":coverage",
+        ":logging",
+        "@com_google_absl//absl/container:flat_hash_map",
+    ],
+)
+
+# Library for dealing with call graph data from
+# https://clang.llvm.org/docs/SanitizerCoverage.html#tracing-control-flow.
+cc_library(
+    name = "call_graph",
+    srcs = [
+        "call_graph.cc",
+    ],
+    hdrs = [
+        "call_graph.h",
+    ],
+    deps = [
+        ":coverage",
+        ":logging",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/log:check",
+    ],
+)
+
 cc_library(
     name = "remote_file",
     srcs = ["remote_file.cc"],
@@ -247,6 +317,7 @@ cc_library(
     srcs = ["corpus.cc"],
     hdrs = ["corpus.h"],
     deps = [
+        ":control_flow",
         ":coverage",
         ":defs",
         ":feature",
@@ -264,7 +335,9 @@ cc_library(
     deps = [
         ":logging",
         ":util",
+        "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
     ],
 )
 
@@ -284,6 +357,7 @@ cc_library(
         ":environment",
         ":execution_request",
         ":execution_result",
+        ":knobs",
         ":logging",
         ":shared_memory_blob_sequence",
         ":util",
@@ -323,6 +397,8 @@ cc_library(
         ":feature",
         ":logging",
         ":remote_file",
+        ":rusage_profiler",
+        ":rusage_stats",
         ":shard_reader",
         ":stats",
         ":util",
@@ -370,7 +446,9 @@ cc_library(
         "environment.h",
     ],
     deps = [
+        ":knobs",
         ":logging",
+        ":remote_file",
         ":util",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/flags:flag",
@@ -402,98 +480,83 @@ cc_library(
 cc_library(
     name = "runner_fork_server",
     srcs = ["runner_fork_server.cc"],
-    copts = ["-fsanitize-coverage=0"],
     alwayslink = 1,  # Otherwise the linker drops the fork server.
-)
-
-cc_library(
-    name = "runner_interface",
-    hdrs = ["runner_interface.h"],
-    copts = ["-fsanitize-coverage=0"],
 )
 
 cc_library(
     name = "runner_cmp_trace",
     hdrs = ["runner_cmp_trace.h"],
-    copts = ["-fsanitize-coverage=0"],
 )
+
+# The runner library is special:
+#   * It must not be instrumented with asan, sancov, etc.
+#   * It must not have heavy dependencies, and ideally not at all.
+#     Exceptions are STL and absl::span (temporarily, until we can switch to
+#     std::span).
+#   * The bazel rule :centipede_runner must produce a self-contained .a file
+#     with all
+#     objects in it, which means the build rule must not depend other .a rules.
+#
+#  Some of the .cc and .h files used by the runner are also used by the engine,
+#  e.g. feature.cc. These files are compiled by the engine and the runner
+#  separately, with different compiler flags.
+RUNNER_SOURCES_NO_MAIN = [
+    "byte_array_mutator.cc",
+    "byte_array_mutator.h",
+    "defs.h",
+    "execution_request.cc",
+    "execution_request.h",
+    "execution_result.cc",
+    "execution_result.h",
+    "feature.cc",
+    "feature.h",
+    "knobs.h",
+    "knobs.cc",
+    "runner.cc",
+    "runner.h",
+    "runner_cmp_trace.h",
+    "runner_fork_server.cc",
+    "runner_interceptors.cc",
+    "runner_interface.h",
+    "runner_sancov.cc",
+    "shared_memory_blob_sequence.cc",
+    "shared_memory_blob_sequence.h",
+]
+
+RUNNER_SOURCES_WITH_MAIN = RUNNER_SOURCES_NO_MAIN + ["runner_main.cc"]
+
+# TODO(kcc): ensure asan/tsan/msan/ubsan instrumentation is disabled for runner.
+RUNNER_COPTS = ["-fsanitize-coverage=0"]
+
+RUNNER_LINKOPTS = [
+    "-ldl",  # for dlsym
+    "-lrt",  # for shm_open
+]
+
+RUNNER_DEPS = ["@com_google_absl//absl/types:span"]  # WARNING: be careful with more deps.
 
 # A fuzz target needs to link with this library in order to run with Centipede.
 # The fuzz target must provide its own main().
 #
-# NOTE: This target's own sources must never be sancov-instrumented (unlike the
-# sources of a fuzz target to which it is being linked!).
+# See also comments above RUNNER_SOURCES_NO_MAIN.
 #
 cc_library(
-    name = "fuzz_target_runner_no_main",
-    srcs = [
-        "runner.cc",
-        "runner_interceptors.cc",
-        "runner_sancov.cc",
-    ],
-    hdrs = ["runner.h"],
-    copts = ["-fsanitize-coverage=0"],
-    linkopts = ["-ldl"],  # for dlsym
-    deps = [
-        ":byte_array_mutator",
-        ":defs",
-        ":execution_request",
-        ":execution_result",
-        ":feature",
-        ":runner_cmp_trace",
-        ":runner_fork_server",
-        ":runner_interface",
-        ":shared_memory_blob_sequence",
-    ],
+    name = "centipede_runner_no_main",
+    srcs = RUNNER_SOURCES_NO_MAIN,
+    copts = RUNNER_COPTS,
+    linkopts = RUNNER_LINKOPTS,
+    deps = RUNNER_DEPS,
 )
 
-# A fuzz target needs to link with this library (containing main()) in order to
-# run with Centipede.
-#
-# NOTE: This target's own sources must never be sancov-instrumented (unlike the
-# sources of a fuzz target to which it is being linked!).
-#
-cc_library(
-    name = "fuzz_target_runner",
-    srcs = ["runner_main.cc"],
-    copts = ["-fsanitize-coverage=0"],
-    deps = [
-        ":fuzz_target_runner_no_main",  # buildcleaner: keep
-        ":runner_interface",
-    ],
-)
-
-# A full self-contained library archive that external clients should link to their
-# fuzz targets to make them compatible with the Centipede main binary (the
-# `:centipede` target in this BUILD).
-# TODO(ussuri): Find a way to merge this with fuzz_target_runner: the list of
-#  the inputs sources is identical.
+# A full self-contained library archive that external clients should link to
+# their fuzz targets to make them compatible with the Centipede fuzzing engine
+# (the `:centipede` target in this BUILD).
 cc_library(
     name = "centipede_runner",
-    srcs = [
-        "byte_array_mutator.cc",
-        "byte_array_mutator.h",
-        "defs.h",
-        "execution_request.cc",
-        "execution_request.h",
-        "execution_result.cc",
-        "execution_result.h",
-        "feature.cc",
-        "feature.h",
-        "runner.cc",
-        "runner.h",
-        "runner_cmp_trace.h",
-        "runner_fork_server.cc",
-        "runner_interceptors.cc",
-        "runner_interface.h",
-        "runner_main.cc",
-        "runner_sancov.cc",
-        "shared_memory_blob_sequence.cc",
-        "shared_memory_blob_sequence.h",
-    ],
-    # NOTE: Centipede's own sources must never be sancov-instrumented.
-    copts = ["-fsanitize-coverage=0"],
-    deps = ["@com_google_absl//absl/types:span"],  # WARNING: be careful with more deps.
+    srcs = RUNNER_SOURCES_WITH_MAIN,
+    copts = RUNNER_COPTS,
+    linkopts = RUNNER_LINKOPTS,
+    deps = RUNNER_DEPS,
 )
 
 ################################################################################
@@ -506,6 +569,7 @@ cc_library(
     hdrs = ["test_util.h"],
     deps = [
         ":logging",
+        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -533,6 +597,7 @@ cc_test(
     deps = [
         ":defs",
         ":logging",
+        ":test_util",
         ":util",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_googletest//:gtest_main",
@@ -561,6 +626,37 @@ cc_test(
         "@com_google_googletest//:gtest_main",
         # Defines FLAGS_flagfile.
         "@com_google_absl//absl/flags:parse",  # buildcleaner:keep
+    ],
+)
+
+cc_test(
+    name = "rusage_stats_test",
+    size = "medium",
+    timeout = "long",
+    srcs = ["rusage_stats_test.cc"],
+    deps = [
+        ":logging",
+        ":rusage_stats",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/functional:any_invocable",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/time",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "rusage_profiler_test",
+    # Allocates large blocks of memory to fight small number volatility.
+    size = "large",
+    timeout = "long",
+    srcs = ["rusage_profiler_test.cc"],
+    deps = [
+        ":rusage_profiler",
+        "@com_google_absl//absl/flags:flag",
+        "@com_google_absl//absl/log",
+        "@com_google_absl//absl/time",
+        "@com_google_googletest//:gtest_main",
     ],
 )
 
@@ -641,9 +737,21 @@ cc_test(
 )
 
 cc_test(
+    name = "knobs_test",
+    srcs = ["knobs_test.cc"],
+    deps = [
+        ":knobs",
+        ":logging",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "corpus_test",
     srcs = ["corpus_test.cc"],
     deps = [
+        ":control_flow",
         ":corpus",
         ":coverage",
         ":defs",
@@ -656,7 +764,6 @@ cc_test(
 cc_binary(
     name = "command_test_helper",
     srcs = ["command_test_helper.cc"],
-    copts = ["-fsanitize-coverage=0"],
     deps = [":runner_fork_server"],
 )
 
@@ -669,6 +776,7 @@ cc_test(
         ":logging",
         ":test_util",
         ":util",
+        "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -678,6 +786,29 @@ cc_test(
     srcs = ["runner_cmp_trace_test.cc"],
     deps = [
         ":runner_cmp_trace",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "control_flow_test",
+    srcs = ["control_flow_test.cc"],
+    deps = [
+        "@centipede//:control_flow",
+        "@centipede//:coverage",
+        "@centipede//:logging",
+        "@centipede//:test_util",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "call_graph_test",
+    srcs = ["call_graph_test.cc"],
+    deps = [
+        "@centipede//:call_graph",
+        "@centipede//:coverage",
+        "@centipede//:logging",
         "@com_google_googletest//:gtest_main",
     ],
 )

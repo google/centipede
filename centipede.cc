@@ -47,6 +47,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <deque>
 #include <filesystem>
 #include <iostream>
 #include <memory>
@@ -58,6 +59,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_split.h"
 #include "absl/types/span.h"
 #include "./blob_file.h"
 #include "./coverage.h"
@@ -67,10 +69,14 @@
 #include "./feature.h"
 #include "./logging.h"
 #include "./remote_file.h"
+#include "./rusage_profiler.h"
+#include "./rusage_stats.h"
 #include "./shard_reader.h"
 #include "./util.h"
 
 namespace centipede {
+
+using perf::RUsageProfiler;
 
 Centipede::Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
                      const Coverage::PCTable &pc_table,
@@ -90,7 +96,15 @@ Centipede::Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
       input_filter_path_(std::filesystem::path(TemporaryLocalDirPath())
                              .append("filter-input")),
       input_filter_cmd_(env_.input_filter, {input_filter_path_}, {/*env*/},
-                        "/dev/null", "/dev/null") {
+                        "/dev/null", "/dev/null"),
+      rusage_profiler_(
+          /*scope=*/perf::RUsageScope::ThisProcess(),
+          /*metrics=*/env.DumpRUsageTelemetryInThisShard()
+              ? RUsageProfiler::kAllMetrics
+              : RUsageProfiler::kMetricsOff,
+          /*raii_actions=*/RUsageProfiler::kRaiiOff,
+          /*location=*/{__FILE__, __LINE__},
+          /*description=*/"Engine") {
   CHECK(env_.seed) << "env_.seed must not be zero";
   if (!env_.input_filter.empty() && env_.fork_server)
     input_filter_cmd_.StartForkServer(TemporaryLocalDirPath(), "input_filter");
@@ -177,6 +191,7 @@ void Centipede::Log(std::string_view log_type, size_t min_log_level) {
   auto [max, avg] = corpus_.MaxAndAvgSize();
   stats_.corpus_size = corpus_.NumActive();
   stats_.num_covered_pcs = fs_.ToCoveragePCs().size();
+  static const auto rusage_scope = perf::RUsageScope::ThisProcess();
   LOG(INFO) << env_.experiment_name << "[" << num_runs_ << "]"
             << " " << log_type << ":"
             << " ft: " << fs_.size() << " cov: " << fs_.ToCoveragePCs().size()
@@ -189,7 +204,8 @@ void Centipede::Log(std::string_view log_type, size_t min_log_level) {
             << " fr: " << coverage_frontier_.NumFunctionsInFrontier()
             << " max/avg " << max << " " << avg << " "
             << corpus_.MemoryUsageString() << " exec/s: " << exec_speed
-            << " mb: " << (MemoryUsage() >> 20);
+            << " mb: "
+            << (perf::RUsageMemory::Snapshot(rusage_scope).mem_rss >> 20);
 }
 
 void Centipede::LogFeaturesAsSymbols(const FeatureVec &fv) {
@@ -403,12 +419,92 @@ void Centipede::GenerateCorpusStats(std::string_view annotation,
   RemoteFileClose(f);
 }
 
+// TODO(nedwill): add integration test once tests are refactored per b/255660879
+void Centipede::GenerateSourceBasedCoverageReport(std::string_view annotation,
+                                                  size_t batch_index) {
+  if (env_.clang_coverage_binary.empty()) return;
+
+  auto report_path = env_.MakeSourceBasedCoverageReportPath(annotation);
+  RemoteMkdir(report_path);
+
+  std::vector<std::string> raw_profiles = env_.EnumerateRawCoverageProfiles();
+
+  if (raw_profiles.empty()) {
+    LOG(ERROR) << "No raw profiles found for coverage report";
+    return;
+  }
+
+  std::string indexed_profile_path =
+      env_.MakeSourceBasedCoverageIndexedProfilePath();
+
+  std::vector<std::string> merge_arguments = {"merge", "-o",
+                                              indexed_profile_path, "-sparse"};
+  for (const std::string &raw_profile : raw_profiles) {
+    merge_arguments.push_back(raw_profile);
+  }
+
+  Command merge_command("llvm-profdata", merge_arguments);
+  if (merge_command.Execute()) {
+    LOG(ERROR) << "Failed to run command " << merge_command.ToString();
+    return;
+  }
+
+  Command generate_report_command(
+      "llvm-cov",
+      {"show", "-format=html", absl::StrCat("-output-dir=", report_path),
+       absl::StrCat("-instr-profile=", indexed_profile_path),
+       env_.clang_coverage_binary});
+  if (generate_report_command.Execute()) {
+    LOG(ERROR) << "Failed to run command "
+               << generate_report_command.ToString();
+    return;
+  }
+}
+
+void Centipede::GenerateRUsageReport(std::string_view annotation,
+                                     size_t batch_index) {
+  class ReportDumper : public RUsageProfiler::ReportSink {
+   public:
+    explicit ReportDumper(std::string_view path)
+        : file_{RemoteFileOpen(path, "w")} {}
+
+    ~ReportDumper() override { RemoteFileClose(file_); }
+
+    ReportDumper &operator<<(const std::string &fragment) override {
+      RemoteFileAppend(file_, ByteArray{fragment.cbegin(), fragment.cend()});
+      return *this;
+    }
+
+   private:
+    RemoteFile *file_;
+  };
+
+  const auto description = absl::StrCat("Batch ", batch_index);
+  const auto &snapshot =
+      rusage_profiler_.TakeSnapshot({__FILE__, __LINE__}, description);
+  VLOG(1) << "Rusage @ " << description << ": " << snapshot.ShortMetricsStr();
+  // The very first call with `batch_index`==0 is for the initial state: just
+  // take a baseline snapshot, but skip the report.
+  if (batch_index > 0) {
+    auto path = env_.MakeRUsageReportPath(annotation);
+    LOG(INFO) << "Generate rusage report: " << VV(env_.my_shard_index)
+              << VV(batch_index) << VV(path);
+    ReportDumper dumper{path};
+    rusage_profiler_.GenerateReport(&dumper);
+  }
+}
+
 void Centipede::MaybeGenerateTelemetry(std::string_view annotation,
                                        size_t batch_index) {
-  if (env_.DumpTelemetryInThisShard() &&
-      env_.DumpTelemetryForThisBatch(batch_index)) {
-    GenerateCoverageReport(annotation, batch_index);
-    GenerateCorpusStats(annotation, batch_index);
+  if (env_.DumpTelemetryForThisBatch(batch_index)) {
+    if (env_.DumpCorpusTelemetryInThisShard()) {
+      GenerateCoverageReport(annotation, batch_index);
+      GenerateCorpusStats(annotation, batch_index);
+      GenerateSourceBasedCoverageReport(annotation, batch_index);
+    }
+    if (env_.DumpRUsageTelemetryInThisShard()) {
+      GenerateRUsageReport(annotation, batch_index);
+    }
   }
 }
 
@@ -571,64 +667,64 @@ void Centipede::ReportCrash(std::string_view binary,
                             const BatchResult &batch_result) {
   if (num_crash_reports_ >= env_.max_num_crash_reports) return;
 
-  LOG(INFO) << "Batch execution failed; exit code: "
-            << batch_result.exit_code();
-  // Print the full log contents to stderr (LOG(INFO) will truncate it).
-  std::cerr << "Log of batch follows: [[[==================\n"
-            << batch_result.log() << "==================]]]\n";
-
   std::string log_prefix =
       absl::StrCat("ReportCrash[", num_crash_reports_, "]: ");
 
-  LOG(INFO) << log_prefix << "The crash occurred when running " << binary
-            << " on " << input_vec.size() << " inputs";
-  num_crash_reports_++;
-  if (num_crash_reports_ == env_.max_num_crash_reports) {
-    LOG(INFO)
-        << log_prefix
-        << "Reached max number of crash reports (--max_num_crash_reports): "
-           "further reports will be suppressed";
+  LOG(INFO) << log_prefix << "Batch execution failed:"
+            << "\nBinary          : " << binary
+            << "\nExit code       : " << batch_result.exit_code()
+            << "\nNumber of inputs: " << input_vec.size()
+            << "\nCrash log       :\n\n";
+  for (const auto &log_line :
+       absl::StrSplit(absl::StripAsciiWhitespace(batch_result.log()), '\n')) {
+    LOG(INFO).NoPrefix() << "CRASH LOG: " << log_line;
   }
+  LOG(INFO).NoPrefix() << "\n";
 
-  // Executes one input.
-  // If it crashes, dumps the reproducer to disk and returns true.
-  // Otherwise returns false.
-  auto try_one_input = [&](const ByteArray &input) -> bool {
-    BatchResult batch_result;
-    if (user_callbacks_.Execute(binary, {input}, batch_result)) return false;
-    auto hash = Hash(input);
-    auto crash_dir = env_.MakeCrashReproducerDirPath();
-    RemoteMkdir(crash_dir);
-    std::string file_path = std::filesystem::path(crash_dir).append(hash);
-    LOG(INFO) << log_prefix << "Crash detected, saving input to " << file_path;
-    LOG(INFO) << "Input bytes: " << AsString(input, /*max_len=*/32);
-    LOG(INFO) << "Exit code: " << batch_result.exit_code();
-    LOG(INFO) << "Failure description: " << batch_result.failure_description();
-    auto file = RemoteFileOpen(file_path, "w");  // overwrites existing file.
-    if (!file) {
-      LOG(FATAL) << log_prefix << "Failed to open " << file_path;
-    }
-    RemoteFileAppend(file, input);
-    RemoteFileClose(file);
-    return true;
-  };
+  LOG_IF(INFO, ++num_crash_reports_ == env_.max_num_crash_reports)
+      << log_prefix
+      << "Reached --max_num_crash_reports: further reports will be suppressed";
 
-  // First, try the input on which we presumably crashed.
+  // Determine the optimal order of the inputs to try to maximize the chances of
+  // finding the reproducer fast.
   CHECK_EQ(input_vec.size(), batch_result.results().size());
-  if (batch_result.num_outputs_read() < input_vec.size()) {
-    LOG(INFO) << log_prefix << "Executing input "
-              << batch_result.num_outputs_read() << " out of "
-              << input_vec.size();
-    if (try_one_input(input_vec[batch_result.num_outputs_read()])) return;
+  std::deque<size_t> input_idxs_to_try(input_vec.size());
+  std::iota(input_idxs_to_try.begin(), input_idxs_to_try.end(), 0);
+  // Prioritize the presumed crasher by inserting it in front of everything
+  // else. However, do keep it at the old location, too, in case the target was
+  // primed for a crash by the sequence of inputs that preceded the crasher.
+  const size_t suspect_input_idx = batch_result.num_outputs_read();
+  if (suspect_input_idx < input_vec.size()) {
+    input_idxs_to_try.push_front(suspect_input_idx);
   }
-  // Next, try all inputs one-by-one.
+
+  // Try inputs one-by-one in the determined order.
   LOG(INFO) << log_prefix
-            << "executing inputs one-by-one, trying to find the reproducer";
-  for (auto &input : input_vec) {
-    if (try_one_input(input)) return;
+            << "Executing inputs one-by-one, trying to find the reproducer";
+  for (auto input_idx : input_idxs_to_try) {
+    const auto &one_input = input_vec[input_idx];
+    BatchResult one_input_batch_result;
+    if (!user_callbacks_.Execute(binary, {one_input}, one_input_batch_result)) {
+      auto hash = Hash(one_input);
+      auto crash_dir = env_.MakeCrashReproducerDirPath();
+      RemoteMkdir(crash_dir);
+      std::string file_path = std::filesystem::path(crash_dir).append(hash);
+      LOG(INFO) << log_prefix << "Detected crash-reproducing input:"
+                << "\nInput bytes    : " << AsString(one_input, /*max_len=*/32)
+                << "\nExit code      : " << one_input_batch_result.exit_code()
+                << "\nFailure        : "
+                << one_input_batch_result.failure_description()
+                << "\nSaving input to: " << file_path;
+      auto* file = RemoteFileOpen(file_path, "w");  // overwrites existing file.
+      CHECK(file != nullptr) << log_prefix << "Failed to open " << file_path;
+      RemoteFileAppend(file, one_input);
+      RemoteFileClose(file);
+      return;
+    }
   }
+
   LOG(INFO) << log_prefix
-            << "crash was not observed when running inputs one-by-one";
+            << "Crash was not observed when running inputs one-by-one";
   // TODO(kcc): [as-needed] there will be cases when several inputs cause a
   // crash, but no single input does. Handle this case.
 }

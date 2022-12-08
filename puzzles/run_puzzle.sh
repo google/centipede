@@ -72,20 +72,20 @@ function Run() {
 # Checks that $1 is the solution for the puzzle.
 function SolutionIs() {
   echo "====== ${FUNCNAME[0]}: $1"
-  centipede::assert_regex_in_file "Input bytes: $1" "${log}"
+  centipede::assert_regex_in_file "Input bytes.*: $1" "${log}"
 }
 
 # Expects that Centipede found a timeout.
 function ExpectTimeout() {
   echo "======= ${FUNCNAME[0]}"
   centipede::assert_regex_in_file "Timeout of .* seconds exceeded; exiting" "${log}"
-  centipede::assert_regex_in_file "Failure description: timeout-exceeded" "${log}"
+  centipede::assert_regex_in_file "Failure.*: timeout-exceeded" "${log}"
 }
 
 # Expects that Centipede found a OOM.
 function ExpectOOM() {
   echo "======= ${FUNCNAME[0]}"
-  centipede::assert_regex_in_file "Failure description: out-of-memory" "${log}"
+  centipede::assert_regex_in_file "Failure.*: out-of-memory" "${log}"
 }
 
 # Expects that $1 is found in the log.

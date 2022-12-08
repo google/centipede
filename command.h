@@ -20,6 +20,8 @@
 #include <utility>
 #include <vector>
 
+#include "absl/time/time.h"
+
 namespace centipede {
 class Command final {
  public:
@@ -31,13 +33,15 @@ class Command final {
   // Move constructor, ensures the moved-from object doesn't own the pipes.
   // TODO(kcc): [impl] add a test, other than multi_sanitizer_fuzz_target.sh,
   // for this.
-  Command(Command&& other)
-      : path_(std::move(other.path_)),
-        args_(std::move(other.args_)),
-        env_(std::move(other.env_)),
-        out_(std::move(other.out_)),
-        err_(std::move(other.err_)),
-        full_command_string_(std::move(other.full_command_string_)),
+  Command(Command&& other) noexcept
+      : path_(other.path_),
+        args_(other.args_),
+        env_(other.env_),
+        out_(other.out_),
+        err_(other.err_),
+        timeout_(other.timeout_),
+        temp_file_path_(other.temp_file_path_),
+        command_line_(other.command_line_),
         fifo_path_{std::move(other.fifo_path_[0]),
                    std::move(other.fifo_path_[1])},
         pipe_{other.pipe_[0], other.pipe_[1]} {
@@ -52,11 +56,16 @@ class Command final {
   // `env`: environment variables/values (in the form "KEY=VALUE").
   // `out`: stdout redirect path (empty means none).
   // `err`: stderr redirect path (empty means none).
+  // `timeout`: terminate a fork server execution attempt after this duration.
+  // `temp_file_path`: "@@" in `path` will be replaced with `temp_file_path`.
   // If `out` == `err` and both are non-empty, stdout/stderr are combined.
-  Command(std::string_view path, const std::vector<std::string>& args = {},
-          const std::vector<std::string>& env = {}, std::string_view out = "",
-          std::string_view err = "")
-      : path_(path), args_(args), env_(env), out_(out), err_(err) {}
+  // TODO(ussuri): The number of parameters became untenable and error-prone.
+  //  Use the Options or Builder pattern instead.
+  explicit Command(std::string_view path, std::vector<std::string> args = {},
+                   std::vector<std::string> env = {}, std::string_view out = "",
+                   std::string_view err = "",
+                   absl::Duration timeout = absl::InfiniteDuration(),
+                   std::string_view temp_file_path = "");
 
   // Cleans up the fork server, if that was created.
   ~Command();
@@ -84,7 +93,9 @@ class Command final {
   const std::vector<std::string> env_;
   const std::string out_;
   const std::string err_;
-  std::string full_command_string_ = ToString();
+  const absl::Duration timeout_;
+  const std::string temp_file_path_;
+  const std::string command_line_ = ToString();
   // Pipe paths and file descriptors for the fork server.
   std::string fifo_path_[2];
   int pipe_[2] = {-1, -1};

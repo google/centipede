@@ -53,6 +53,12 @@ centipede_fuzz_target(
     sancov = "trace-pc-guard",  # Only this instrumentation to ensure it works.
 )
 
+# A standalone binary with main() that is worth fuzzinng.
+cc_binary(
+    name = "standalone_fuzz_target_with_main",
+    srcs = ["standalone_fuzz_target_with_main.cc"],
+)
+
 ################################################################################
 # This fuzz target is not currently used by any automated tests and is here for
 # manual tests only.
@@ -93,6 +99,7 @@ cc_test(
         "@centipede//:logging",
         "@centipede//:test_util",
         "@centipede//:util",
+        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/strings",
         "@com_google_googletest//:gtest_main",
     ],
@@ -100,6 +107,7 @@ cc_test(
 
 cc_test(
     name = "centipede_test",
+    timeout = "long",
     srcs = ["centipede_test.cc"],
     data = [
         ":abort_fuzz_target",
@@ -129,6 +137,7 @@ cc_test(
 # Runs common Centipede scenarios with local files.
 sh_test(
     name = "centipede_main_test",
+    timeout = "long",
     srcs = ["centipede_main_test.sh"],
     data = [
         ":abort_fuzz_target",

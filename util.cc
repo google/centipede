@@ -12,8 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// TODO(ussuri): This module has become a catch-all for all sorts of utils.
+//  Split it by category.
+
 #include "./util.h"
 
+#include <linux/limits.h>  // NOLINT(PATH_MAX)
+#include <stdio.h>         // NOLINT(popen)
 #include <unistd.h>
 
 #include <algorithm>
@@ -36,9 +41,11 @@
 #include "absl/base/attributes.h"
 #include "absl/base/const_init.h"
 #include "absl/base/thread_annotations.h"
+#include "absl/strings/ascii.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_replace.h"
 #include "absl/strings/str_split.h"
+#include "absl/strings/substitute.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
 #include "./defs.h"
@@ -46,6 +53,65 @@
 #include "./logging.h"
 
 namespace centipede {
+
+std::string ResolveExecutablePath(std::string_view path,
+                                  std::string_view description,
+                                  bool allow_empty, bool allow_unresolved) {
+  if (path.empty() || path == "/dev/null") {
+    CHECK(allow_empty) << "Required '" << description
+                       << "' path is empty or /dev/null: " << path;
+    return "";
+  }
+
+  // NOTE: `which` writes nothing to stdout if the path can't be found,
+  // returning a null FILE. We write an empty string using `echo` in this case,
+  // so a null FILE becomes an indicator of a real problem.
+  const std::string which_cmd = absl::Substitute("which $0 || echo ''", path);
+  FILE *which_stdout = popen(which_cmd.c_str(), "r");
+  PCHECK(which_stdout != nullptr) << "Error running `which`: " << VV(which_cmd);
+  char resolved_path_buf[PATH_MAX] = {'\0'};
+  fgets(resolved_path_buf, PATH_MAX, which_stdout);
+  (void)pclose(which_stdout);  // Ignore pclose() errors.
+
+  std::string resolved_path{absl::StripAsciiWhitespace(resolved_path_buf)};
+
+  if (resolved_path.empty()) {
+    CHECK(allow_unresolved)
+        << "Required '" << description
+        << "' path not found or is not executable"
+        << (allow_empty ? " (fix or use '' or '/dev/null' to suppress)" : "")
+        << ": " << VV(path) << VV(getenv("PATH"));
+  }
+
+  return resolved_path;
+}
+
+std::vector<std::string> ResolveExecutablePaths(
+    const std::vector<std::string_view> &paths, std::string_view description,
+    bool allow_empty, bool allow_unresolved) {
+  std::vector<std::string> resolved_paths;
+  resolved_paths.reserve(paths.size());
+  for (const auto &path : paths) {
+    resolved_paths.emplace_back(ResolveExecutablePath(
+        path, description, allow_empty, allow_unresolved));
+  }
+  return resolved_paths;
+}
+
+void AssertExecutablePath(std::string_view path) {
+  std::error_code error;
+  const auto status = std::filesystem::status(path, error);
+  CHECK(!error) << "Failed to get file status: " << VV(path) << "; "
+                << error.message();
+  CHECK(std::filesystem::is_regular_file(status))
+      << "File is not regular: " << VV(path);
+  const auto perms = status.permissions();
+  using std::filesystem::perms;
+  constexpr auto kExec =
+      perms::owner_exec | perms::group_exec | perms::others_exec;
+  CHECK((perms & kExec) != perms::none)
+      << "File is not executable: " << VV(path);
+}
 
 size_t GetRandomSeed(size_t seed) {
   if (seed != 0) return seed;
@@ -131,15 +197,6 @@ std::string HashOfFileContents(std::string_view file_path) {
   ByteArray ba;
   ReadFromLocalFile(file_path, ba);
   return Hash(ba);
-}
-
-int64_t MemoryUsage() {
-  // Read VmRSS from statm. Not the most accurate, but (probably?) good enough.
-  std::ifstream f(std::string{"/proc/self/statm"});
-  int64_t value;
-  f >> value;  // skip the first value.
-  f >> value;
-  return value * getpagesize();  // value is in pages.
 }
 
 std::string ProcessAndThreadUniqueID(std::string_view prefix) {

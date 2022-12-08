@@ -14,7 +14,7 @@
 
 // Centipede puzzle: stress test for --use_auto_dictionary=1.
 // RUN: Run --use_auto_dictionary=1 --use_cmp_features=0 -j 5
-// RUN: ExpectInLog "Input bytes: abcdxyzVeryLongString"
+// RUN: ExpectInLog "Input bytes.*: abcdxyzVeryLongString"
 
 // TODO(kcc): we currently use --use_cmp_features=0 because otherwise
 // the corpus gets too large and the puzzle does not get solved quickly.

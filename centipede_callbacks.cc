@@ -52,12 +52,12 @@ void CentipedeCallbacks::PopulateSymbolAndPcTables(
     }
     LOG(INFO) << "Could not get PCTable, debug symbols will not be used";
   } else {
+    std::vector<std::string> coverage_binary_argv = absl::StrSplit(
+        env_.coverage_binary, absl::ByAnyChar{" \t\n"}, absl::SkipWhitespace{});
+    CHECK(!coverage_binary_argv.empty());
+    std::string binary_name = coverage_binary_argv[0];
     std::string tmp1 = std::filesystem::path(temp_dir_).append("sym-tmp1");
     std::string tmp2 = std::filesystem::path(temp_dir_).append("sym-tmp2");
-    CHECK(!env_.coverage_binary.empty());
-    std::vector<std::string> binary_flags =
-        absl::StrSplit(env_.coverage_binary, ' ');
-    std::string binary_name = binary_flags[0];
     symbols.GetSymbolsFromBinary(pc_table, binary_name, env_.symbolizer_path,
                                  tmp1, tmp2);
   }
@@ -94,16 +94,26 @@ Command &CentipedeCallbacks::GetOrCreateCommandForBinary(
   bool disable_coverage =
       std::find(env_.extra_binaries.begin(), env_.extra_binaries.end(),
                 binary) != env_.extra_binaries.end();
+
+  std::vector<std::string> env = {ConstructRunnerFlags(
+      absl::StrCat(":shmem:arg1=", shmem_name1_, ":arg2=", shmem_name2_,
+                   ":failure_description_path=", failure_description_path_,
+                   ":"),
+      disable_coverage)};
+
+  if (env_.clang_coverage_binary == binary)
+    env.emplace_back(absl::StrCat(
+        "LLVM_PROFILE_FILE=", env_.MakeSourceBasedCoverageRawProfilePath()));
+
+  // Allow for the time it takes to fork a subprocess etc.
+  const auto amortized_timeout = absl::Seconds(env_.timeout) + absl::Seconds(5);
   Command &cmd = commands_.emplace_back(Command(
       /*path=*/binary, /*args=*/{shmem_name1_, shmem_name2_},
-      /*env=*/
-      {ConstructRunnerFlags(
-          absl::StrCat(":shmem:arg1=", shmem_name1_, ":arg2=", shmem_name2_,
-                       ":failure_description_path=", failure_description_path_,
-                       ":"),
-          disable_coverage)},
+      /*env=*/env,
       /*out=*/execute_log_path_,
-      /*err=*/execute_log_path_));
+      /*err=*/execute_log_path_,
+      /*timeout=*/amortized_timeout,
+      /*temp_file_path=*/temp_input_file_path_));
   if (env_.fork_server) cmd.StartForkServer(temp_dir_, Hash(binary));
 
   return cmd;
@@ -118,9 +128,17 @@ int CentipedeCallbacks::ExecuteCentipedeSancovBinaryWithShmem(
   inputs_blobseq_.Reset();
   outputs_blobseq_.Reset();
 
-  // Feed the inputs to inputs_blobseq_.
-  size_t num_inputs_written =
-      execution_request::RequestExecution(inputs, inputs_blobseq_);
+  size_t num_inputs_written = 0;
+
+  if (env_.has_input_wildcards) {
+    CHECK_EQ(inputs.size(), 1);
+    WriteToLocalFile(temp_input_file_path_, inputs[0]);
+    num_inputs_written = 1;
+  } else {
+    // Feed the inputs to inputs_blobseq_.
+    num_inputs_written =
+        execution_request::RequestExecution(inputs, inputs_blobseq_);
+  }
 
   if (num_inputs_written != inputs.size()) {
     LOG(INFO) << "Wrote " << num_inputs_written << "/" << inputs.size()

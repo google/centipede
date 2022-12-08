@@ -27,6 +27,7 @@
 #include "./defs.h"
 #include "./environment.h"
 #include "./execution_result.h"
+#include "./knobs.h"
 #include "./logging.h"
 #include "./shared_memory_blob_sequence.h"
 #include "./symbol_table.h"
@@ -44,7 +45,7 @@ class CentipedeCallbacks {
   // `env` is used to pass flags to `this`, it must outlive `this`.
   CentipedeCallbacks(const Environment &env)
       : env_(env),
-        byte_array_mutator_(GetRandomSeed(env.seed)),
+        byte_array_mutator_(env.knobs, GetRandomSeed(env.seed)),
         inputs_blobseq_(shmem_name1_.c_str(), env.shmem_size_mb << 20),
         outputs_blobseq_(shmem_name2_.c_str(), env.shmem_size_mb << 20) {
     CHECK(byte_array_mutator_.set_max_len(env.max_len));
@@ -99,7 +100,7 @@ class CentipedeCallbacks {
                                    bool disable_coverage = false);
 
   // Uses an external binary `binary` to mutate `inputs`.
-  // The binary should be linked against :fuzz_target_runner and
+  // The binary should be linked against :centipede_runner and
   // implement the Structure-Aware Fuzzing interface, as described here:
   // github.com/google/fuzzing/blob/master/docs/structure-aware-fuzzing.md
   //
@@ -128,6 +129,8 @@ class CentipedeCallbacks {
   // Variables required for ExecuteCentipedeSancovBinaryWithShmem.
   // They are computed in CTOR, to avoid extra computation in the hot loop.
   std::string temp_dir_ = TemporaryLocalDirPath();
+  std::string temp_input_file_path_ =
+      std::filesystem::path(temp_dir_).append("temp_input_file");
   const std::string execute_log_path_ =
       std::filesystem::path(temp_dir_).append("log");
   std::string failure_description_path_ =

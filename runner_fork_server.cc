@@ -56,6 +56,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <cstdlib>
 #include <cstring>
 
 namespace centipede {
@@ -147,7 +148,17 @@ __attribute__((constructor)) void ForkServerCallMeVeryEarly() {
       // Parent process.
       int status = -1;
       if (waitpid(pid, &status, 0) < 0) Exit("###waitpid failed\n");
-      Log("###Centipede fork done; writing to pipe1\n");
+      if (WIFEXITED(status)) {
+        if (WEXITSTATUS(status) == EXIT_SUCCESS)
+          Log("###Centipede fork returned EXIT_SUCCESS\n");
+        else if (WEXITSTATUS(status) == EXIT_FAILURE)
+          Log("###Centipede fork returned EXIT_FAILURE\n");
+        else
+          Log("###Centipede fork returned unknown failure status\n");
+      } else {
+        Log("###Centipede fork crashed\n");
+      }
+      Log("###Centipede fork writing status to pipe1\n");
       if (write(pipe1, &status, sizeof(status)) == -1)
         Exit("###write to pipe1 failed\n");
     }

@@ -49,7 +49,7 @@ abort_test_fuzz() {
   set +x
 }
 
-# Creates workdir ($1) and tests fuzzing with a target that crashes.
+# Tests fuzzing with a target that crashes.
 test_crashing_target() {
   FUNC="${FUNCNAME[0]}"
   WD="${TEST_TMPDIR}/${FUNC}/WD"
@@ -67,13 +67,13 @@ test_crashing_target() {
   # Expecting a crash to be observed and reported.
   abort_test_fuzz --workdir="${WD}" --num_runs=0 | tee "${LOG}"
   centipede::assert_regex_in_file "2 inputs to rerun" "${LOG}"
-  centipede::assert_regex_in_file "Batch execution failed; exit code:" "${LOG}"
+  centipede::assert_regex_in_file "Batch execution failed:" "${LOG}"
 
   # Comes from test_fuzz_target.cc
   centipede::assert_regex_in_file "I AM ABOUT TO ABORT" "${LOG}"
 }
 
-# Creates workdir ($1) and tests how the debug symbols are shown in the output.
+# Tests how the debug symbols are shown in the output.
 test_debug_symbols() {
   FUNC="${FUNCNAME[0]}"
   WD="${TEST_TMPDIR}/${FUNC}/WD"
@@ -90,8 +90,8 @@ test_debug_symbols() {
     --symbolizer_path="${LLVM_SYMBOLIZER}" | tee "${LOG}"
   centipede::assert_regex_in_file 'Custom mutator detected in the target, will use it' "${LOG}"
   # Note: the test assumes LLVMFuzzerTestOneInput is defined on a specific line.
-  centipede::assert_regex_in_file "FUNC: LLVMFuzzerTestOneInput third_party/centipede/testing/test_fuzz_target.cc:53" "${LOG}"
-  centipede::assert_regex_in_file "EDGE: LLVMFuzzerTestOneInput third_party/centipede/testing/test_fuzz_target.cc" "${LOG}"
+  centipede::assert_regex_in_file "FUNC: LLVMFuzzerTestOneInput .*testing/test_fuzz_target.cc:62" "${LOG}"
+  centipede::assert_regex_in_file "EDGE: LLVMFuzzerTestOneInput .*testing/test_fuzz_target.cc" "${LOG}"
 
   echo "============ ${FUNC}: add func1/func2-A inputs to the corpus."
   test_fuzz --workdir="${WD}" --export_corpus_from_local_dir="${TMPCORPUS}"
@@ -193,6 +193,7 @@ test_pcpair_features() {
 }
 
 test_crashing_target
+test_debug_symbols
 test_dictionary
 test_for_each_blob
 test_pcpair_features

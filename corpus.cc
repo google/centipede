@@ -17,9 +17,11 @@
 #include <cstddef>
 #include <cstdint>
 #include <ostream>
+#include <queue>
 #include <string>
 #include <vector>
 
+#include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_cat.h"
 #include "./coverage.h"
 #include "./defs.h"
@@ -246,6 +248,29 @@ uint32_t WeightedDistribution::PopBack() {
   weights_.pop_back();
   cumulative_weights_.pop_back();
   return result;
+}
+
+size_t ComputeFunctionCyclomaticComplexity(uintptr_t pc,
+                                           ControlFlowGraph &cfg) {
+  size_t edge_num = 0, node_num = 0;
+
+  absl::flat_hash_set<uintptr_t> visited_pcs;
+  std::queue<uintptr_t> worklist;
+
+  worklist.push(pc);
+
+  while (!worklist.empty()) {
+    auto currnet_pc = worklist.front();
+    worklist.pop();
+    if (!visited_pcs.insert(currnet_pc).second) continue;
+    ++node_num;
+    for (auto &successor : cfg.GetSuccessors(currnet_pc)) {
+      ++edge_num;
+      worklist.push(successor);
+    }
+  }
+
+  return edge_num - node_num + 2;
 }
 
 //================= CoverageFrontier

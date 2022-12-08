@@ -28,12 +28,27 @@
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
 #include "./logging.h"
+#include "./remote_file.h"
 #include "./util.h"
 
+// TODO(kcc): document usage of standalone binaries and how to use @@ wildcard.
+// If the "binary" contains @@, it means the binary can only accept inputs
+// from the command line, and only one input per process.
+// @@ will be replaced with a path to file with the input.
+// @@ is chosen to follow the AFL command line syntax.
+// TODO(kcc): rename --binary to --command (same for --extra_binaries),
+// while remaining backward compatible.
 ABSL_FLAG(std::string, binary, "", "The target binary.");
 ABSL_FLAG(std::string, coverage_binary, "",
           "The actual binary from which coverage is collected - if different "
           "from --binary.");
+ABSL_FLAG(std::string, clang_coverage_binary, "",
+          "A clang source-based code coverage binary used to produce "
+          "human-readable reports. Do not add this binary to extra_binaries. "
+          "You must have llvm-cov and llvm-profdata in your path to generate "
+          "the reports. --workdir in turn must be local in order for this "
+          "functionality to work. See "
+          "https://clang.llvm.org/docs/SourceBasedCodeCoverage.html");
 ABSL_FLAG(std::string, extra_binaries, "",
           "A comma-separated list of extra target binaries. These binaries are "
           "fed the same inputs as the main binary, but the coverage feedback "
@@ -127,7 +142,7 @@ ABSL_FLAG(bool, use_pc_features, true,
 ABSL_FLAG(bool, use_cmp_features, true,
           "When available from instrumentation, use features derived from "
           "instrumentation of CMP instructions.");
-ABSL_FLAG(bool, use_auto_dictionary, false,
+ABSL_FLAG(bool, use_auto_dictionary, true,
           "If true, use automatically-generated dictionary derived from "
           "intercepting comparison instructions, memcmp, and similar.");
 ABSL_FLAG(size_t, path_level, 0,  // Not ready for wide usage.
@@ -161,6 +176,9 @@ ABSL_FLAG(int, telemetry_frequency, 0,
           "--telemetry_frequency=-5, dump on batches 32, 64, 128,...). Zero "
           "means no telemetry. Note that the before-fuzzing and after-fuzzing "
           "telemetry are always dumped.");
+ABSL_FLAG(std::string, knobs_file, "",
+          "If not empty, knobs will be read from this (possibly remote) file."
+          " The feature is experimental, not yet fully functional.");
 ABSL_FLAG(std::string, save_corpus_to_local_dir, "",
           "Save the remote corpus from working to the given directory, one "
           "file per corpus.");
@@ -237,6 +255,7 @@ Environment::Environment(const std::vector<std::string> &argv)
           absl::GetFlag(FLAGS_coverage_binary).empty()
               ? (binary.empty() ? "" : *absl::StrSplit(binary, ' ').begin())
               : absl::GetFlag(FLAGS_coverage_binary)),
+      clang_coverage_binary(absl::GetFlag(FLAGS_clang_coverage_binary)),
       extra_binaries(absl::StrSplit(absl::GetFlag(FLAGS_extra_binaries), ',',
                                     absl::SkipEmpty{})),
       workdir(absl::GetFlag(FLAGS_workdir)),
@@ -274,6 +293,7 @@ Environment::Environment(const std::vector<std::string> &argv)
       telemetry_frequency(absl::GetFlag(FLAGS_telemetry_frequency)),
       distill_shards(absl::GetFlag(FLAGS_distill_shards)),
       log_features_shards(absl::GetFlag(FLAGS_log_features_shards)),
+      knobs_file(absl::GetFlag(FLAGS_knobs_file)),
       save_corpus_to_local_dir(absl::GetFlag(FLAGS_save_corpus_to_local_dir)),
       export_corpus_from_local_dir(
           absl::GetFlag(FLAGS_export_corpus_from_local_dir)),
@@ -309,6 +329,16 @@ Environment::Environment(const std::vector<std::string> &argv)
     for (size_t i = 1; i < argv.size(); ++i) {
       args.emplace_back(argv[i]);
     }
+  }
+
+  if (!clang_coverage_binary.empty())
+    extra_binaries.push_back(clang_coverage_binary);
+
+  if (absl::StrContains(binary, "@@")) {
+    LOG(INFO) << "@@ detected; running in standalone mode with batch_size=1";
+    has_input_wildcards = true;
+    batch_size = 1;
+    // TODO(kcc): do we need to check if extra_binaries have @@?
   }
 }
 
@@ -368,6 +398,89 @@ std::string Environment::MakeCorpusStatsPath(
   return std::filesystem::path(workdir).append(absl::StrFormat(
       "corpus-stats-%s.%0*d%s.json", binary_name, kDigitsInShardIndex,
       my_shard_index, NormalizeAnnotation(annotation)));
+}
+
+std::string Environment::MakeSourceBasedCoverageRawProfilePath() const {
+  // Pass %m to enable online merge mode: updates file in place instead of
+  // replacing it %m is replaced by lprofGetLoadModuleSignature(void) which
+  // should be consistent for a fixed binary
+  return std::filesystem::path(MakeCoverageDirPath())
+      .append(absl::StrFormat("clang_coverage.%0*d.%s.profraw",
+                              kDigitsInShardIndex, my_shard_index, "%m"));
+}
+
+std::string Environment::MakeSourceBasedCoverageIndexedProfilePath() const {
+  return std::filesystem::path(MakeCoverageDirPath())
+      .append(absl::StrFormat("clang_coverage.profdata"));
+}
+
+std::string Environment::MakeSourceBasedCoverageReportPath(
+    std::string_view annotation) const {
+  return std::filesystem::path(workdir).append(absl::StrFormat(
+      "source-coverage-report-%s.%0*d%s", binary_name, kDigitsInShardIndex,
+      my_shard_index, NormalizeAnnotation(annotation)));
+}
+
+std::vector<std::string> Environment::EnumerateRawCoverageProfiles() const {
+  // Unfortunately we have to enumerate the profiles from the filesystem since
+  // clang-coverage generates its own hash of the binary to avoid collisions
+  // between builds. We account for this in Centipede already with the
+  // per-binary coverage directory but LLVM coverage (perhaps smartly) doesn't
+  // trust the user to get this right. We could call __llvm_profile_get_filename
+  // in the runner and plumb it back to us but this is simpler.
+  const std::string dir_path = MakeCoverageDirPath();
+  std::error_code dir_error;
+  const auto dir_iter =
+      std::filesystem::directory_iterator(dir_path, dir_error);
+  if (dir_error) {
+    LOG(ERROR) << "Failed to access coverage dir '" << dir_path
+               << "': " << dir_error.message();
+    return {};
+  }
+  std::vector<std::string> raw_profiles;
+  for (const auto &entry : dir_iter) {
+    if (entry.is_regular_file() && entry.path().extension() == ".profraw")
+      raw_profiles.push_back(entry.path());
+  }
+  return raw_profiles;
+}
+
+std::string Environment::MakeRUsageReportPath(
+    std::string_view annotation) const {
+  return std::filesystem::path(workdir).append(absl::StrFormat(
+      "rusage-report-%s.%0*d%s.txt", binary_name, kDigitsInShardIndex,
+      my_shard_index, NormalizeAnnotation(annotation)));
+}
+
+bool Environment::DumpCorpusTelemetryInThisShard() const {
+  // Corpus stats are global across all shards on all machines.
+  return my_shard_index == 0;
+}
+
+bool Environment::DumpRUsageTelemetryInThisShard() const {
+  // Unlike the corpus stats, we want to measure/dump rusage stats for each
+  // Centipede process running on a separate machine: assign that to the first
+  // shard (i.e. thread) on the machine.
+  return my_shard_index % num_threads == 0;
+}
+
+bool Environment::DumpTelemetryForThisBatch(size_t batch_index) const {
+  // Always dump for batch 0 (i.e. at the beginning of execution).
+  if (batch_index == 0) {
+    return true;
+  }
+  // Special mode for negative --telemetry_frequency: dump when batch_index
+  // is a power-of-two and is >= than 2^abs(--telemetry_frequency).
+  if (((telemetry_frequency < 0) &&
+       (batch_index >= (1 << -telemetry_frequency)) &&
+       ((batch_index - 1) & batch_index) == 0)) {
+    return true;
+  }
+  // Normal mode: dump when requested number of batches get processed.
+  if (((telemetry_frequency > 0) && (batch_index % telemetry_frequency == 0))) {
+    return true;
+  }
+  return false;
 }
 
 // Returns true if `value` is one of "1", "true".
@@ -464,6 +577,22 @@ void Environment::UpdateForExperiment() {
   }
   experiment_name = "E" + experiment_name;
   load_other_shard_frequency = 0;  // The experiments should be independent.
+}
+
+void Environment::ReadKnobsFileIfSpecified() {
+  const std::string_view knobs_file_path = knobs_file;
+  if (knobs_file_path.empty()) return;
+  ByteArray knob_bytes;
+  auto f = RemoteFileOpen(knobs_file, "r");
+  CHECK(f) << "Failed to open remote file " << knobs_file;
+  RemoteFileRead(f, knob_bytes);
+  RemoteFileClose(f);
+  VLOG(1) << "Knobs: " << knob_bytes.size() << " knobs read from "
+          << knobs_file;
+  knobs.Set(knob_bytes);
+  knobs.ForEachKnob([](std::string_view name, Knobs::value_type value) {
+    VLOG(1) << "knob " << name << ": " << static_cast<uint32_t>(value);
+  });
 }
 
 }  // namespace centipede

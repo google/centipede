@@ -15,19 +15,21 @@
 #include "./config_file.h"
 
 #include <filesystem>  // NOLINT
-#include <string>
 #include <set>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include "absl/flags/declare.h"
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
+#include "absl/flags/reflection.h"
 #include "absl/log/check.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_replace.h"
 #include "absl/strings/str_split.h"
+#include "absl/strings/substitute.h"
 #include "./config_util.h"
 #include "./logging.h"
 #include "./remote_file.h"
@@ -53,9 +55,10 @@ ABSL_FLAG(std::string, config, "",
           "append, in case of std::vector flags) any previous occurrences of "
           "the same flags on the command line, and vice versa.");
 ABSL_FLAG(std::string, save_config, "",
-          "Saves Centipede flags to the specified file. The file can be either "
-          "local or remote. Relative paths are referenced from the CWD. Both "
-          "the command-line flags and defaulted flags are saved. The format "
+          "Saves Centipede flags to the specified file and exits the program."
+          "The file can be either local or remote. Relative paths are "
+          "referenced from the CWD. Both the command-line flags and defaulted "
+          "flags are saved (the defaulted flags are commented out). The format "
           "is:\n"
           "# --flag's help string.\n"
           "# --flag's default value.\n"
@@ -63,10 +66,14 @@ ABSL_FLAG(std::string, save_config, "",
           "...\n"
           "This format can be parsed back by both --config and --flagfile. "
           "Unlike those two flags, this flag is not position-sensitive and "
-          "always saves the final resolved config.");
+          "always saves the final resolved config.\n"
+          "Special case: if the file's extension is .sh, a runnable shell "
+          "script is saved instead.");
 ABSL_FLAG(bool, update_config, false,
           "Must be used in combination with --config=<file>. Writes the final "
           "resolved config back to the same file.");
+ABSL_FLAG(bool, print_config, false,
+          "Print the config to stderr upon starting Centipede.");
 
 // Declare --flagfile defined by the Abseil Flags library. The flag should point
 // at a _local_ file is always automatically parsed by Abseil Flags.
@@ -192,7 +199,8 @@ AugmentedArgvWithCleanup LocalizeConfigFilesInArgv(
   return AugmentedArgvWithCleanup{argv, replacements, std::move(cleanup)};
 }
 
-std::filesystem::path MaybeSaveConfigToFile() {
+std::filesystem::path MaybeSaveConfigToFile(
+    const std::vector<std::string>& leftover_argv) {
   std::filesystem::path path;
 
   // Initialize `path` if --save_config or --update_config is passed.
@@ -216,12 +224,45 @@ std::filesystem::path MaybeSaveConfigToFile() {
         FLAGS_config.Name(),
         FLAGS_save_config.Name(),
         FLAGS_update_config.Name(),
+        FLAGS_print_config.Name(),
     };
     const FlagInfosPerSource flags =
         GetFlagsPerSource("third_party/centipede/", excluded_flags);
     const std::string flags_str = FormatFlagfileString(
-        flags, DefaultedFlags::kIncluded, FlagComments::kHelpAndDefault);
-    RemoteFileSetContents(path, flags_str);
+        flags, DefaultedFlags::kCommentedOut, FlagComments::kHelpAndDefault);
+    std::string file_contents;
+    if (path.extension() == ".sh") {
+      // NOTES: 1) The first element of `leftover_argv` is expected to be the
+      // /path/to/centipede, so the $1 in the stub will run it.
+      // 2) absl::Substitute() replaces the escaped $$ with a $.
+      constexpr std::string_view kScriptStub =
+          R"(#!/bin/bash -eu
+
+declare -ra flags=(
+$0)
+
+if [[ -n "$1" ]]; then
+  wd=$1
+else
+  wd=$$PWD
+fi
+read -e -p "Clear workdir (which is '$$wd') [y/N]? " yn
+# Tip: To default to 'y', change 'yY' to 'nN' below.
+if [[ "$${yn}" =~ [yY] ]]; then
+  rm -rf "$$wd"/corpus* "$$wd"/*report*.txt "$$wd"/*/features*
+fi
+
+set -x
+$2 "$${flags[@]}"
+)";
+      const auto workdir = absl::GetAllFlags()["workdir"]->CurrentValue();
+      const auto argv_str = absl::StrJoin(leftover_argv, " ");
+      file_contents =
+          absl::Substitute(kScriptStub, flags_str, workdir, argv_str);
+    } else {
+      file_contents = flags_str;
+    }
+    RemoteFileSetContents(path, file_contents);
   }
 
   return path;
@@ -252,14 +293,17 @@ std::vector<std::string> InitCentipede(
   }
 
   // Log the final resolved config.
-  const FlagInfosPerSource flags = GetFlagsPerSource("third_party/centipede/");
-  const std::string flags_str = FormatFlagfileString(
-      flags, DefaultedFlags::kCommentedOut, FlagComments::kNone);
-  LOG(INFO) << "Final resolved config:\n" << flags_str;
+  if (absl::GetFlag(FLAGS_print_config)) {
+    const FlagInfosPerSource flags =
+        GetFlagsPerSource("third_party/centipede/");
+    const std::string flags_str = FormatFlagfileString(
+        flags, DefaultedFlags::kCommentedOut, FlagComments::kNone);
+    LOG(INFO) << "Final resolved config:\n" << flags_str;
+  }
 
   // If --save_config was passed, save the final resolved flags to the requested
   // file and exit the program.
-  const auto path = MaybeSaveConfigToFile();
+  const auto path = MaybeSaveConfigToFile(leftover_argv);
   if (!path.empty()) {
     LOG(INFO) << "Config written to file: " << VV(path);
     LOG(INFO) << "Nothing left to do; exiting";

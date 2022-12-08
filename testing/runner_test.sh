@@ -15,7 +15,7 @@
 # limitations under the License.
 
 # This sh_test runs various tests on test_fuzz_target,
-# which is linked against :fuzz_target_runner.
+# which is linked against :centipede_runner.
 
 set -eu
 

@@ -31,6 +31,7 @@
 #include "./environment.h"
 #include "./execution_result.h"
 #include "./remote_file.h"
+#include "./rusage_profiler.h"
 #include "./stats.h"
 #include "./symbol_table.h"
 
@@ -102,6 +103,11 @@ class Centipede {
   void GenerateCoverageReport(std::string_view annotation, size_t batch_index);
   // Generates a corpus stats file in workdir.
   void GenerateCorpusStats(std::string_view annotation, size_t batch_index);
+  // Generates the clang source-based coverage report in workdir.
+  void GenerateSourceBasedCoverageReport(std::string_view annotation,
+                                         size_t batch_index);
+  // Generates a performance report file in workdir.
+  void GenerateRUsageReport(std::string_view annotation, size_t batch_index);
   // Generates all the report and stats files in workdir if this shard is
   // assigned to do that and if `batch_index` == 0 or satisfies the criteria set
   // via the flags.
@@ -167,6 +173,9 @@ class Centipede {
   // Path and command for the input_filter.
   std::string input_filter_path_;
   Command input_filter_cmd_;
+
+  // Resource usage stats collection & reporting.
+  perf::RUsageProfiler rusage_profiler_;
 };
 
 }  // namespace centipede

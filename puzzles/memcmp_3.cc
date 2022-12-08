@@ -13,7 +13,8 @@
 // limitations under the License.
 
 // Centipede puzzle: one 3-byte memcmp. Check the output in the log.
-// RUN: Run && SolutionIs fUz
+// Disable use_auto_dictionary so that we test other functionality.
+// RUN: Run --use_auto_dictionary=false && SolutionIs fUz
 // RUN: ExpectInLog "TEXT IN STDOUT"
 // RUN: ExpectInLog "TEXT IN STDERR"
 

@@ -36,6 +36,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <cstdlib>
 #include <vector>
 
 #include "./byte_array_mutator.h"
@@ -333,9 +334,10 @@ ReadOneInputExecuteItAndDumpCoverage(
 // Calls centipede::BatchResult::WriteCmpArgs for every CMP arg pair
 // found in `cmp_trace`.
 // Returns true if all writes succeeded.
+// "noinline" so that we see it in a profile, if it becomes hot.
 template <typename CmpTrace>
-bool WriteCmpArgs(CmpTrace &cmp_trace,
-                  centipede::SharedMemoryBlobSequence &blobseq) {
+__attribute__((noinline)) bool WriteCmpArgs(
+    CmpTrace &cmp_trace, centipede::SharedMemoryBlobSequence &blobseq) {
   bool write_failed = false;
   cmp_trace.ForEachNonZero(
       [&](uint8_t size, const uint8_t *v0, const uint8_t *v1) {
@@ -345,13 +347,51 @@ bool WriteCmpArgs(CmpTrace &cmp_trace,
   return !write_failed;
 }
 
+// Starts sending the outputs (coverage, etc) to `outputs_blobseq`.
+// Returns true on success.
+static bool StartSendingOutputsToEngine(
+    centipede::SharedMemoryBlobSequence &outputs_blobseq) {
+  return centipede::BatchResult::WriteInputBegin(outputs_blobseq);
+}
+
+// Finishes sending the outputs (coverage, etc) to `outputs_blobseq`.
+// Returns true on success.
+static bool FinishSendingOutputsToEngine(
+    centipede::SharedMemoryBlobSequence &outputs_blobseq) {
+  // Copy features to shared memory.
+  if (!centipede::BatchResult::WriteOneFeatureVec(
+          g_features.data(), g_features.size(), outputs_blobseq)) {
+    return false;
+  }
+
+  // Copy the CMP traces to shared memory.
+  if (state.run_time_flags.use_auto_dictionary) {
+    bool write_failed = false;
+    state.ForEachTls([&write_failed, &outputs_blobseq](
+                         centipede::ThreadLocalRunnerState &tls) {
+      if (!WriteCmpArgs(tls.cmp_trace2, outputs_blobseq)) write_failed = true;
+      if (!WriteCmpArgs(tls.cmp_trace4, outputs_blobseq)) write_failed = true;
+      if (!WriteCmpArgs(tls.cmp_trace8, outputs_blobseq)) write_failed = true;
+      if (!WriteCmpArgs(tls.cmp_traceN, outputs_blobseq)) write_failed = true;
+    });
+    if (write_failed) return false;
+  }
+
+  // Write the stats.
+  if (!centipede::BatchResult::WriteStats(state.stats, outputs_blobseq))
+    return false;
+  // We are done with this input.
+  if (!centipede::BatchResult::WriteInputEnd(outputs_blobseq)) return false;
+  return true;
+}
+
 // Handles an ExecutionRequest, see RequestExecution().
 // Reads inputs from `inputs_blobseq`, runs them,
-// saves coverage features to `feature_blobseq`.
+// saves coverage features to `outputs_blobseq`.
 // Returns EXIT_SUCCESS on success and EXIT_FAILURE otherwise.
 static int ExecuteInputsFromShmem(
     centipede::SharedMemoryBlobSequence &inputs_blobseq,
-    centipede::SharedMemoryBlobSequence &feature_blobseq,
+    centipede::SharedMemoryBlobSequence &outputs_blobseq,
     FuzzerTestOneInputCallback test_one_input_cb) {
   size_t num_inputs = 0;
   if (!execution_request::IsExecutionRequest(inputs_blobseq.Read()))
@@ -370,34 +410,11 @@ static int ExecuteInputsFromShmem(
     std::vector<uint8_t> data(blob.data, blob.data + size);
 
     // Starting execution of one more input.
-    if (!centipede::BatchResult::WriteInputBegin(feature_blobseq)) break;
+    if (!StartSendingOutputsToEngine(outputs_blobseq)) break;
 
     RunOneInput(data.data(), data.size(), test_one_input_cb);
 
-    // Copy features to shared memory.
-    if (!centipede::BatchResult::WriteOneFeatureVec(
-            g_features.data(), g_features.size(), feature_blobseq)) {
-      break;
-    }
-
-    // Copy the CMP traces to shared memory.
-    if (state.run_time_flags.use_auto_dictionary) {
-      bool write_failed = false;
-      state.ForEachTls([&write_failed, &feature_blobseq](
-                           centipede::ThreadLocalRunnerState &tls) {
-        if (!WriteCmpArgs(tls.cmp_trace2, feature_blobseq)) write_failed = true;
-        if (!WriteCmpArgs(tls.cmp_trace4, feature_blobseq)) write_failed = true;
-        if (!WriteCmpArgs(tls.cmp_trace8, feature_blobseq)) write_failed = true;
-        if (!WriteCmpArgs(tls.cmp_traceN, feature_blobseq)) write_failed = true;
-      });
-      if (write_failed) break;
-    }
-
-    // Write the stats.
-    if (!centipede::BatchResult::WriteStats(state.stats, feature_blobseq))
-      break;
-    // We are done with this input.
-    if (!centipede::BatchResult::WriteInputEnd(feature_blobseq)) break;
+    if (!FinishSendingOutputsToEngine(outputs_blobseq)) break;
   }
   return EXIT_SUCCESS;
 }
@@ -459,6 +476,40 @@ static void DumpPcTable(const char *output_path) {
                       "wrong number of bytes written for pc table");
   fclose(output_file);
   delete[] data_copy;
+}
+
+// Dumps the control-flow table to `output_path`.
+// Assumes that main_object_start_address is already computed.
+static void DumpCfTable(const char *output_path) {
+  PrintErrorAndExitIf(
+      state.main_object_start_address == state.kInvalidStartAddress,
+      "main_object_start_address is not set");
+  FILE *output_file = fopen(output_path, "w");
+  PrintErrorAndExitIf(!output_file, "can't open output file");
+  // Make a local copy of the cf table, and subtract the ASLR base
+  // (i.e. main_object_start_address) from every PC before dumping the table.
+  // Otherwise, we need to pass this ASLR offset at the symbolization time,
+  // e.g. via `llvm-symbolizer --adjust-vma=<ASLR offset>`.
+  // Another alternative is to build the binary w/o -fPIE or with -static.
+  const uintptr_t *data = state.cfs_beg;
+  const size_t data_size_in_words = state.cfs_end - state.cfs_beg;
+  PrintErrorAndExitIf(data_size_in_words == 0, "No data in control-flow table");
+  const size_t data_size_in_bytes = data_size_in_words * sizeof(*state.cfs_beg);
+  std::vector<intptr_t> data_copy(data_size_in_words);
+  for (size_t i = 0; i < data_size_in_words; ++i) {
+    // data_copy is an array of PCs, except for delimiter (Null) and indirect
+    // call indicator (-1).
+    if (data[i] != 0 && data[i] != -1ULL)
+      data_copy[i] = data[i] - state.main_object_start_address;
+    else
+      data_copy[i] = data[i];
+  }
+  // Dump the modified table.
+  auto num_bytes_written =
+      fwrite(&data_copy[0], 1, data_size_in_bytes, output_file);
+  PrintErrorAndExitIf(num_bytes_written != data_size_in_bytes,
+                      "wrong number of bytes written for cf table");
+  fclose(output_file);
 }
 
 // Returns a random seed. No need for a more sophisticated seed.
@@ -599,6 +650,45 @@ extern void ForkServerCallMeVeryEarly();
 extern void RunnerSancov();
 [[maybe_unused]] auto fake_reference_for_runner_sancov = &RunnerSancov;
 
+GlobalRunnerState::GlobalRunnerState() {
+  // TODO(kcc): move some code from CentipedeRunnerMain() here so that it works
+  // even if CentipedeRunnerMain() is not called.
+  tls.OnThreadStart();
+  state.StartTimerThread();
+
+  centipede::SetLimits();
+
+  // Compute main_object_start_address, main_object_size.
+  dl_iterate_phdr(centipede::dl_iterate_phdr_callback, nullptr);
+
+  // Dump the pc table, if instructed.
+  if (state.HasFlag(":dump_pc_table:")) {
+    if (!state.arg1) _exit(EXIT_FAILURE);
+    centipede::DumpPcTable(state.arg1);
+    _exit(EXIT_SUCCESS);
+  }
+
+  // Dump the control-flow table, if instructed.
+  if (state.HasFlag(":dump_cf_table:")) {
+    if (!state.arg1) _exit(EXIT_FAILURE);
+    centipede::DumpCfTable(state.arg1);
+    _exit(EXIT_SUCCESS);
+  }
+}
+
+GlobalRunnerState::~GlobalRunnerState() {
+  // The process is winding down, but CentipedeRunnerMain did not run.
+  // This means, the binary is standalone with its own main(), and we need to
+  // report the coverage now.
+  if (!state.centipede_runner_main_executed && state.HasFlag(":shmem:")) {
+    int exit_status = EXIT_SUCCESS;  // TODO(kcc): do we know our exit status?
+    PostProcessCoverage(exit_status);
+    centipede::SharedMemoryBlobSequence outputs_blobseq(state.arg2);
+    StartSendingOutputsToEngine(outputs_blobseq);
+    FinishSendingOutputsToEngine(outputs_blobseq);
+  }
+}
+
 }  // namespace centipede
 
 // If HasFlag(:dump_pc_table:), dump the pc table to state.arg1.
@@ -621,22 +711,10 @@ extern "C" int CentipedeRunnerMain(
   using centipede::state;
   using centipede::tls;
 
-  tls.OnThreadStart();
+  state.centipede_runner_main_executed = true;
+
   fprintf(stderr, "Centipede fuzz target runner; argv[0]: %s flags: %s\n",
           argv[0], state.centipede_runner_flags);
-  state.StartTimerThread();
-
-  centipede::SetLimits();
-
-  // Compute main_object_start_address, main_object_size.
-  dl_iterate_phdr(centipede::dl_iterate_phdr_callback, nullptr);
-
-  // Dump the pc table, if instructed.
-  if (state.HasFlag(":dump_pc_table:")) {
-    if (!state.arg1) return EXIT_FAILURE;
-    centipede::DumpPcTable(state.arg1);
-    return EXIT_SUCCESS;
-  }
 
   // All further actions will execute code in the target,
   // so we need to call LLVMFuzzerInitialize.
@@ -654,8 +732,8 @@ extern "C" int CentipedeRunnerMain(
     if (centipede::execution_request::IsMutationRequest(request_type_blob)) {
       // Mutation request.
       inputs_blobseq.Reset();
-      state.byte_array_mutator =
-          new centipede::ByteArrayMutator(centipede::GetRandomSeed());
+      state.byte_array_mutator = new centipede::ByteArrayMutator(
+          state.knobs, centipede::GetRandomSeed());
       return MutateInputsFromShmem(inputs_blobseq, outputs_blobseq,
                                    custom_mutator_cb, custom_crossover_cb);
     }

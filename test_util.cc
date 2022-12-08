@@ -16,14 +16,23 @@
 #include <filesystem>
 #include <string_view>
 
+#include "absl/strings/str_cat.h"
 #include "./logging.h"
 
 namespace centipede {
 
-std::string GetTestTempDir() {
-  if (auto* path = std::getenv("TEST_TMPDIR"); path != nullptr) return path;
-  if (auto* path = std::getenv("TMPDIR"); path != nullptr) return path;
-  return "/tmp";
+std::string GetTestTempDir(std::string_view subdir = "") {
+  std::filesystem::path dir;
+  dir = std::getenv("TEST_TMPDIR");
+  if (dir.empty()) dir = std::getenv("TMPDIR");
+  if (dir.empty()) dir = "/tmp";
+  dir.append(subdir);
+  if (!std::filesystem::exists(dir)) {
+    std::error_code error;
+    std::filesystem::create_directories(dir, error);
+    CHECK(!error) << "Failed to create dir: " VV(dir) << error.message();
+  }
+  return dir;
 }
 
 std::filesystem::path GetTestRunfilesDir() {
@@ -46,6 +55,12 @@ std::filesystem::path GetDataDependencyFilepath(std::string_view rel_path) {
   CHECK(std::filesystem::exists(path))  //
       << "No such path: " << VV(path) << VV(runfiles_dir) << VV(rel_path);
   return path;
+}
+
+void PrependDirToPathEnvvar(std::string_view dir) {
+  const std::string new_path_envvar = absl::StrCat(dir, ":", getenv("PATH"));
+  setenv("PATH", new_path_envvar.c_str(), /*replace*/ 1);
+  LOG(INFO) << "New PATH: " << new_path_envvar;
 }
 
 }  // namespace centipede

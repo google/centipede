@@ -97,7 +97,8 @@ AugmentedArgvWithCleanup LocalizeConfigFilesInArgv(
 // ones) to <path> in the format compatible with --config (defined by
 // Centipede), as well as --flagfile (defined by Abseil Flags), and returns
 // <path>. Otherwise, returns an empty string.
-std::filesystem::path MaybeSaveConfigToFile();
+std::filesystem::path MaybeSaveConfigToFile(
+    const std::vector<std::string>& leftover_argv);
 
 // The main runtime initialization sequence of steps. Should parse the command
 // line, e.g. by calling absl::ParseCommandLine(), and return the leftover

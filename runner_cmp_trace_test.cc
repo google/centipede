@@ -61,27 +61,32 @@ TEST(CmpTrace, T1) {
   trace8.Clear();
   traceN.Clear();
 
-  uint16_t short_value0 = 10;
-  uint16_t short_value1 = 20;
-  uint32_t int_value0 = 100;
-  uint32_t int_value1 = 200;
+  uint16_t small_short_value0 = 10;
+  uint16_t small_short_value1 = 20;
+  uint16_t short_value0 = 310;
+  uint16_t short_value1 = 320;
+  uint32_t int_value0 = 500;
+  uint32_t int_value1 = 600;
   uint64_t long_value0 = 1000;
   uint64_t long_value1 = 2000;
   uint64_t long_value2 = 4000;
   uint64_t long_value3 = 8000;
 
+  trace2.Capture(small_short_value0, small_short_value1);  // will be ignored.
   trace2.Capture(short_value0, short_value1);
   observed_pairs.clear();
   trace2.ForEachNonZero(callback);
   EXPECT_THAT(observed_pairs, testing::UnorderedElementsAre(IntPairToByteVector(
                                   short_value0, short_value1)));
 
+  trace4.Capture(30, 40);  // small values, will be ignored.
   trace4.Capture(int_value0, int_value1);
   observed_pairs.clear();
   trace4.ForEachNonZero(callback);
   EXPECT_THAT(observed_pairs, testing::UnorderedElementsAre(
                                   IntPairToByteVector(int_value0, int_value1)));
 
+  trace8.Capture(200LL, 255LL);  // small values, will be ignored.
   trace8.Capture(long_value0, long_value1);
   trace8.Capture(long_value2, long_value3);
   observed_pairs.clear();
