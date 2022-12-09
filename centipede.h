@@ -15,8 +15,6 @@
 #ifndef THIRD_PARTY_CENTIPEDE_CENTIPEDE_H_
 #define THIRD_PARTY_CENTIPEDE_CENTIPEDE_H_
 
-#include <time.h>
-
 #include <cstddef>
 #include <string>
 #include <string_view>
@@ -58,13 +56,6 @@ class Centipede {
                                       std::string_view dir);
 
  private:
-  // Simpler timer for internal use.
-  struct Timer {
-    static time_t now() { return time(nullptr); }
-    size_t seconds_since_beginning() const { return now() - beginning; }
-    time_t beginning = now();
-  };
-
   const Environment &env_;
   CentipedeCallbacks &user_callbacks_;
   Rng rng_;
@@ -142,8 +133,11 @@ class Centipede {
   // See more comments in centipede.cc.
   size_t AddPcPairFeatures(FeatureVec &fv);
 
+  // A timestamp set just before the actual fuzzing begins. Used to measure
+  // the fuzzing performance.
+  absl::Time fuzz_start_time_ = absl::InfiniteFuture();
+
   FeatureSet fs_;
-  Timer timer_;  // counts time for coverage collection rate computation
   Corpus corpus_;
   CoverageFrontier coverage_frontier_;
   size_t num_runs_ = 0;  // counts executed inputs
