@@ -183,11 +183,13 @@ void Centipede::Log(std::string_view log_type, size_t min_log_level) {
   if (env_.log_level < min_log_level) {
     return;
   }
-  const size_t seconds_since_beginning = timer_.seconds_since_beginning();
-  double exec_speed = seconds_since_beginning ? static_cast<double>(num_runs_) /
-                                                    seconds_since_beginning
-                                              : 0;
-  if (exec_speed > 1.) exec_speed = std::floor(exec_speed);
+  const double fuzz_time_secs =
+      absl::ToDoubleSeconds(absl::Now() - fuzz_start_time_);
+  // NOTE: By construction, if `fuzz_time_secs` <= 0, then the actual fuzzing
+  // hasn't started yet.
+  double exec_speed =
+      fuzz_time_secs > 0 ? static_cast<double>(num_runs_) / fuzz_time_secs : 0;
+  if (exec_speed > 1.) exec_speed = std::round(exec_speed);
   auto [max, avg] = corpus_.MaxAndAvgSize();
   stats_.corpus_size = corpus_.NumActive();
   stats_.num_covered_pcs = fs_.ToCoveragePCs().size();
@@ -573,8 +575,10 @@ void Centipede::FuzzingLoop() {
                 coverage_frontier_);
 
   Log("init-done", 0);
-  // Clear timer_ and num_runs_, so that the pre-init work doesn't affect them.
-  timer_ = Timer();
+
+  // Clear fuzz_start_time_ and num_runs_, so that the pre-init work doesn't
+  // affect them.
+  fuzz_start_time_ = absl::Now();
   num_runs_ = 0;
 
   if (env_.DistillingInThisShard()) {
@@ -715,7 +719,7 @@ void Centipede::ReportCrash(std::string_view binary,
                 << "\nFailure        : "
                 << one_input_batch_result.failure_description()
                 << "\nSaving input to: " << file_path;
-      auto* file = RemoteFileOpen(file_path, "w");  // overwrites existing file.
+      auto *file = RemoteFileOpen(file_path, "w");  // overwrites existing file.
       CHECK(file != nullptr) << log_prefix << "Failed to open " << file_path;
       RemoteFileAppend(file, one_input);
       RemoteFileClose(file);
