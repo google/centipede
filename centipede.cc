@@ -180,9 +180,11 @@ int Centipede::ExportCorpusFromLocalDir(const Environment &env,
 }
 
 void Centipede::Log(std::string_view log_type, size_t min_log_level) {
-  if (env_.log_level < min_log_level) {
-    return;
-  }
+  stats_.corpus_size = corpus_.NumActive();
+  stats_.num_covered_pcs = fs_.ToCoveragePCs().size();
+
+  if (env_.log_level < min_log_level) return;
+
   const double fuzz_time_secs =
       absl::ToDoubleSeconds(absl::Now() - fuzz_start_time_);
   // NOTE: By construction, if `fuzz_time_secs` <= 0, then the actual fuzzing
@@ -191,8 +193,6 @@ void Centipede::Log(std::string_view log_type, size_t min_log_level) {
       fuzz_time_secs > 0 ? static_cast<double>(num_runs_) / fuzz_time_secs : 0;
   if (exec_speed > 1.) exec_speed = std::round(exec_speed);
   auto [max, avg] = corpus_.MaxAndAvgSize();
-  stats_.corpus_size = corpus_.NumActive();
-  stats_.num_covered_pcs = fs_.ToCoveragePCs().size();
   static const auto rusage_scope = perf::RUsageScope::ThisProcess();
   LOG(INFO) << env_.experiment_name << "[" << num_runs_ << "]"
             << " " << log_type << ":"
