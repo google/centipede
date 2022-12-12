@@ -179,7 +179,8 @@ int Centipede::ExportCorpusFromLocalDir(const Environment &env,
   return 0;
 }
 
-void Centipede::Log(std::string_view log_type, size_t min_log_level) {
+void Centipede::UpdateAndMaybeLogStats(std::string_view log_type,
+                                       size_t min_log_level) {
   stats_.corpus_size = corpus_.NumActive();
   stats_.num_covered_pcs = fs_.ToCoveragePCs().size();
 
@@ -189,10 +190,10 @@ void Centipede::Log(std::string_view log_type, size_t min_log_level) {
       absl::ToDoubleSeconds(absl::Now() - fuzz_start_time_);
   // NOTE: By construction, if `fuzz_time_secs` <= 0, then the actual fuzzing
   // hasn't started yet.
-  double exec_speed =
+  double execs_per_sec =
       fuzz_time_secs > 0 ? static_cast<double>(num_runs_) / fuzz_time_secs : 0;
-  if (exec_speed > 1.) exec_speed = std::round(exec_speed);
-  auto [max, avg] = corpus_.MaxAndAvgSize();
+  if (execs_per_sec > 1.) execs_per_sec = std::round(execs_per_sec);
+  auto [max_corpus_size, avg_corpus_size] = corpus_.MaxAndAvgSize();
   static const auto rusage_scope = perf::RUsageScope::ThisProcess();
   LOG(INFO) << env_.experiment_name << "[" << num_runs_ << "]"
             << " " << log_type << ":"
@@ -204,8 +205,8 @@ void Centipede::Log(std::string_view log_type, size_t min_log_level) {
             << " pair: " << fs_.CountFeatures(feature_domains::kPCPair)
             << " corp: " << corpus_.NumActive() << "/" << corpus_.NumTotal()
             << " fr: " << coverage_frontier_.NumFunctionsInFrontier()
-            << " max/avg " << max << " " << avg << " "
-            << corpus_.MemoryUsageString() << " exec/s: " << exec_speed
+            << " max/avg: " << max_corpus_size << "/" << avg_corpus_size << " "
+            << corpus_.MemoryUsageString() << " exec/s: " << execs_per_sec
             << " mb: "
             << (perf::RUsageMemory::Snapshot(rusage_scope).mem_rss >> 20);
 }
@@ -361,7 +362,7 @@ void Centipede::LoadShard(const Environment &load_env, size_t shard_index,
   };
   ReadShard(load_env.MakeCorpusPath(shard_index),
             load_env.MakeFeaturesPath(shard_index), input_features_callback);
-  if (added_to_corpus) Log("load-shard", 1);
+  if (added_to_corpus) UpdateAndMaybeLogStats("load-shard", 1);
   Rerun(to_rerun);
 }
 
@@ -379,7 +380,7 @@ void Centipede::Rerun(std::vector<ByteArray> &to_rerun) {
     std::vector<ByteArray> batch(to_rerun.end() - batch_size, to_rerun.end());
     to_rerun.resize(to_rerun.size() - batch_size);
     if (RunBatch(batch, nullptr, nullptr, features_file.get())) {
-      Log("rerun-old", 1);
+      UpdateAndMaybeLogStats("rerun-old", 1);
     }
   }
 }
@@ -542,7 +543,7 @@ void Centipede::FuzzingLoop() {
                             batch_result);
   }
 
-  Log("begin-fuzz", 0);
+  UpdateAndMaybeLogStats("begin-fuzz", 0);
 
   if (env_.full_sync || env_.DistillingInThisShard()) {
     // Load all shards in random order.
@@ -574,7 +575,7 @@ void Centipede::FuzzingLoop() {
     corpus_.Add(user_callbacks_.DummyValidInput(), {}, {}, fs_,
                 coverage_frontier_);
 
-  Log("init-done", 0);
+  UpdateAndMaybeLogStats("init-done", 0);
 
   // Clear fuzz_start_time_ and num_runs_, so that the pre-init work doesn't
   // affect them.
@@ -631,9 +632,10 @@ void Centipede::FuzzingLoop() {
     new_runs += mutants.size();
 
     if (gained_new_coverage) {
-      Log("new-feature", 1);
+      UpdateAndMaybeLogStats("new-feature", 1);
     } else if (((batch_index - 1) & batch_index) == 0) {
-      Log("pulse", 1);  // log if batch_index is a power of two.
+      // Log if batch_index is a power of two.
+      UpdateAndMaybeLogStats("pulse", 1);
     }
 
     // Dump the intermediate telemetry files.
@@ -663,7 +665,8 @@ void Centipede::FuzzingLoop() {
   // version dumped inside the loop.
   MaybeGenerateTelemetry("latest", number_of_batches);
 
-  Log("end-fuzz", 0);  // Tests rely on this line being present at the end.
+  UpdateAndMaybeLogStats(
+      "end-fuzz", 0);  // Tests rely on this line being present at the end.
 }
 
 void Centipede::ReportCrash(std::string_view binary,

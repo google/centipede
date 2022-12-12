@@ -42,6 +42,7 @@ class Centipede {
             const Coverage::PCTable &pc_table, const SymbolTable &symbols,
             CoverageLogger &coverage_logger, Stats &stats);
   virtual ~Centipede() {}
+
   // Main loop.
   void FuzzingLoop();
   // Saves the sharded corpus into `dir`, one file per input.
@@ -56,10 +57,6 @@ class Centipede {
                                       std::string_view dir);
 
  private:
-  const Environment &env_;
-  CentipedeCallbacks &user_callbacks_;
-  Rng rng_;
-
   // Executes inputs from `input_vec`.
   // For every input, its pruned features are written to
   // `unconditional_features_file`, (if that's non-null).
@@ -83,7 +80,7 @@ class Centipede {
 
   // Prints one logging line with `log_type` in it
   // if `min_log_level` is not greater than `env_.log_level`.
-  void Log(std::string_view log_type, size_t min_log_level);
+  void UpdateAndMaybeLogStats(std::string_view log_type, size_t min_log_level);
   // For every feature in `fv`, translates the feature into code coverage
   // (PCIndex), then prints one logging line for every
   // FUNC/EDGE observed for the first time.
@@ -132,6 +129,10 @@ class Centipede {
   // Returns the number of added features.
   // See more comments in centipede.cc.
   size_t AddPcPairFeatures(FeatureVec &fv);
+
+  const Environment &env_;
+  CentipedeCallbacks &user_callbacks_;
+  Rng rng_;
 
   // A timestamp set just before the actual fuzzing begins. Used to measure
   // the fuzzing performance.
