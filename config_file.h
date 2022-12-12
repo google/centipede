@@ -21,6 +21,8 @@
 #include <utility>
 #include <vector>
 
+// TODO(ussuri): Move implementation-only functions to .cc.
+
 namespace centipede::config {
 
 // A set of overloads to cast argv between vector<string> and main()-compatible
@@ -40,6 +42,7 @@ std::vector<char*> CastArgv(const std::vector<std::string>& argv);
 // original elements replaced according to a list replacements.
 // TODO(ussuri): Make more robust. What we really want is replace any possible
 //  form of --flag=value with an equivalent form of --new_flag=new_value.
+// TODO(ussuri): Remove and just use the required bits of logic in .cc.
 class AugmentedArgvWithCleanup final {
  public:
   using Replacements = std::vector<std::pair<std::string, std::string>>;
@@ -96,7 +99,8 @@ AugmentedArgvWithCleanup LocalizeConfigFilesInArgv(
 // Centipede flags (i.e. those specified on the command line AND the defaulted
 // ones) to <path> in the format compatible with --config (defined by
 // Centipede), as well as --flagfile (defined by Abseil Flags), and returns
-// <path>. Otherwise, returns an empty string.
+// <path>. Otherwise, returns an empty string. If the <path>'s extension is .sh,
+// saves a runnable script instead.
 std::filesystem::path MaybeSaveConfigToFile(
     const std::vector<std::string>& leftover_argv);
 
