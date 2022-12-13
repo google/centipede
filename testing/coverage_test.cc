@@ -127,6 +127,22 @@ TEST(Coverage, SymbolTable) {
   EXPECT_EQ(symbols.full_description(1), "? ?");
 }
 
+
+TEST(Coverage, CoverageLoad) {
+  Coverage cov(g_pc_table, {0, 2, 4, 5});
+
+  EXPECT_TRUE(cov.BlockIsCovered(0));
+  EXPECT_FALSE(cov.BlockIsCovered(1));
+  EXPECT_TRUE(cov.BlockIsCovered(2));
+  EXPECT_FALSE(cov.BlockIsCovered(3));
+  EXPECT_TRUE(cov.BlockIsCovered(4));
+  EXPECT_TRUE(cov.BlockIsCovered(5));
+
+  EXPECT_TRUE(cov.FunctionIsFullyCovered(0));
+  EXPECT_FALSE(cov.FunctionIsFullyCovered(1));
+  EXPECT_FALSE(cov.FunctionIsFullyCovered(2));
+}
+
 TEST(Coverage, CoverageLogger) {
   SymbolTable symbols;
   std::istringstream iss(symbolizer_output);

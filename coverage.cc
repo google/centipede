@@ -36,7 +36,10 @@
 
 namespace centipede {
 
-Coverage::Coverage(const PCTable &pc_table, const PCIndexVec &pci_vec) {
+Coverage::Coverage(const PCTable &pc_table, const PCIndexVec &pci_vec)
+    : func_entries_(pc_table.size()),
+      fully_covered_funcs_vec_(pc_table.size()),
+      covered_pcs_vec_(pc_table.size()) {
   CHECK_LT(pc_table.size(), std::numeric_limits<PCIndex>::max());
   absl::flat_hash_set<PCIndex> covered_pcs(pci_vec.begin(), pci_vec.end());
   // Iterate though all the pc_table entries.
@@ -48,6 +51,7 @@ Coverage::Coverage(const PCTable &pc_table, const PCIndexVec &pci_vec) {
   // For all others add them to partially_covered_funcs.
   for (size_t this_func = 0; this_func < pc_table.size();) {
     CHECK(pc_table[this_func].has_flag(PCInfo::kFuncEntry));
+    func_entries_[this_func] = true;
     // Find next entry.
     size_t next_func = this_func + 1;
     while (next_func < pc_table.size() &&
@@ -59,6 +63,7 @@ Coverage::Coverage(const PCTable &pc_table, const PCIndexVec &pci_vec) {
     for (size_t i = this_func; i < next_func; i++) {
       if (covered_pcs.contains(i)) {
         pcf.covered.push_back(i);
+        covered_pcs_vec_[i] = true;
       } else {
         pcf.uncovered.push_back(i);
       }
@@ -68,6 +73,7 @@ Coverage::Coverage(const PCTable &pc_table, const PCIndexVec &pci_vec) {
     size_t num_func_pcs = next_func - this_func;
     if (num_func_pcs == pcf.covered.size()) {
       fully_covered_funcs.push_back(this_func);
+      fully_covered_funcs_vec_[this_func] = true;
     } else if (pcf.covered.empty()) {
       uncovered_funcs.push_back(this_func);
     } else {

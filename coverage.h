@@ -28,6 +28,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/synchronization/mutex.h"
 #include "./util.h"
+#include "./logging.h"
 
 namespace centipede {
 
@@ -110,10 +111,31 @@ class Coverage {
   // Prints in human-readable form to `out` using `symbols`.
   void Print(const SymbolTable &symbols, std::ostream &out);
 
+  // Returns true if the function is fully covered. pc_index is for a function
+  // entry.
+  bool FunctionIsFullyCovered(PCIndex pc_index) const {
+    CHECK(func_entries_[pc_index]);
+    return fully_covered_funcs_vec_[pc_index];
+  }
+  // Returns true if the given basic block is covered. pc_index is for any BB.
+  bool BlockIsCovered(PCIndex pc_index) const {
+    return covered_pcs_vec_[pc_index];
+  }
+
  private:
+  // A vector of size PCTable. func_entries[idx] is true iff means the PC at idx
+  // is a function entry.
+  std::vector<bool> func_entries_;
   // Vector of fully covered functions i.e. functions with all edges covered.
   // A Function is represented by its entry block's PCIndex.
+  // TODO(kcc): fix private variables' name to match the code style.
   PCIndexVec fully_covered_funcs;
+  // A vector of size PCTable. fully_covered_funcs_vec[idx] is true iff the PC
+  // at idx is an entry block of a fully covered function.
+  std::vector<bool> fully_covered_funcs_vec_;
+  // A vector of size PCTable. covered_pcs_vec[idx] is true iff the PC at idx is
+  // covered.
+  std::vector<bool> covered_pcs_vec_;
   // Same as `fully_covered_funcs`, but for functions with no edges covered.
   PCIndexVec uncovered_funcs;
   // Partially covered function: function with some, but not all, edges covered.
