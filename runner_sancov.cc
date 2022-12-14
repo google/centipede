@@ -149,12 +149,40 @@ void __sanitizer_cov_cfs_init(const uintptr_t *beg, const uintptr_t *end) {
   state.cfs_end = end;
 }
 
-// TODO(kcc): [impl] actually implement this callback.
+// Handles one obeserved PC.
+// `normalized_pc` is a integer representation of PC that is stable between
+// the executions.
+// With __sanitizer_cov_trace_pc_guard this is an index of PC in the PC table.
+// With __sanitizer_cov_trace_pc this is PC itself, normalized by subtracting
+// the DSO's dynamic start address.
+static inline void HandleOnePc(uintptr_t normalized_pc) {
+  // counter or pc features.
+  if (state.run_time_flags.use_counter_features) {
+    state.counter_array.Increment(normalized_pc);
+  } else if (state.run_time_flags.use_pc_features) {
+    state.pc_feature_set.set(normalized_pc);
+  }
+
+  // path features.
+  if (auto path_level = state.run_time_flags.path_level) {
+    uintptr_t hash = tls.path_ring_buffer.push(normalized_pc, path_level);
+    state.path_feature_set.set(hash);
+  }
+}
+
+// TODO(kcc): [impl] add proper testing for this callback.
+// TODO(kcc): make sure the pc_table in the engine understands the raw PCs.
+// TODO(kcc): this implementation is temporary. In order for symbolization to
+// work we will need to translate the PC into a PCIndex or make pc_table sparse.
 // See https://clang.llvm.org/docs/SanitizerCoverage.html#tracing-pcs.
 // This instrumentation is redundant if other instrumentation
 // (e.g. trace-pc-guard) is available, but GCC as of 2022-04 only supports
 // this variant.
-void __sanitizer_cov_trace_pc() {}
+void __sanitizer_cov_trace_pc() {
+  uintptr_t pc = reinterpret_cast<uintptr_t>(__builtin_return_address(0));
+  pc -= state.main_object_start_address;
+  HandleOnePc(pc);
+}
 
 // This function is called at the DSO init time.
 void __sanitizer_cov_trace_pc_guard_init(uint32_t *start, uint32_t *stop) {
@@ -167,19 +195,7 @@ NO_SANITIZE
 void __sanitizer_cov_trace_pc_guard(uint32_t *guard) {
   // `guard` is in [pc_guard_start, pc_guard_stop), which gives us the offset.
   uintptr_t offset = guard - state.pc_guard_start;
-
-  // counter or pc features.
-  if (state.run_time_flags.use_counter_features) {
-    state.counter_array.Increment(offset);
-  } else if (state.run_time_flags.use_pc_features) {
-    state.pc_feature_set.set(offset);
-  }
-
-  // path features.
-  if (auto path_level = state.run_time_flags.path_level) {
-    uintptr_t hash = tls.path_ring_buffer.push(offset, path_level);
-    state.path_feature_set.set(hash);
-  }
+  HandleOnePc(offset);
 }
 
 }  // extern "C"
