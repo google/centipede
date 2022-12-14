@@ -70,14 +70,13 @@ const char *symbolizer_output =
     "\n";
 
 // PCTable that corresponds to symbolizer_output above.
-// PCs are not used and are zeros.
 static const Coverage::PCTable g_pc_table = {
-    {0, Coverage::PCInfo::kFuncEntry},
-    {0, Coverage::PCInfo::kFuncEntry},
-    {0, Coverage::PCInfo::kFuncEntry},
-    {0, 0},
-    {0, 0},
-    {0, 0},
+    {100, Coverage::PCInfo::kFuncEntry},
+    {200, Coverage::PCInfo::kFuncEntry},
+    {300, Coverage::PCInfo::kFuncEntry},
+    {400, 0},
+    {500, 0},
+    {600, 0},
 };
 
 // Tests Coverage and SymbolTable together.
@@ -148,6 +147,13 @@ TEST(Coverage, CoverageLoad) {
   EXPECT_FALSE(cov.BlockIsFunctionEntry(3));
   EXPECT_FALSE(cov.BlockIsFunctionEntry(4));
   EXPECT_FALSE(cov.BlockIsFunctionEntry(5));
+
+  EXPECT_EQ(cov.GetPcIndex(100), 0);
+  EXPECT_EQ(cov.GetPcIndex(200), 1);
+  EXPECT_EQ(cov.GetPcIndex(300), 2);
+  EXPECT_EQ(cov.GetPcIndex(400), 3);
+  EXPECT_EQ(cov.GetPcIndex(500), 4);
+  EXPECT_EQ(cov.GetPcIndex(600), 5);
 }
 
 TEST(Coverage, CoverageLogger) {

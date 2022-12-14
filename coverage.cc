@@ -42,6 +42,9 @@ Coverage::Coverage(const PCTable &pc_table, const PCIndexVec &pci_vec)
       covered_pcs_vec_(pc_table.size()) {
   CHECK_LT(pc_table.size(), std::numeric_limits<PCIndex>::max());
   absl::flat_hash_set<PCIndex> covered_pcs(pci_vec.begin(), pci_vec.end());
+  for (Coverage::PCIndex i = 0; i < pc_table.size(); ++i) {
+    pc_index_map_[pc_table[i].pc] = i;
+  }
   // Iterate though all the pc_table entries.
   // The first one is some function's kFuncEntry.
   // Then find the next kFuncEntry or the table end.

@@ -26,6 +26,7 @@
 
 #include "absl/base/thread_annotations.h"
 #include "absl/container/flat_hash_set.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/synchronization/mutex.h"
 #include "./util.h"
 #include "./logging.h"
@@ -125,8 +126,17 @@ class Coverage {
   bool BlockIsFunctionEntry(PCIndex pc_index) const {
     return func_entries_[pc_index];
   }
+  // Returns the idx in pc_table associated with the PC, CHECK-fails if the PC
+  // is not in the pc_table.
+  PCIndex GetPcIndex(uintptr_t pc) const {
+    auto it = pc_index_map_.find(pc);
+    CHECK(it != pc_index_map_.end());
+    return it->second;
+  }
 
  private:
+  // Map from PC to the idx in pc_table.
+  absl::flat_hash_map<uintptr_t, Coverage::PCIndex> pc_index_map_;
   // A vector of size PCTable. func_entries[idx] is true iff means the PC at idx
   // is a function entry.
   std::vector<bool> func_entries_;
