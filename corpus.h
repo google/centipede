@@ -259,9 +259,6 @@ class CoverageFrontier {
   size_t num_functions_in_frontier_ = 0;
 };
 
-// Computes the Cyclomatic Complexity for the given function,
-// https://en.wikipedia.org/wiki/Cyclomatic_complexity.
-size_t ComputeFunctionCyclomaticComplexity(uintptr_t pc, ControlFlowGraph &cfg);
 }  // namespace centipede
 
 #endif  // THIRD_PARTY_CENTIPEDE_CORPUS_H_

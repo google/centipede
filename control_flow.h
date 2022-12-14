@@ -28,7 +28,8 @@ class ControlFlowGraph {
  public:
   // Reads form __sancov_cfs section. On error it crashes, if the section is not
   // there, the graph_ will be empty.
-  void ReadFromCfTable(const Coverage::CFTable &cf_table);
+  void ReadFromCfTable(const Coverage::CFTable &cf_table,
+                       const Coverage::PCTable &pc_table);
   // Returns the vector of successor PCs for the given basic block PC.
   const std::vector<uintptr_t> &GetSuccessors(uintptr_t basic_block) const;
 
@@ -38,11 +39,26 @@ class ControlFlowGraph {
   bool exists(const uintptr_t basic_block) const {
     return graph_.contains(basic_block);
   }
+  // Returns cyclomatic complexity of function PC. CHECK-fails if it is not a
+  // valid function PC.
+  uint32_t GetCyclomaticComplexity(uintptr_t pc) const {
+    auto it = function_complexities_.find(pc);
+    CHECK(it != function_complexities_.end());
+    return it->second;
+  }
 
  private:
   // A map with PC as the keys and vector of PCs as value.
   absl::flat_hash_map<uintptr_t, std::vector<uintptr_t>> graph_;
+  // A map from function PC to its calculated cyclomatic complexity. It is
+  // to avoid unnecessary calls to ComputeFunctionCyclomaticComplexity.
+  absl::flat_hash_map<uintptr_t, uint32_t> function_complexities_;
 };
+
+// Computes the Cyclomatic Complexity for the given function,
+// https://en.wikipedia.org/wiki/Cyclomatic_complexity.
+uint32_t ComputeFunctionCyclomaticComplexity(uintptr_t pc,
+                                             const ControlFlowGraph &cfg);
 
 }  // namespace centipede
 #endif  // THIRD_PARTY_CENTIPEDE_CONTROL_FLOW_H_
