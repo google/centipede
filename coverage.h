@@ -121,6 +121,10 @@ class Coverage {
   bool BlockIsCovered(PCIndex pc_index) const {
     return covered_pcs_vec_[pc_index];
   }
+  // Returns true if the given basic block is function entry.
+  bool BlockIsFunctionEntry(PCIndex pc_index) const {
+    return func_entries_[pc_index];
+  }
 
  private:
   // A vector of size PCTable. func_entries[idx] is true iff means the PC at idx

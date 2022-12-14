@@ -141,6 +141,13 @@ TEST(Coverage, CoverageLoad) {
   EXPECT_TRUE(cov.FunctionIsFullyCovered(0));
   EXPECT_FALSE(cov.FunctionIsFullyCovered(1));
   EXPECT_FALSE(cov.FunctionIsFullyCovered(2));
+
+  EXPECT_TRUE(cov.BlockIsFunctionEntry(0));
+  EXPECT_TRUE(cov.BlockIsFunctionEntry(1));
+  EXPECT_TRUE(cov.BlockIsFunctionEntry(2));
+  EXPECT_FALSE(cov.BlockIsFunctionEntry(3));
+  EXPECT_FALSE(cov.BlockIsFunctionEntry(4));
+  EXPECT_FALSE(cov.BlockIsFunctionEntry(5));
 }
 
 TEST(Coverage, CoverageLogger) {
