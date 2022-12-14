@@ -47,6 +47,13 @@ centipede_fuzz_target(
     sancov = "trace-pc",
 )
 
+# Target instrumented with -fsanitize-coverage=trace-pc.
+centipede_fuzz_target(
+    name = "abort_fuzz_target_trace_pc",
+    srcs = ["abort_fuzz_target.cc"],
+    sancov = "trace-pc",
+)
+
 # Test fuzz target with lots of threads.
 centipede_fuzz_target(
     name = "threaded_fuzz_target",
