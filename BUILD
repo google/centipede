@@ -368,7 +368,9 @@ cc_library(
 
 cc_library(
     name = "shard_reader",
+    srcs = ["shard_reader.cc"],
     hdrs = ["shard_reader.h"],
+    # TODO(kcc): move shard_reader test from testing/centipede_test.cc into a dedicated test.
     deps = [
         ":blob_file",
         ":defs",
