@@ -12,16 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Centipede puzzle: easy-to-reach timeout.
-// RUN: Run --timeout=2 && SolutionIs SLO && ExpectTimeout
+// Centipede puzzle: easy-to-reach per-batch timeout.
+// NOLINTNEXTLINE
+// RUN: Run --batch_size=100 --timeout_per_input=2 --timeout_per_batch=7 && ExpectPerBatchTimeout
 
 #include <unistd.h>
 
 #include <cstdint>
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
-  if (size == 3 && data[0] == 'S' && data[1] == 'L' && data[2] == 'O') {
-    sleep(1000);  // Dies with timeout.
-  }
+  // Within the --timeout_per_input, but we have no solution, so the runner
+  // should keep running us until it exceeds --timeout_per_batch, then report a
+  // failure back to the engine.
+  sleep(1);
   return 0;
 }

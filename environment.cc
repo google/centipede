@@ -15,9 +15,9 @@
 #include "./environment.h"
 
 #include <charconv>
+#include <cmath>
 #include <cstddef>
-#include <filesystem>
-#include <limits>
+#include <filesystem>  // NOLINT
 #include <string>
 #include <vector>
 
@@ -115,10 +115,24 @@ ABSL_FLAG(size_t, rss_limit_mb, 4096,
           "--rss_limit_mb allows Centipede to *report* an OOM condition in "
           "most cases, while --address_space_limit_mb will cause a crash that "
           "may be hard to attribute to OOM.");
+ABSL_FLAG(size_t, timeout_per_input, 60,
+          "If not zero, the timeout in seconds for a single input. If an input "
+          "runs longer than this, the runner process will abort. Support may "
+          "vary depending on the runner.");
 ABSL_FLAG(size_t, timeout, 60,
-          "Timeout in seconds (if not 0). If an input runs longer than this "
-          "number of seconds the runner process will abort. Support may vary "
-          "depending on the runner.");
+          "An alias for --timout_per_input. If both are passed, the last of "
+          "the two wins.")
+    .OnUpdate([]() {
+      absl::SetFlag(&FLAGS_timeout_per_input, absl::GetFlag(FLAGS_timeout));
+    });
+ABSL_FLAG(
+    size_t, timeout_per_batch, 0,
+    "If not zero, the collective timeout budget in seconds for a single "
+    "batch of inputs. Each input in a batch still has up to "
+    "--timeout_per_input seconds to finish, but the entire batch must "
+    "finish within --timeout_per_batch seconds. The default is computed "
+    "as a function of --timeout_per_input * --batch_size. Support may vary "
+    "depending on the runner.");
 ABSL_FLAG(bool, fork_server, true,
           "If true (default) tries to execute the target(s) via the fork "
           "server, if supported by the target(s). Prepend the binary path with "
@@ -269,6 +283,41 @@ ABSL_FLAG(bool, dry_run, false,
 
 namespace centipede {
 
+namespace {
+
+// If the passed `timeout_per_batch` is 0, computes its value as a function of
+// `timeout_per_input` and `batch_size` and returns it. Otherwise, just returns
+// the `timeout_per_batch`.
+size_t ComputeTimeoutPerBatch(  //
+    size_t timeout_per_batch, size_t timeout_per_input, size_t batch_size) {
+  if (timeout_per_batch == 0) {
+    if (timeout_per_input == 0 || batch_size == 0) {
+      timeout_per_batch =
+          std::numeric_limits<decltype(timeout_per_batch)>::max();
+    } else {
+      // TODO(ussuri): The formula here is an unscientific heuristic conjured
+      //  up for CPU instruction fuzzing. `timeout_per_input` is interpreted as
+      //  the long tail of the input runtime distribution of yet-unknown nature.
+      //  It might be the exponential, log-normal distribution or similar, and
+      //  the distribution of the total time per batch could be modeled by the
+      //  gamma distribution. Work out the math later. Right now, this naive
+      //  formula gives ~12 min per batch with the input flags' defaults (this
+      //  has worked in test runs so far).
+      constexpr double kScale = 12;
+      const double estimated_mean_time_per_input =
+          std::max(timeout_per_input / kScale, 1.0);
+      timeout_per_batch =
+          std::ceil(std::log(estimated_mean_time_per_input + 1.0) * batch_size);
+    }
+    LOG(INFO) << "--" << FLAGS_timeout_per_batch.Name()
+              << " default wasn't overridden; auto-computed to be "
+              << timeout_per_batch << " sec (see --help for details)";
+  }
+  return timeout_per_batch;
+}
+
+}  // namespace
+
 Environment::Environment(const std::vector<std::string> &argv)
     : binary(absl::GetFlag(FLAGS_binary)),
       coverage_binary(
@@ -294,7 +343,11 @@ Environment::Environment(const std::vector<std::string> &argv)
       prune_frequency(absl::GetFlag(FLAGS_prune_frequency)),
       address_space_limit_mb(absl::GetFlag(FLAGS_address_space_limit_mb)),
       rss_limit_mb(absl::GetFlag(FLAGS_rss_limit_mb)),
-      timeout(absl::GetFlag(FLAGS_timeout)),
+      timeout_per_input(absl::GetFlag(FLAGS_timeout_per_input)),
+      timeout_per_batch(ComputeTimeoutPerBatch(    //
+          absl::GetFlag(FLAGS_timeout_per_batch),  //
+          absl::GetFlag(FLAGS_timeout_per_input),  //
+          absl::GetFlag(FLAGS_batch_size))),
       fork_server(absl::GetFlag(FLAGS_fork_server)),
       full_sync(absl::GetFlag(FLAGS_full_sync)),
       use_corpus_weights(absl::GetFlag(FLAGS_use_corpus_weights)),

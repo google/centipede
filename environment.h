@@ -53,7 +53,8 @@ struct Environment {
   size_t prune_frequency;
   size_t address_space_limit_mb;
   size_t rss_limit_mb;
-  size_t timeout;
+  size_t timeout_per_input;
+  size_t timeout_per_batch;
   bool fork_server;
   bool full_sync;
   bool use_corpus_weights;

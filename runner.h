@@ -53,7 +53,8 @@ struct RunTimeFlags {
   uint64_t use_cmp_features : 1;
   uint64_t use_counter_features : 1;
   uint64_t use_auto_dictionary : 1;
-  uint64_t timeout_in_seconds;
+  uint64_t timeout_per_input;
+  uint64_t timeout_per_batch;
   uint64_t rss_limit_mb;
   uint64_t crossover_level;
 };
@@ -121,7 +122,8 @@ struct GlobalRunnerState {
       .use_cmp_features = HasFlag(":use_cmp_features:"),
       .use_counter_features = HasFlag(":use_counter_features:"),
       .use_auto_dictionary = HasFlag(":use_auto_dictionary:"),
-      .timeout_in_seconds = HasFlag(":timeout_in_seconds=", 0),
+      .timeout_per_input = HasFlag(":timeout_per_input=", 0),
+      .timeout_per_batch = HasFlag(":timeout_per_batch=", 0),
       .rss_limit_mb = HasFlag(":rss_limit_mb=", 0),
       .crossover_level = HasFlag(":crossover_level=", 50)};
 
@@ -231,12 +233,19 @@ struct GlobalRunnerState {
 
   // Timeout-related machinery.
 
-  // If the timeout_in_seconds flag is passed, initializes the timer thread.
-  void StartTimerThread();
-  // Resets the timer. Call this before executing every input.
-  void ResetTimer();
-  // Initially, zero. ResetTimer() sets it to the current time.
-  std::atomic<time_t> timer;
+  // If the timeout_per_input and/or rss_limit_mb flags are passed, initializes
+  // the watchdog thread that terminates the runner if either of those limits
+  // are exceeded.
+  void StartWatchdogThread();
+  // Resets the per-input timer. Call this before executing every input.
+  void ResetTimers();
+
+  // Per-input timer. Initially, zero. ResetInputTimer() sets it to the current
+  // time.
+  std::atomic<time_t> input_start_time;
+  // Per-batch timer. Initially, zero. ResetInputTimer() sets it to the current
+  // time before the first input and never resets it.
+  std::atomic<time_t> batch_start_time;
 };
 
 extern GlobalRunnerState state;

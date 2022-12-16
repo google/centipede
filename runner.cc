@@ -33,6 +33,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <cinttypes>
+#include <cstdint>
 #include <cstdlib>
 #include <vector>
 
@@ -99,58 +101,85 @@ static uint64_t TimeInUsec() {
   return tv.tv_sec * kUsecInSec + tv.tv_usec;
 }
 
-static void CheckOOM() {
-  if (state.run_time_flags.rss_limit_mb > 0) {
-    size_t current_rss_mb = GetPeakRSSMb();
-    if (current_rss_mb > state.run_time_flags.rss_limit_mb) {
+static void CheckWatchdogLimits() {
+  const uint64_t curr_time = time(nullptr);
+  struct Limit {
+    const char *what;
+    const char *units;
+    uint64_t value;
+    uint64_t limit;
+    const char *failure;
+  };
+  static const Limit limits[] = {
+      {
+          .what = "Per-input timeout",
+          .units = "sec",
+          .value = curr_time - state.input_start_time,
+          .limit = state.run_time_flags.timeout_per_input,
+          .failure = "input-timeout-exceeded",
+      },
+      {
+          .what = "Per-batch timout",
+          .units = "sec",
+          .value = curr_time - state.batch_start_time,
+          .limit = state.run_time_flags.timeout_per_batch,
+          .failure = "batch-timeout-exceeded",
+      },
+      {
+          .what = "RSS limit",
+          .units = "MB",
+          .value = GetPeakRSSMb(),
+          .limit = state.run_time_flags.rss_limit_mb,
+          .failure = "out-of-memory",
+      },
+  };
+  for (const auto &limit : limits) {
+    if (limit.limit != 0 && limit.value > limit.limit) {
       fprintf(stderr,
-              "========= OOM, RSS limit of %zdMb exceeded (%zdMb); exiting\n",
-              state.run_time_flags.rss_limit_mb, current_rss_mb);
-      WriteFailureDescription("out-of-memory");
+              "========= %s exceeded: %" PRIu64 " > %" PRIu64
+              " (%s); exiting\n",
+              limit.what, limit.value, limit.limit, limit.units);
+      WriteFailureDescription(limit.failure);
       _exit(EXIT_FAILURE);
     }
   }
 }
 
-static void CheckTimeout() {
-  time_t start_time = state.timer;
-  time_t curr_time = time(nullptr);
-  if (state.run_time_flags.timeout_in_seconds != 0) {
-    if (curr_time - start_time >
-        static_cast<time_t>(state.run_time_flags.timeout_in_seconds)) {
-      fprintf(stderr, "========= Timeout of %zd seconds exceeded; exiting\n",
-              state.run_time_flags.timeout_in_seconds);
-      WriteFailureDescription("timeout-exceeded");
-      _exit(EXIT_FAILURE);
-    }
-  }
-}
-
-// Timer thread. Periodically checks if it's time to abort due to a timeout/OOM.
-[[noreturn]] static void *TimerThread(void *unused) {
+// Watchdog thread. Periodically checks if it's time to abort due to a
+// timeout/OOM.
+[[noreturn]] static void *WatchdogThread(void *unused) {
   while (true) {
     sleep(1);
-    if (state.timer == 0) continue;  // No calls to ResetTimer() yet.
 
-    CheckTimeout();
-    CheckOOM();
+    // No calls to ResetInputTimer() yet: input execution hasn't started.
+    if (state.input_start_time == 0) continue;
+
+    CheckWatchdogLimits();
   }
 }
 
-void GlobalRunnerState::StartTimerThread() {
-  if (state.run_time_flags.timeout_in_seconds == 0 &&
+void GlobalRunnerState::StartWatchdogThread() {
+  if (state.run_time_flags.timeout_per_input == 0 &&
       state.run_time_flags.rss_limit_mb == 0) {
     return;
   }
-  fprintf(stderr, "timeout_in_seconds: %zd rss_limit_mb: %zd\n",
-          state.run_time_flags.timeout_in_seconds,
+  fprintf(stderr, "timeout_per_input: %zd rss_limit_mb: %zd\n",
+          state.run_time_flags.timeout_per_input,
           state.run_time_flags.rss_limit_mb);
-  pthread_t timer_thread;
-  pthread_create(&timer_thread, nullptr, TimerThread, nullptr);
-  pthread_detach(timer_thread);
+  pthread_t watchdog_thread;
+  pthread_create(&watchdog_thread, nullptr, WatchdogThread, nullptr);
+  pthread_detach(watchdog_thread);
 }
 
-void GlobalRunnerState::ResetTimer() { timer = time(nullptr); }
+void GlobalRunnerState::ResetTimers() {
+  const auto curr_time = time(nullptr);
+  input_start_time = curr_time;
+  // batch_start_time is set only once -- just before the first input of the
+  // batch is about to start running.
+  if (batch_start_time == 0) {
+    batch_start_time = curr_time;
+  }
+}
 
 // Byte array mutation fallback for a custom mutator, as defined here:
 // https://github.com/google/fuzzing/blob/master/docs/structure-aware-fuzzing.md
@@ -284,10 +313,10 @@ static void RunOneInput(const uint8_t *data, size_t size,
   UsecSinceLast();
   PrepareCoverage();
   state.stats.prep_time_usec = UsecSinceLast();
-  state.ResetTimer();
+  state.ResetTimers();
   int target_return_value = test_one_input_cb(data, size);
   state.stats.exec_time_usec = UsecSinceLast();
-  centipede::CheckOOM();
+  CheckWatchdogLimits();
   PostProcessCoverage(target_return_value);
   state.stats.post_time_usec = UsecSinceLast();
   state.stats.peak_rss_mb = centipede::GetPeakRSSMb();
@@ -617,7 +646,7 @@ GlobalRunnerState::GlobalRunnerState() {
   // TODO(kcc): move some code from CentipedeRunnerMain() here so that it works
   // even if CentipedeRunnerMain() is not called.
   tls.OnThreadStart();
-  state.StartTimerThread();
+  state.StartWatchdogThread();
 
   centipede::SetLimits();
 

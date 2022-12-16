@@ -68,8 +68,8 @@ std::string CentipedeCallbacks::ConstructRunnerFlags(
   if (!disable_coverage)
     path_level = absl::StrCat(":path_level=", env_.path_level, ":");
   return absl::StrCat(
-      "CENTIPEDE_RUNNER_FLAGS=", ":timeout_in_seconds=", env_.timeout, ":",
-      ":address_space_limit_mb=", env_.address_space_limit_mb, ":",
+      "CENTIPEDE_RUNNER_FLAGS=", ":timeout_per_input=", env_.timeout_per_input,
+      ":", ":address_space_limit_mb=", env_.address_space_limit_mb, ":",
       ":rss_limit_mb=", env_.rss_limit_mb, ":",
       env_.use_pc_features && !disable_coverage ? ":use_pc_features:" : "",
       env_.use_counter_features && !disable_coverage ? ":use_counter_features:"
@@ -106,7 +106,8 @@ Command &CentipedeCallbacks::GetOrCreateCommandForBinary(
         "LLVM_PROFILE_FILE=", env_.MakeSourceBasedCoverageRawProfilePath()));
 
   // Allow for the time it takes to fork a subprocess etc.
-  const auto amortized_timeout = absl::Seconds(env_.timeout) + absl::Seconds(5);
+  const auto amortized_timeout =
+      absl::Seconds(env_.timeout_per_batch) + absl::Seconds(5);
   Command &cmd = commands_.emplace_back(Command(
       /*path=*/binary, /*args=*/{shmem_name1_, shmem_name2_},
       /*env=*/env,
