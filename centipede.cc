@@ -60,6 +60,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
+#include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
 #include "./blob_file.h"
 #include "./coverage.h"
@@ -346,6 +347,7 @@ void Centipede::LoadShard(const Environment &load_env, size_t shard_index,
   std::vector<ByteArray> to_rerun;
   auto input_features_callback = [&](const ByteArray &input,
                                      FeatureVec &features) {
+    if (EarlyExitRequested()) return;
     if (features.empty()) {
       if (rerun) {
         to_rerun.push_back(input);
@@ -360,8 +362,18 @@ void Centipede::LoadShard(const Environment &load_env, size_t shard_index,
       }
     }
   };
-  ReadShard(load_env.MakeCorpusPath(shard_index),
-            load_env.MakeFeaturesPath(shard_index), input_features_callback);
+
+  // See serialize_shard_loads on why we may want to serialize shard loads.
+  // TODO(kcc): remove serialize_shard_loads when LoadShards() uses less RAM.
+  if (env_.serialize_shard_loads) {
+    ABSL_CONST_INIT static absl::Mutex load_shard_mu{absl::kConstInit};
+    absl::MutexLock lock(&load_shard_mu);
+    ReadShard(load_env.MakeCorpusPath(shard_index),
+              load_env.MakeFeaturesPath(shard_index), input_features_callback);
+  } else {
+    ReadShard(load_env.MakeCorpusPath(shard_index),
+              load_env.MakeFeaturesPath(shard_index), input_features_callback);
+  }
   if (added_to_corpus) UpdateAndMaybeLogStats("load-shard", 1);
   Rerun(to_rerun);
 }
@@ -641,7 +653,7 @@ void Centipede::FuzzingLoop() {
     // Dump the intermediate telemetry files.
     MaybeGenerateTelemetry("latest", batch_index);
 
-    if (env_.load_other_shard_frequency != 0 &&
+    if (env_.load_other_shard_frequency != 0 && batch_index != 0 &&
         (batch_index % env_.load_other_shard_frequency) == 0 &&
         env_.total_shards > 1) {
       size_t rand = rng_() % (env_.total_shards - 1);

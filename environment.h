@@ -48,6 +48,7 @@ struct Environment {
   size_t batch_size;
   size_t mutate_batch_size;
   size_t load_other_shard_frequency;
+  bool serialize_shard_loads;
   size_t seed;
   size_t prune_frequency;
   size_t address_space_limit_mb;

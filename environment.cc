@@ -85,6 +85,14 @@ ABSL_FLAG(size_t, load_other_shard_frequency, 10,
           "to disable loading other shards.  For now, choose the value of this "
           "flag so that shard loads  happen at most once in a few minutes. In "
           "future we may be able to find the suitable value automatically.");
+// TODO(b/262798184): Remove once the bug is fixed.
+ABSL_FLAG(bool, serialize_shard_loads, false,
+          "When this flag is on, shard loading is serialized. "
+          " Useful to avoid excessive RAM consumption when loading more"
+          " that one shard at a time. Currently, loading a single large shard"
+          " may create too many temporary heap allocations. "
+          " This means, if we load many large shards concurrently,"
+          " we may run out or RAM.");
 ABSL_FLAG(size_t, prune_frequency, 100,
           "Prune the corpus every time after this many inputs were added. If "
           "zero, pruning is disabled. Pruning removes redundant inputs from "
@@ -276,6 +284,7 @@ Environment::Environment(const std::vector<std::string> &argv)
       mutate_batch_size(absl::GetFlag(FLAGS_mutate_batch_size)),
       load_other_shard_frequency(
           absl::GetFlag(FLAGS_load_other_shard_frequency)),
+      serialize_shard_loads(absl::GetFlag(FLAGS_serialize_shard_loads)),
       seed(absl::GetFlag(FLAGS_seed)),
       prune_frequency(absl::GetFlag(FLAGS_prune_frequency)),
       address_space_limit_mb(absl::GetFlag(FLAGS_address_space_limit_mb)),
@@ -320,7 +329,7 @@ Environment::Environment(const std::vector<std::string> &argv)
       cmd(binary),
       binary_name(std::filesystem::path(coverage_binary).filename().string()),
       binary_hash(HashOfFileContents(coverage_binary)),
-      dry_run(absl::GetFlag(FLAGS_dry_run)){
+      dry_run(absl::GetFlag(FLAGS_dry_run)) {
   if (size_t j = absl::GetFlag(FLAGS_j)) {
     total_shards = j;
     num_threads = j;
