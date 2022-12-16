@@ -549,6 +549,15 @@ cc_library(
     deps = RUNNER_DEPS,
 )
 
+# Same as :centipede_runner_no_main but as a DSO. Experimental.
+cc_binary(
+    name = "centipede_runner_no_main.so",
+    # linkstatic=1 and linkshared=1 produce a single mostly self-contained .so.
+    linkshared = 1,
+    linkstatic = 1,
+    deps = [":centipede_runner_no_main"],
+)
+
 # A full self-contained library archive that external clients should link to
 # their fuzz targets to make them compatible with the Centipede fuzzing engine
 # (the `:centipede` target in this BUILD).
