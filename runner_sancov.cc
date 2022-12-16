@@ -32,7 +32,7 @@ using centipede::tls;
 // https://clang.llvm.org/docs/SanitizerCoverage.html#tracing-data-flow.
 // For every load we get the address of the load. We can also get the caller PC.
 // If the load address in
-// [main_object_start_address, main_object_start_address + main_object_size),
+// [main_object.start_address, main_object.start_address + main_object.size),
 // it is likely a global.
 // We form a feature from a pair of {caller_pc, address_of_load}.
 // The rationale here is that loading from a global address unique for the
@@ -57,19 +57,19 @@ ENFORCE_INLINE static void TraceLoad(void *addr) {
   if (!state.run_time_flags.use_dataflow_features) return;
   auto caller_pc = reinterpret_cast<uintptr_t>(__builtin_return_address(0));
   auto load_addr = reinterpret_cast<uintptr_t>(addr);
-  auto pc_offset = caller_pc - state.main_object_start_address;
-  if (pc_offset >= state.main_object_size) return;  // PC outside of main obj.
-  auto addr_offset = load_addr - state.main_object_start_address;
-  if (addr_offset >= state.main_object_size) return;  // Not a global address.
+  auto pc_offset = caller_pc - state.main_object.start_address;
+  if (pc_offset >= state.main_object.size) return;  // PC outside of main obj.
+  auto addr_offset = load_addr - state.main_object.start_address;
+  if (addr_offset >= state.main_object.size) return;  // Not a global address.
   state.data_flow_feature_set.set(centipede::ConvertPcPairToNumber(
-      pc_offset, addr_offset, state.main_object_size));
+      pc_offset, addr_offset, state.main_object.size));
 }
 
 // NOTE: Enforce inlining so that `__builtin_return_address` works.
 ENFORCE_INLINE static void TraceCmp(uint64_t Arg1, uint64_t Arg2) {
   if (!state.run_time_flags.use_cmp_features) return;
   auto caller_pc = reinterpret_cast<uintptr_t>(__builtin_return_address(0));
-  auto pc_offset = caller_pc - state.main_object_start_address;
+  auto pc_offset = caller_pc - state.main_object.start_address;
   uintptr_t hash =
       centipede::Hash64Bits(pc_offset) ^ tls.path_ring_buffer.hash();
   state.cmp_feature_set.set(
@@ -180,7 +180,7 @@ static inline void HandleOnePc(uintptr_t normalized_pc) {
 // this variant.
 void __sanitizer_cov_trace_pc() {
   uintptr_t pc = reinterpret_cast<uintptr_t>(__builtin_return_address(0));
-  pc -= state.main_object_start_address;
+  pc -= state.main_object.start_address;
   HandleOnePc(pc);
 }
 

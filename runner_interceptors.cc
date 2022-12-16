@@ -92,7 +92,7 @@ extern "C" int memcmp(const void *s1, const void *s2, size_t n) {
     memcpy(&a, s1, n);
     memcpy(&b, s2, n);
     auto caller_pc = reinterpret_cast<uintptr_t>(__builtin_return_address(0));
-    uintptr_t pc_offset = caller_pc - state.main_object_start_address;
+    uintptr_t pc_offset = caller_pc - state.main_object.start_address;
     uintptr_t hash =
         centipede::Hash64Bits(pc_offset) ^ tls.path_ring_buffer.hash();
     state.cmp_feature_set.set(

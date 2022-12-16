@@ -22,9 +22,6 @@
 // in order to avoid creating new coverage edges in the binary.
 #include "./runner.h"
 
-#include <elf.h>
-#include <limits.h>
-#include <link.h>     // dl_iterate_phdr
 #include <pthread.h>  // NOLINT: use pthread to avoid extra dependencies.
 #include <stddef.h>
 #include <stdio.h>
@@ -44,7 +41,9 @@
 #include "./execution_request.h"
 #include "./execution_result.h"
 #include "./feature.h"
+#include "./runner_dl_info.h"
 #include "./runner_interface.h"
+#include "./runner_utils.h"
 #include "./shared_memory_blob_sequence.h"
 
 namespace centipede {
@@ -186,12 +185,6 @@ static const size_t kMaxDataSize = 1 << 20;
 static const size_t kMaxFeatures = 1 << 20;
 // FeatureArray used to accumulate features from all sources.
 static centipede::FeatureArray<kMaxFeatures> g_features;
-
-static void PrintErrorAndExitIf(bool condition, const char *error) {
-  if (!condition) return;
-  fprintf(stderr, "error: %s\n", error);
-  exit(1);
-}
 
 static void WriteFeaturesToFile(FILE *file,
                                 const centipede::feature_t *features,
@@ -419,38 +412,10 @@ static int ExecuteInputsFromShmem(
   return EXIT_SUCCESS;
 }
 
-// See man dl_iterate_phdr.
-// Sets main_object_start_address and main_object_size.
-// The code assumes that the main binary is the first one to be iterated on.
-static int dl_iterate_phdr_callback(struct dl_phdr_info *info, size_t size,
-                                    void *data) {
-  PrintErrorAndExitIf(
-      state.main_object_start_address != state.kInvalidStartAddress,
-      "main_object_start_address is already set");
-  state.main_object_start_address = info->dlpi_addr;
-  for (int j = 0; j < info->dlpi_phnum; j++) {
-    uintptr_t end_offset =
-        info->dlpi_phdr[j].p_vaddr + info->dlpi_phdr[j].p_memsz;
-    if (state.main_object_size < end_offset)
-      state.main_object_size = end_offset;
-  }
-  auto some_code_address =
-      reinterpret_cast<uintptr_t>(&dl_iterate_phdr_callback);
-  PrintErrorAndExitIf(state.main_object_start_address > some_code_address,
-                      "main_object_start_address is above the code");
-  PrintErrorAndExitIf(
-      state.main_object_start_address + state.main_object_size <
-          some_code_address,
-      "main_object_start_address + main_object_size is below the code");
-  return 1;  // we need only the first header, so return 1.
-}
-
 // Dumps the pc table to `output_path`.
-// Assumes that main_object_start_address is already computed.
+// Requires that state.main_object is already computed.
 static void DumpPcTable(const char *output_path) {
-  PrintErrorAndExitIf(
-      state.main_object_start_address == state.kInvalidStartAddress,
-      "main_object_start_address is not set");
+  PrintErrorAndExitIf(!state.main_object.IsSet(), "main_object is not set");
   FILE *output_file = fopen(output_path, "w");
   PrintErrorAndExitIf(!output_file, "can't open output file");
   // Make a local copy of the pc table, and subtract the ASLR base
@@ -466,7 +431,7 @@ static void DumpPcTable(const char *output_path) {
   for (size_t i = 0; i < data_size_in_words; i += 2) {
     // data_copy is an array of pairs. First element is the pc, which we need to
     // modify. The second element is the pc flags, we just copy it.
-    data_copy[i] = data[i] - state.main_object_start_address;
+    data_copy[i] = data[i] - state.main_object.start_address;
     data_copy[i + 1] = data[i + 1];
   }
   // Dump the modified table.
@@ -479,15 +444,13 @@ static void DumpPcTable(const char *output_path) {
 }
 
 // Dumps the control-flow table to `output_path`.
-// Assumes that main_object_start_address is already computed.
+// Requires that state.main_object is already computed.
 static void DumpCfTable(const char *output_path) {
-  PrintErrorAndExitIf(
-      state.main_object_start_address == state.kInvalidStartAddress,
-      "main_object_start_address is not set");
+  PrintErrorAndExitIf(!state.main_object.IsSet(), "main_object is not set");
   FILE *output_file = fopen(output_path, "w");
   PrintErrorAndExitIf(!output_file, "can't open output file");
   // Make a local copy of the cf table, and subtract the ASLR base
-  // (i.e. main_object_start_address) from every PC before dumping the table.
+  // (i.e. main_object.start_address) from every PC before dumping the table.
   // Otherwise, we need to pass this ASLR offset at the symbolization time,
   // e.g. via `llvm-symbolizer --adjust-vma=<ASLR offset>`.
   // Another alternative is to build the binary w/o -fPIE or with -static.
@@ -500,7 +463,7 @@ static void DumpCfTable(const char *output_path) {
     // data_copy is an array of PCs, except for delimiter (Null) and indirect
     // call indicator (-1).
     if (data[i] != 0 && data[i] != -1ULL)
-      data_copy[i] = data[i] - state.main_object_start_address;
+      data_copy[i] = data[i] - state.main_object.start_address;
     else
       data_copy[i] = data[i];
   }
@@ -658,8 +621,8 @@ GlobalRunnerState::GlobalRunnerState() {
 
   centipede::SetLimits();
 
-  // Compute main_object_start_address, main_object_size.
-  dl_iterate_phdr(centipede::dl_iterate_phdr_callback, nullptr);
+  // Compute main_object.
+  main_object = GetDlInfo();
 
   // Dump the pc table, if instructed.
   if (state.HasFlag(":dump_pc_table:")) {

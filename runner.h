@@ -30,6 +30,7 @@
 #include "./feature.h"
 #include "./knobs.h"
 #include "./runner_cmp_trace.h"
+#include "./runner_dl_info.h"
 
 namespace centipede {
 
@@ -167,13 +168,11 @@ struct GlobalRunnerState {
     for (auto *it = tls_list; it; it = it->next) callback(*it);
   }
 
-  // The variables below are computed by dl_iterate_phdr_callback.
+  // Computed by DlInfo().
   // Main object is the executable binary containing main()
   // and most of the executable code (we assume that the target is
   // built in mostly-static mode, i.e. -dynamic_mode=off).
-  static constexpr uintptr_t kInvalidStartAddress = -1;
-  uintptr_t main_object_start_address = kInvalidStartAddress;
-  uintptr_t main_object_size;
+  DlInfo main_object;
 
   // State for SanitizerCoverage.
   // See https://clang.llvm.org/docs/SanitizerCoverage.html.
