@@ -23,7 +23,7 @@ namespace centipede {
 
 // Analyzes two corpora, `a` and `b`, reports the differences.
 // TODO(kcc): unimplemented.
-void AnalyzeCorpora(const Coverage::PCTable &pc_table,
+void AnalyzeCorpora(const PCTable &pc_table,
                     const SymbolTable &symbols,
                     const std::vector<CorpusRecord> &a,
                     const std::vector<CorpusRecord> &b);

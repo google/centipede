@@ -116,7 +116,7 @@ void PrintExperimentStatsThread(const std::atomic<bool> &continue_running,
 
 // Loads corpora from work dirs provided in `env.args`, analyzes differences.
 // Returns EXIT_SUCCESS on success, EXIT_FAILURE otherwise.
-int Analyze(const Environment &env, const Coverage::PCTable &pc_table,
+int Analyze(const Environment &env, const PCTable &pc_table,
             const SymbolTable &symbols) {
   LOG(INFO) << "Analyze " << absl::StrJoin(env.args, ",");
   CHECK_EQ(env.args.size(), 2) << "for now, Analyze supports only 2 work dirs";
@@ -175,7 +175,7 @@ int CentipedeMain(const Environment &env,
   RemoteMkdir(env.MakeCoverageDirPath());
 
   auto one_time_callbacks = callbacks_factory.create(env);
-  Coverage::PCTable pc_table;
+  PCTable pc_table;
   SymbolTable symbols;
   one_time_callbacks->PopulateSymbolAndPcTables(symbols, pc_table);
   callbacks_factory.destroy(one_time_callbacks);

@@ -20,7 +20,6 @@
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
-#include "./coverage.h"
 #include "./logging.h"
 
 namespace centipede {
@@ -38,7 +37,7 @@ using ::testing::Contains;
 //   \     /
 //    \   /
 //      4 (7)
-static const Coverage::CFTable g_cf_table = {
+static const CFTable g_cf_table = {
   1, 2, 3, 0, 0,          // PC 1 has no callee.
   2, 4, 0, 99, 0,         // PC 2 calls 99.
   3, 4, 0, 6, -1, 8, 0,   // PC 3 calls 6, 8, and has one indirect call.
@@ -49,14 +48,14 @@ static const Coverage::CFTable g_cf_table = {
 };
 
 // Mock PCTable for the above cfg.
-static const Coverage::PCTable g_pc_table = {
-    {1, Coverage::PCInfo::kFuncEntry},
+static const PCTable g_pc_table = {
+    {1, PCInfo::kFuncEntry},
     {2, 0},
     {3, 0},
     {4, 0},
-    {6, Coverage::PCInfo::kFuncEntry},
-    {7, Coverage::PCInfo::kFuncEntry},
-    {8, Coverage::PCInfo::kFuncEntry},
+    {6, PCInfo::kFuncEntry},
+    {7, PCInfo::kFuncEntry},
+    {8, PCInfo::kFuncEntry},
 };
 
 TEST(CallGraphDeathTest, CgNoneExistentPc) {
@@ -80,7 +79,7 @@ TEST(CallGraph, BuildCgFromCfTable) {
   // Check callees.
   for (size_t i = 0; i < g_pc_table.size(); ++i) {
     uintptr_t pc = g_pc_table[i].pc;
-    if (g_pc_table[i].has_flag(Coverage::PCInfo::kFuncEntry))
+    if (g_pc_table[i].has_flag(PCInfo::kFuncEntry))
       EXPECT_TRUE(call_graph.IsFunctionEntry(pc));
     else
       EXPECT_FALSE(call_graph.IsFunctionEntry(pc));

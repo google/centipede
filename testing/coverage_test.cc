@@ -33,6 +33,7 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_cat.h"
 #include "./centipede_interface.h"
+#include "./control_flow.h"
 #include "./defs.h"
 #include "./environment.h"
 #include "./execution_result.h"
@@ -70,10 +71,10 @@ const char *symbolizer_output =
     "\n";
 
 // PCTable that corresponds to symbolizer_output above.
-static const Coverage::PCTable g_pc_table = {
-    {100, Coverage::PCInfo::kFuncEntry},
-    {200, Coverage::PCInfo::kFuncEntry},
-    {300, Coverage::PCInfo::kFuncEntry},
+static const PCTable g_pc_table = {
+    {100, PCInfo::kFuncEntry},
+    {200, PCInfo::kFuncEntry},
+    {300, PCInfo::kFuncEntry},
     {400, 0},
     {500, 0},
     {600, 0},
@@ -126,7 +127,6 @@ TEST(Coverage, SymbolTable) {
   EXPECT_EQ(symbols.full_description(1), "? ?");
 }
 
-
 TEST(Coverage, CoverageLoad) {
   Coverage cov(g_pc_table, {0, 2, 4, 5});
 
@@ -140,20 +140,6 @@ TEST(Coverage, CoverageLoad) {
   EXPECT_TRUE(cov.FunctionIsFullyCovered(0));
   EXPECT_FALSE(cov.FunctionIsFullyCovered(1));
   EXPECT_FALSE(cov.FunctionIsFullyCovered(2));
-
-  EXPECT_TRUE(cov.BlockIsFunctionEntry(0));
-  EXPECT_TRUE(cov.BlockIsFunctionEntry(1));
-  EXPECT_TRUE(cov.BlockIsFunctionEntry(2));
-  EXPECT_FALSE(cov.BlockIsFunctionEntry(3));
-  EXPECT_FALSE(cov.BlockIsFunctionEntry(4));
-  EXPECT_FALSE(cov.BlockIsFunctionEntry(5));
-
-  EXPECT_EQ(cov.GetPcIndex(100), 0);
-  EXPECT_EQ(cov.GetPcIndex(200), 1);
-  EXPECT_EQ(cov.GetPcIndex(300), 2);
-  EXPECT_EQ(cov.GetPcIndex(400), 3);
-  EXPECT_EQ(cov.GetPcIndex(500), 4);
-  EXPECT_EQ(cov.GetPcIndex(600), 5);
 }
 
 TEST(Coverage, CoverageLogger) {
@@ -178,7 +164,7 @@ TEST(Coverage, CoverageLogger) {
   CoverageLogger concurrently_used_logger(g_pc_table, symbols);
   auto cb = [&]() {
     for (int i = 0; i < 1000; i++) {
-      Coverage::PCIndex pc_index = i % g_pc_table.size();
+      PCIndex pc_index = i % g_pc_table.size();
       logger.ObserveAndDescribeIfNew(pc_index);
     }
   };
@@ -208,92 +194,6 @@ static std::string GetLLVMSymbolizerPath() {
   CHECK_EQ(system("which llvm-symbolizer"), EXIT_SUCCESS)
       << "llvm-symbolizer has to be installed and findable via PATH";
   return "llvm-symbolizer";
-}
-
-// Tests GetCfTableFromBinary() on test_fuzz_target.
-TEST(Coverage, GetCfTable) {
-  auto target_path = GetTargetPath();
-  std::string tmp_path1 = GetTempFilePath(1);
-  std::string tmp_path2 = GetTempFilePath(2);
-
-  // Load the cf table.
-  auto cf_table = Coverage::GetCfTableFromBinary(target_path, tmp_path1);
-  if (cf_table.empty()) {
-    LOG(INFO) << "__sancov_cfs is empty.";
-    // TODO(navidem): This should be removed once OSS's clang supports
-    // control-flow.
-    GTEST_SKIP();
-  }
-
-  ASSERT_EQ(std::filesystem::exists(tmp_path1.c_str()),
-            false);  // tmp_path1 was deleted.
-  LOG(INFO) << VV(cf_table.size());
-
-  // Load the pc table.
-  auto pc_table = Coverage::GetPcTableFromBinary(target_path, tmp_path1);
-  EXPECT_EQ(fopen(tmp_path1.c_str(), "r"), nullptr);  // tmp_path1 was deleted.
-  LOG(INFO) << VV(pc_table.size());
-  EXPECT_THAT(pc_table.empty(), false);
-
-  // Symbilize pc_table.
-  SymbolTable symbols;
-  symbols.GetSymbolsFromBinary(pc_table, target_path, GetLLVMSymbolizerPath(),
-                               tmp_path1, tmp_path2);
-  EXPECT_EQ(symbols.size(), pc_table.size());
-
-  absl::flat_hash_map<uintptr_t, size_t> pc_table_index;
-  for (size_t i = 0; i < pc_table.size(); i++) {
-    pc_table_index[pc_table[i].pc] = i;
-  }
-
-  for (size_t j = 0; j < cf_table.size();) {
-    auto current_pc = cf_table[j];
-    ++j;
-    size_t succ_num = 0;
-    size_t callee_num = 0;
-    size_t icallee_num = 0;
-
-    // Iterate over successors.
-    while (cf_table[j]) {
-      ++succ_num;
-      ++j;
-    }
-    ++j;  // Step over the delimeter.
-
-    // Iterate over callees.
-    while (cf_table[j]) {
-      if (cf_table[j] > 0) ++callee_num;
-      if (cf_table[j] < 0) ++icallee_num;
-      ++j;
-    }
-    ++j;  // Step over the delimeter.
-
-    // Determine if current_pc is a function entry.
-    if (pc_table_index.contains(current_pc)) {
-      size_t index = pc_table_index[current_pc];
-      if (pc_table[index].has_flag(Coverage::PCInfo::kFuncEntry)) {
-        std::string_view current_function = symbols.func(index);
-        // Check for properties.
-        LOG(INFO) << "Checking for " << VV(current_function);
-        SCOPED_TRACE(testing::Message()
-                     << "Checking for " << VV(current_function)
-                     << VV(current_pc) << VV(cf_table[j]) << VV(j));
-        if (current_function == "SingleEdgeFunc") {
-          EXPECT_EQ(succ_num, 0);
-          EXPECT_EQ(icallee_num, 0);
-          EXPECT_EQ(callee_num, 0);
-        } else if (current_function == "MultiEdgeFunc") {
-          EXPECT_EQ(succ_num, 2);
-          EXPECT_EQ(icallee_num, 0);
-          EXPECT_EQ(callee_num, 0);
-        } else if (current_function == "IndirectCallFunc") {
-          EXPECT_EQ(succ_num, 0);
-          EXPECT_EQ(icallee_num, 1);
-          EXPECT_EQ(callee_num, 0);
-        }
-      }
-    }
-  }
 }
 
 // A simple CentipedeCallbacks derivative for this test.
@@ -345,8 +245,7 @@ TEST(Coverage, CoverageFeatures) {
   EXPECT_EQ(features.size(), 2);
   EXPECT_NE(features[0], features[1]);
   // Get pc_table and symbols.
-  auto pc_table =
-      Coverage::GetPcTableFromBinary(GetTargetPath(), GetTempFilePath(0));
+  auto pc_table = GetPcTableFromBinary(GetTargetPath(), GetTempFilePath(0));
   SymbolTable symbols;
   symbols.GetSymbolsFromBinary(pc_table, GetTargetPath(),
                                GetLLVMSymbolizerPath(), GetTempFilePath(0),
@@ -459,8 +358,7 @@ TEST(Coverage, PathFeatures) {
 
 TEST(Coverage, FunctionFilter) {
   // initialize coverage data.
-  Coverage::PCTable pc_table =
-      Coverage::GetPcTableFromBinary(GetTargetPath(), GetTempFilePath(0));
+  PCTable pc_table = GetPcTableFromBinary(GetTargetPath(), GetTempFilePath(0));
   SymbolTable symbols;
   symbols.GetSymbolsFromBinary(pc_table, GetTargetPath(),
                                GetLLVMSymbolizerPath(), GetTempFilePath(0),

@@ -23,7 +23,7 @@
 
 #include "./byte_array_mutator.h"
 #include "./command.h"
-#include "./coverage.h"
+#include "./control_flow.h"
 #include "./defs.h"
 #include "./environment.h"
 #include "./execution_result.h"
@@ -72,7 +72,7 @@ class CentipedeCallbacks {
   // the `coverage_binary` or if symbolization fails.
   // Exits if PC table was not populated and `env_.require_pc_table` is set.
   virtual void PopulateSymbolAndPcTables(SymbolTable &symbols,
-                                         Coverage::PCTable &pc_table);
+                                         PCTable &pc_table);
 
   // Returns some simple non-empty valid input.
   virtual ByteArray DummyValidInput() { return {0}; }

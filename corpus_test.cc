@@ -83,7 +83,7 @@ TEST(FeatureSet, CountUnseenAndPruneFrequentFeatures_IncrementFrequencies) {
     return feature_set.CountUnseenAndPruneFrequentFeatures(features);
   };
   // Shorthand for IncrementFrequencies.
-  auto Increment = [&](const FeatureVec& features) {
+  auto Increment = [&](const FeatureVec &features) {
     feature_set.IncrementFrequencies(features);
   };
 
@@ -152,7 +152,7 @@ TEST(FeatureSet, CountUnseenAndPruneFrequentFeatures_IncrementFrequencies) {
 }
 
 TEST(Corpus, GetCmpArgs) {
-  Coverage::PCTable pc_table(100);
+  PCTable pc_table(100);
   CoverageFrontier coverage_frontier(pc_table);
   FeatureSet fs(3);
   Corpus corpus;
@@ -165,7 +165,7 @@ TEST(Corpus, GetCmpArgs) {
 }
 
 TEST(Corpus, PrintStats) {
-  Coverage::PCTable pc_table(100);
+  PCTable pc_table(100);
   CoverageFrontier coverage_frontier(pc_table);
   FeatureSet fs(3);
   Corpus corpus;
@@ -185,7 +185,7 @@ TEST(Corpus, PrintStats) {
 
 TEST(Corpus, Prune) {
   // Prune will remove an input if all of its features appear at least 3 times.
-  Coverage::PCTable pc_table(100);
+  PCTable pc_table(100);
   CoverageFrontier coverage_frontier(pc_table);
   FeatureSet fs(3);
   Corpus corpus;
@@ -242,7 +242,7 @@ TEST(Corpus, Prune) {
 
 // Regression test for a crash in Corpus::Prune().
 TEST(Corpus, PruneRegressionTest1) {
-  Coverage::PCTable pc_table(100);
+  PCTable pc_table(100);
   CoverageFrontier coverage_frontier(pc_table);
   FeatureSet fs(2);
   Corpus corpus;
@@ -360,18 +360,18 @@ TEST(CoverageFrontier, Compute) {
   // Function [4, 6): Not covered.
   // Function [6, 9): Partially covered => part of frontier.
   // Function [9, 12): Fully covered.
-  Coverage::PCTable pc_table{{0, Coverage::PCInfo::kFuncEntry},  // Covered.
-                             {1, Coverage::PCInfo::kFuncEntry},
-                             {2, Coverage::PCInfo::kFuncEntry},  // Covered.
-                             {3, 0},
-                             {4, Coverage::PCInfo::kFuncEntry},
-                             {5, 0},
-                             {6, Coverage::PCInfo::kFuncEntry},  // Covered.
-                             {7, 0},                             // Covered.
-                             {8, 0},
-                             {9, Coverage::PCInfo::kFuncEntry},  // Covered.
-                             {10, 0},                            // Covered.
-                             {11, 0}};                           // Covered.
+  PCTable pc_table{{0, PCInfo::kFuncEntry},  // Covered.
+                   {1, PCInfo::kFuncEntry},
+                   {2, PCInfo::kFuncEntry},  // Covered.
+                   {3, 0},
+                   {4, PCInfo::kFuncEntry},
+                   {5, 0},
+                   {6, PCInfo::kFuncEntry},  // Covered.
+                   {7, 0},                   // Covered.
+                   {8, 0},
+                   {9, PCInfo::kFuncEntry},  // Covered.
+                   {10, 0},                  // Covered.
+                   {11, 0}};                 // Covered.
   CoverageFrontier frontier(pc_table);
   FeatureVec pcs(pc_table.size());
   for (size_t i = 0; i < pc_table.size(); i++) {

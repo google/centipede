@@ -20,11 +20,10 @@
 #include <string>
 #include <string_view>
 
-#include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/strip.h"
 #include "./command.h"
-#include "./coverage.h"
+#include "./control_flow.h"
 #include "./logging.h"
 #include "./util.h"
 
@@ -49,7 +48,7 @@ void SymbolTable::ReadFromLLVMSymbolizer(std::istream &in) {
   }
 }
 
-void SymbolTable::GetSymbolsFromBinary(const Coverage::PCTable &pc_table,
+void SymbolTable::GetSymbolsFromBinary(const PCTable &pc_table,
                                        std::string_view binary_path,
                                        std::string_view symbolizer_path,
                                        std::string_view tmp_path1,
