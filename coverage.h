@@ -157,6 +157,27 @@ class FunctionFilter {
   std::vector<uint8_t> pcs_;
 };
 
+// Computes the frontier weight. The weight is calculated based on the functions
+// called in the non-covered side of the frontier. For each such callee, the
+// cyclomatic complexity (CC) of the callee is multiplied by a factor (MF)
+// where MF is determined based on the cvoerage type of callee:
+//
+// frontier_weight = 0
+// for f in callees_of_non_covered_successor_bb:
+//    frontier_weight += CC(f) * MF(f)
+//
+// The breakdown for MF based on the coverage type of callee is as follows
+// (subject to change):
+//  - Non-covered: %60
+//  - Partially-covered: %30
+//  - Fully-covered: %10
+// Non-covered callee gets the highest MF as it is very interesting to
+// get it covered. That said, going to partially or even fully covered callee
+// still have some value as it may trigger new state there.
+uint32_t ComputeFrontierWeight(const Coverage &coverage,
+                               const ControlFlowGraph &cfg,
+                               const std::vector<uintptr_t> &callees);
+
 }  // namespace centipede
 
 #endif  // THIRD_PARTY_CENTIPEDE_COVERAGE_H_

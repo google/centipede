@@ -430,5 +430,38 @@ TEST(Coverage, ThreadedTest) {
   }
 }
 
+TEST(FrontierWeight, ComputeFrontierWeight) {
+  PCTable g_pc_table{{0, PCInfo::kFuncEntry},
+                     {1, PCInfo::kFuncEntry},
+                     {2, 0},
+                     {3, PCInfo::kFuncEntry},
+                     {4, PCInfo::kFuncEntry}};
+  // A simple CF table, to get cyclomatic complexity of 1 for all functions.
+  CFTable g_cf_table{
+      0, 0, 0, 1, 0, 0, 2, 0, 0, 3, 0, 0, 4, 0, 0,
+  };
+
+  Coverage g_coverage(g_pc_table, {0, 1});
+  ControlFlowGraph cfg(g_cf_table, g_pc_table);
+
+  std::vector<uintptr_t> callees1 = {0, 1, 3, 4};
+  std::vector<uintptr_t> callees2 = {0, 1};
+  std::vector<uintptr_t> callees3 = {0};
+  // PCs 2 and 99 should have no effect on computed weight.
+  std::vector<uintptr_t> callees4 = {1, 3, 2, 99};
+
+  auto weight1 = ComputeFrontierWeight(g_coverage, cfg, callees1);
+  ASSERT_EQ(weight1, 408);
+
+  auto weight2 = ComputeFrontierWeight(g_coverage, cfg, callees2);
+  ASSERT_EQ(weight2, 102);
+
+  auto weight3 = ComputeFrontierWeight(g_coverage, cfg, callees3);
+  ASSERT_EQ(weight3, 25);
+
+  auto weight4 = ComputeFrontierWeight(g_coverage, cfg, callees4);
+  ASSERT_EQ(weight4, 230);
+}
+
 }  // namespace
 }  // namespace centipede

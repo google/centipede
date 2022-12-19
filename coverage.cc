@@ -153,4 +153,51 @@ bool FunctionFilter::filter(const FeatureVec &features) const {
   return false;
 }
 
+static uint8_t SelectMultiplierByCoverageKind(uint8_t uncovered_knob,
+                                       uint8_t partially_covered_knob,
+                                       uint8_t fully_covered_knob,
+                                       PCIndex callee_idx,
+                                       const Coverage &coverage) {
+  if (coverage.FunctionIsFullyCovered(callee_idx)) return fully_covered_knob;
+  if (coverage.BlockIsCovered(callee_idx)) return partially_covered_knob;
+  return uncovered_knob;
+}
+
+uint32_t ComputeFrontierWeight(const Coverage &coverage,
+                               const ControlFlowGraph &cfg,
+                               const std::vector<uintptr_t> &callees) {
+  // Multiplication factors for different coverage types.
+  // TODO(navidem): replace with actual knobs (cl/486229527).
+  uint8_t uncovered_knob = 153;         // ~ (255 * 0.6)
+  uint8_t partially_covered_knob = 77;  // ~ (255 * 0.3)
+  uint8_t fully_covered_knob = 25;      // ~ (255 * 0.1)
+
+  uint32_t weight = 0;
+  for (auto callee : callees) {
+    // TODO(navidem): Figure out a better way for determining the complexity
+    // of indirect callee. For now using cyclomatic_comp = 1, and factor of
+    // non-covered callee.
+    if (callee == -1ULL) {
+      weight += uncovered_knob;
+      continue;
+    }
+    // This function's body is not in this DSO,, like library functions. For now
+    // skipping it as we have no coverage kind (Fully/Partially covered or
+    // uncovered) and no complexity for it. Or it is not a function entry at
+    // all, in this function it does not matter to us and we can skip it.
+    if (!cfg.BlockIsFunctionEntry(callee)) continue;
+
+    // Retrieve cyclomatic complexity
+    auto cyclomatic_comp = cfg.GetCyclomaticComplexity(callee);
+    // Determine knob based on callee coverage kind.
+    auto callee_idx = cfg.GetPcIndex(callee);
+    auto coverage_multiplier = SelectMultiplierByCoverageKind(
+        uncovered_knob, partially_covered_knob, fully_covered_knob, callee_idx,
+        coverage);
+
+    weight += coverage_multiplier * cyclomatic_comp;
+  }
+  return weight;
+}
+
 }  // namespace centipede
