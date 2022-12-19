@@ -820,9 +820,9 @@ cc_test(
     name = "control_flow_test",
     srcs = ["control_flow_test.cc"],
     data = [
-        "@centipede///testing:test_fuzz_target",
-        "@centipede///testing:test_fuzz_target_trace_pc",
-        "@centipede///testing:threaded_fuzz_target",
+        "@centipede//testing:test_fuzz_target",
+        "@centipede//testing:test_fuzz_target_trace_pc",
+        "@centipede//testing:threaded_fuzz_target",
     ],
     deps = [
         ":control_flow",
