@@ -202,6 +202,11 @@ ABSL_FLAG(std::string, corpus_dir, "",
 ABSL_FLAG(std::string, symbolizer_path, "llvm-symbolizer",
           "Path to the symbolizer tool. By default, we use llvm-symbolizer "
           "and assume it is in PATH.");
+ABSL_FLAG(std::string, runner_dl_path, "",
+          "If non-empty, this flag is passed to the Centipede runner. "
+          "It tells the runner that this dynamic library is instrumented "
+          "while the main binary is not. "
+          "This flag is experimental and may be removed in future");
 ABSL_FLAG(size_t, distill_shards, 0,
           "The first --distill_shards will write the distilled corpus to "
           "workdir/distilled-BINARY.SHARD. Implies --full_sync for these "
@@ -316,6 +321,7 @@ Environment::Environment(const std::vector<std::string> &argv)
       corpus_dir(absl::StrSplit(absl::GetFlag(FLAGS_corpus_dir), ',',
                                 absl::SkipEmpty{})),
       symbolizer_path(absl::GetFlag(FLAGS_symbolizer_path)),
+      runner_dl_path(absl::GetFlag(FLAGS_runner_dl_path)),
       input_filter(absl::GetFlag(FLAGS_input_filter)),
       dictionary(absl::StrSplit(absl::GetFlag(FLAGS_dictionary), ',',
                                 absl::SkipEmpty{})),
