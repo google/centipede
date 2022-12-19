@@ -22,7 +22,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
-#include "./coverage.h"
+#include "./control_flow.h"
 #include "./logging.h"
 
 namespace centipede {
@@ -31,8 +31,7 @@ class CallGraph {
  public:
   // Reads in the CfTable from __sancov_cfs section. On error it crashes, if the
   // section is not available, the hash maps will be empty.
-  void ReadFromCfTable(const Coverage::CFTable& cf_table,
-                       const Coverage::PCTable& pc_table);
+  void ReadFromCfTable(const CFTable& cf_table, const PCTable& pc_table);
 
   const std::vector<uintptr_t>& GetFunctionCallees(uintptr_t pc) const {
     const auto it = call_graph_.find(pc);

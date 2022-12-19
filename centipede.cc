@@ -63,6 +63,7 @@
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
 #include "./blob_file.h"
+#include "./control_flow.h"
 #include "./coverage.h"
 #include "./defs.h"
 #include "./environment.h"
@@ -80,8 +81,7 @@ namespace centipede {
 using perf::RUsageProfiler;
 
 Centipede::Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
-                     const Coverage::PCTable &pc_table,
-                     const SymbolTable &symbols,
+                     const PCTable &pc_table, const SymbolTable &symbols,
                      CoverageLogger &coverage_logger, Stats &stats)
     : env_(env),
       user_callbacks_(user_callbacks),
@@ -217,7 +217,7 @@ void Centipede::LogFeaturesAsSymbols(const FeatureVec &fv) {
   auto feature_domain = feature_domains::k8bitCounters;
   for (auto feature : fv) {
     if (!feature_domain.Contains(feature)) continue;
-    Coverage::PCIndex pc_index = Convert8bitCounterFeatureToPcIndex(feature);
+    PCIndex pc_index = Convert8bitCounterFeatureToPcIndex(feature);
     auto description = coverage_logger_.ObserveAndDescribeIfNew(pc_index);
     if (description.empty()) continue;
     LOG(INFO) << description;

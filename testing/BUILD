@@ -98,6 +98,7 @@ cc_test(
     ],
     deps = [
         "@centipede//:centipede_interface",
+        "@centipede//:control_flow",
         "@centipede//:coverage",
         "@centipede//:defs",
         "@centipede//:environment",

@@ -54,7 +54,7 @@ class FeatureSet {
   size_t size() const { return num_features_; }
 
   // Returns features that originate from CFG counters, converted to PCIndexVec.
-  Coverage::PCIndexVec ToCoveragePCs() const;
+  PCIndexVec ToCoveragePCs() const;
 
   // Returns the number of features in `this` from the given feature domain.
   size_t CountFeatures(feature_domains::Domain domain);
@@ -101,7 +101,7 @@ class FeatureSet {
   size_t features_per_domain_[feature_domains::Domain::kLastDomain + 1] = {};
 
   // Maintains the set of PC indices that correspond to added features.
-  absl::flat_hash_set<Coverage::PCIndex> pc_index_set_;
+  absl::flat_hash_set<PCIndex> pc_index_set_;
 };
 
 // WeightedDistribution maintains an array of integer weights.
@@ -231,7 +231,7 @@ class Corpus {
 // partially covered function.
 class CoverageFrontier {
  public:
-  CoverageFrontier(const Coverage::PCTable &pc_table)
+  CoverageFrontier(const PCTable &pc_table)
       : pc_table_(pc_table), frontier_(pc_table.size()) {}
 
   // Computes the coverage frontier of `corpus`.
@@ -250,7 +250,7 @@ class CoverageFrontier {
   size_t MaxPcIndex() const { return pc_table_.size(); }
 
  private:
-  const Coverage::PCTable pc_table_;
+  const PCTable pc_table_;
 
   // frontier_[idx] is true iff pc_table_[i] is part of the coverage frontier.
   std::vector<bool> frontier_;
