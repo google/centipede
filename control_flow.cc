@@ -14,6 +14,7 @@
 
 #include "./control_flow.h"
 
+#include <filesystem>  // NOLINT
 #include <fstream>
 #include <ostream>
 #include <queue>
