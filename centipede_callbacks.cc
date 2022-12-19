@@ -24,7 +24,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
 #include "./command.h"
-#include "./coverage.h"
+#include "./control_flow.h"
 #include "./defs.h"
 #include "./execution_request.h"
 #include "./execution_result.h"
@@ -34,16 +34,15 @@
 
 namespace centipede {
 
-void CentipedeCallbacks::PopulateSymbolAndPcTables(
-    SymbolTable &symbols, Coverage::PCTable &pc_table) {
+void CentipedeCallbacks::PopulateSymbolAndPcTables(SymbolTable &symbols,
+                                                   PCTable &pc_table) {
   // Running in main thread, create our own temp dir.
   if (!std::filesystem::exists(temp_dir_)) {
     CreateLocalDirRemovedAtExit(temp_dir_);
   }
   std::string pc_table_path =
       std::filesystem::path(temp_dir_).append("pc_table");
-  pc_table =
-      Coverage::GetPcTableFromBinary(env_.coverage_binary, pc_table_path);
+  pc_table = GetPcTableFromBinary(env_.coverage_binary, pc_table_path);
   if (pc_table.empty()) {
     if (env_.require_pc_table) {
       LOG(INFO) << "Could not get PCTable, exiting (override with "

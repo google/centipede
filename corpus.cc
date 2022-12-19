@@ -31,7 +31,7 @@
 namespace centipede {
 
 // TODO(kcc): [impl] add tests.
-Coverage::PCIndexVec FeatureSet::ToCoveragePCs() const {
+PCIndexVec FeatureSet::ToCoveragePCs() const {
   return {pc_index_set_.begin(), pc_index_set_.end()};
 }
 

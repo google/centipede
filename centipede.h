@@ -32,6 +32,7 @@
 #include "./rusage_profiler.h"
 #include "./stats.h"
 #include "./symbol_table.h"
+#include "./control_flow.h"
 
 namespace centipede {
 
@@ -39,8 +40,9 @@ namespace centipede {
 class Centipede {
  public:
   Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
-            const Coverage::PCTable &pc_table, const SymbolTable &symbols,
-            CoverageLogger &coverage_logger, Stats &stats);
+            const PCTable &pc_table,
+            const SymbolTable &symbols, CoverageLogger &coverage_logger,
+            Stats &stats);
   virtual ~Centipede() {}
 
   // Main loop.
@@ -145,7 +147,7 @@ class Centipede {
 
   // Coverage-related data, initialized at startup, once per process,
   // by calling the PopulateSymbolAndPcTables callback.
-  const Coverage::PCTable &pc_table_;
+  const PCTable &pc_table_;
   const SymbolTable &symbols_;
 
   // Derived from env_.function_filter. Currently, duplicated by every thread.

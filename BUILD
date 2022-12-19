@@ -255,7 +255,9 @@ cc_library(
     ],
     deps = [
         ":command",
+        ":control_flow",
         ":defs",
+        ":feature",
         ":logging",
         ":util",
         "@com_google_absl//absl/base:core_headers",
@@ -272,14 +274,20 @@ cc_library(
     name = "control_flow",
     srcs = [
         "control_flow.cc",
+        "symbol_table.cc",
     ],
     hdrs = [
         "control_flow.h",
+        "symbol_table.h",
     ],
     deps = [
-        ":coverage",
+        ":command",
+        ":defs",
         ":logging",
+        ":util",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -294,7 +302,7 @@ cc_library(
         "call_graph.h",
     ],
     deps = [
-        ":coverage",
+        ":control_flow",
         ":logging",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/log:check",
@@ -353,7 +361,7 @@ cc_library(
     deps = [
         ":byte_array_mutator",
         ":command",
-        ":coverage",
+        ":control_flow",
         ":defs",
         ":environment",
         ":execution_request",
@@ -392,6 +400,7 @@ cc_library(
         ":blob_file",
         ":centipede_callbacks",
         ":command",
+        ":control_flow",
         ":corpus",
         ":coverage",
         ":defs",
@@ -810,11 +819,19 @@ cc_test(
 cc_test(
     name = "control_flow_test",
     srcs = ["control_flow_test.cc"],
+    data = [
+        "@centipede///testing:test_fuzz_target",
+        "@centipede///testing:test_fuzz_target_trace_pc",
+        "@centipede///testing:threaded_fuzz_target",
+    ],
     deps = [
-        "@centipede//:control_flow",
-        "@centipede//:coverage",
+        ":control_flow",
+        "@centipede//:defs",
+        "@centipede//:environment",
+        "@centipede//:execution_result",
         "@centipede//:logging",
         "@centipede//:test_util",
+        "@centipede//:util",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -824,7 +841,6 @@ cc_test(
     srcs = ["call_graph_test.cc"],
     deps = [
         "@centipede//:call_graph",
-        "@centipede//:coverage",
         "@centipede//:logging",
         "@com_google_googletest//:gtest_main",
     ],

@@ -20,11 +20,11 @@
 
 namespace centipede {
 
-void CallGraph::ReadFromCfTable(const Coverage::CFTable &cf_table,
-                                const Coverage::PCTable &pc_table) {
+void CallGraph::ReadFromCfTable(const CFTable &cf_table,
+                                const PCTable &pc_table) {
   // Find all function entries.
   for (auto pc_info : pc_table) {
-    if (pc_info.has_flag(Coverage::PCInfo::kFuncEntry))
+    if (pc_info.has_flag(PCInfo::kFuncEntry))
       function_entries_.insert(pc_info.pc);
   }
 

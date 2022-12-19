@@ -21,7 +21,7 @@
 #include <string_view>
 #include <vector>
 
-#include "./coverage.h"
+#include "./control_flow.h"
 
 namespace centipede {
 
@@ -41,7 +41,7 @@ class SymbolTable {
   // pipes all PCs from pc_table though it,
   // and calls ReadFromLLVMSymbolizer() on the output.
   // Possibly uses files `tmp_path1` and `tmp_path2` for temporary storage.
-  void GetSymbolsFromBinary(const Coverage::PCTable &pc_table,
+  void GetSymbolsFromBinary(const PCTable &pc_table,
                             std::string_view binary_path,
                             std::string_view symbolizer_path,
                             std::string_view tmp_path1,
