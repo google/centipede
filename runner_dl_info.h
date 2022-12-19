@@ -27,9 +27,10 @@ struct DlInfo {
   bool IsSet() const { return start_address != 0 && size != 0; }
 };
 
-// Returns DlInfo for the main binary.
-// TODO(kcc): allow computing DlInfo for objects other than the main binary.
-DlInfo GetDlInfo();
+// Returns DlInfo for the dynamic library who's exact path is `dl_path`.
+// If `dl_path` is `nullptr`, returns DlInfo for the main binary.
+// If the required library is not found, returns empty DlInfo (`!IsSet()`).
+DlInfo GetDlInfo(const char *dl_path);
 
 }  // namespace centipede
 

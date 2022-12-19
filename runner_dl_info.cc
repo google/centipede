@@ -16,38 +16,57 @@
 
 #include <elf.h>
 #include <limits.h>
-#include <link.h>     // dl_iterate_phdr
+#include <link.h>  // dl_iterate_phdr
+
+#include <cstdio>
+#include <cstring>
 
 #include "./runner_utils.h"
 
 namespace centipede {
 
+namespace {
+// Struct to pass to dl_iterate_phdr's callback.
+struct DlCallbackParam {
+  // Full path to the instrumented library or nullptr for the main binary.
+  const char *dl_path;
+  // DlInfo to set on success.
+  DlInfo &result;
+};
+
+}  // namespace
+
 // See man dl_iterate_phdr.
-// `result_voidptr` is cast to a `DlInfo &result`.
-// Sets result.start_address and result.size.
+// `param_voidptr` is cast to a `DlCallbackParam *param`.
+// Looks for the dynamic library with `dlpi_name == param->dl_path`
+// or for the main binary if `param->dl_path == nullptr`.
 // The code assumes that the main binary is the first one to be iterated on.
-// TODO(kcc): this needs to be extended to handle DSOs other than main binary.
+// If the desired library is found, sets result.start_address and result.size,
+// otherwise leaves result unchanged.
 static int DlIteratePhdrCallback(struct dl_phdr_info *info, size_t size,
-                                 void *result_voidptr) {
-  DlInfo &result = *reinterpret_cast<DlInfo *>(result_voidptr);
+                                 void *param_voidptr) {
+  DlCallbackParam *param = static_cast<DlCallbackParam *>(param_voidptr);
+  DlInfo &result = param->result;
   RunnerCheck(!result.IsSet(), "result is already set");
-  result.start_address = info->dlpi_addr;
-  for (int j = 0; j < info->dlpi_phnum; j++) {
-    uintptr_t end_offset =
-        info->dlpi_phdr[j].p_vaddr + info->dlpi_phdr[j].p_memsz;
-    if (result.size < end_offset) result.size = end_offset;
+  if (param->dl_path == nullptr ||
+      strcmp(param->dl_path, info->dlpi_name) == 0) {
+    result.start_address = info->dlpi_addr;
+    // TODO(kcc): verify the correctness of these computations.
+    for (int j = 0; j < info->dlpi_phnum; j++) {
+      uintptr_t end_offset =
+          info->dlpi_phdr[j].p_vaddr + info->dlpi_phdr[j].p_memsz;
+      if (result.size < end_offset) result.size = end_offset;
+    }
+    RunnerCheck(result.size != 0,
+                "DlIteratePhdrCallback failed to compute result.size");
   }
-  auto some_code_address = reinterpret_cast<uintptr_t>(&DlIteratePhdrCallback);
-  RunnerCheck(!(result.start_address > some_code_address),
-              "start_address is above the code");
-  RunnerCheck(!(result.start_address + result.size < some_code_address),
-              "start_address + size is below the code");
-  return 1;  // we need only the first header, so return 1.
+  return result.IsSet();  // return 1 if we found what we were looking for.
 }
 
-DlInfo GetDlInfo() {
+DlInfo GetDlInfo(const char *dl_path) {
   DlInfo result;
-  dl_iterate_phdr(DlIteratePhdrCallback, &result);
+  DlCallbackParam callback_param = {dl_path, result};
+  dl_iterate_phdr(DlIteratePhdrCallback, &callback_param);
   return result;
 }
 
