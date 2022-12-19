@@ -32,7 +32,8 @@ CentipedeDefaultCallbacks::CentipedeDefaultCallbacks(const Environment &env)
   }
   // Check if a custom mutator is available in the target.
   std::vector<ByteArray> mutants(1);
-  if (MutateViaExternalBinary(env_.binary, {{0}}, mutants)) {
+  if (MutateViaExternalBinary(env_.binary, {{0}}, mutants) &&
+      mutants.size() == 1 && !mutants.front().empty()) {
     custom_mutator_is_usable_ = true;
     LOG(INFO) << "Custom mutator detected in the target, will use it";
   } else {
