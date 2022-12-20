@@ -106,7 +106,8 @@ Command &CentipedeCallbacks::GetOrCreateCommandForBinary(
         "LLVM_PROFILE_FILE=", env_.MakeSourceBasedCoverageRawProfilePath()));
 
   // Allow for the time it takes to fork a subprocess etc.
-  const auto amortized_timeout = absl::Seconds(env_.timeout) + absl::Seconds(5);
+  const auto amortized_timeout =
+      absl::Seconds(env_.timeout_per_batch) + absl::Seconds(5);
   Command &cmd = commands_.emplace_back(Command(
       /*path=*/binary, /*args=*/{shmem_name1_, shmem_name2_},
       /*env=*/env,
