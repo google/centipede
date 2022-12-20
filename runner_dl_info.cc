@@ -18,6 +18,7 @@
 #include <limits.h>
 #include <link.h>  // dl_iterate_phdr
 
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 
@@ -34,6 +35,8 @@ struct DlCallbackParam {
   DlInfo &result;
 };
 
+static int some_global;  // Used in DlIteratePhdrCallback.
+
 }  // namespace
 
 // See man dl_iterate_phdr.
@@ -48,17 +51,49 @@ static int DlIteratePhdrCallback(struct dl_phdr_info *info, size_t size,
   DlCallbackParam *param = static_cast<DlCallbackParam *>(param_voidptr);
   DlInfo &result = param->result;
   RunnerCheck(!result.IsSet(), "result is already set");
-  if (param->dl_path == nullptr ||
-      strcmp(param->dl_path, info->dlpi_name) == 0) {
-    result.start_address = info->dlpi_addr;
-    // TODO(kcc): verify the correctness of these computations.
-    for (int j = 0; j < info->dlpi_phnum; j++) {
-      uintptr_t end_offset =
-          info->dlpi_phdr[j].p_vaddr + info->dlpi_phdr[j].p_memsz;
-      if (result.size < end_offset) result.size = end_offset;
-    }
-    RunnerCheck(result.size != 0,
-                "DlIteratePhdrCallback failed to compute result.size");
+  // Skip uninteresting info.
+  if (param->dl_path != nullptr && strcmp(param->dl_path, info->dlpi_name) != 0)
+    return 0;  // 0 indicates we want to see the other entries.
+
+  result.start_address = info->dlpi_addr;
+  // Iterate program headers.
+  for (int j = 0; j < info->dlpi_phnum; j++) {
+    // We are only interested in "Loadable program segments".
+    const auto &phdr = info->dlpi_phdr[j];
+    if (phdr.p_type != PT_LOAD) continue;
+    // phdr.p_vaddr represents the offset of the segment from info->dlpi_addr.
+    // phdr.p_memsz is the segment size in bytes.
+    // Their sum is the offset of the end of the segment from info->dlpi_addr.
+    uintptr_t end_offset = phdr.p_vaddr + phdr.p_memsz;
+    // We compute result.size as the largest such offset.
+    if (result.size < end_offset) result.size = end_offset;
+
+    // phdr.p_flags indicates RWX access rights for the segment,
+    // e.g. `phdr.p_flags & PF_X` is non-zero if the segment is executable.
+    // Uncomment the code below to debug:
+    // bool is_executable = phdr.p_flags & PF_X;
+    // bool is_writable = phdr.p_flags & PF_W;
+    // bool is_readable = phdr.p_flags & PF_R;
+    // fprintf(stderr, "zzz [%d] p_vaddr: %zx p_memsz: %zx flags %s%s%s\n", j,
+    //         phdr.p_vaddr, phdr.p_memsz, is_executable ? "X" : "",
+    //         is_writable ? "W" : "", is_readable ? "R" : "");
+  }
+  RunnerCheck(result.size != 0,
+              "DlIteratePhdrCallback failed to compute result.size");
+  if (param->dl_path == nullptr) {
+    // When the main binary is coverage-instrumented, we currently only support
+    // statically linking this runner. Which means, that the runner itself
+    // is part of the main binary and we can do additional checks, which we
+    // can't do if the runner is a separate library.
+    uintptr_t some_code_address =
+        reinterpret_cast<uintptr_t>(DlIteratePhdrCallback);
+    uintptr_t some_global_address = reinterpret_cast<uintptr_t>(&some_global);
+    RunnerCheck(result.InBounds(some_code_address),
+                "DlIteratePhdrCallback: a sample code address is not in bounds "
+                "of main executable");
+    RunnerCheck(result.InBounds(some_global_address),
+                "DlIteratePhdrCallback: a sample global address is not in "
+                "bounds of main executable");
   }
   return result.IsSet();  // return 1 if we found what we were looking for.
 }
