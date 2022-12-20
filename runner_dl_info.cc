@@ -15,10 +15,8 @@
 #include "./runner_dl_info.h"
 
 #include <elf.h>
-#include <limits.h>
 #include <link.h>  // dl_iterate_phdr
 
-#include <cstdint>
 #include <cinttypes>
 #include <cstdio>
 #include <cstring>
@@ -28,6 +26,7 @@
 namespace centipede {
 
 namespace {
+
 // Struct to pass to dl_iterate_phdr's callback.
 struct DlCallbackParam {
   // Full path to the instrumented library or nullptr for the main binary.
@@ -36,7 +35,7 @@ struct DlCallbackParam {
   DlInfo &result;
 };
 
-static int some_global;  // Used in DlIteratePhdrCallback.
+int g_some_global;  // Used in DlIteratePhdrCallback.
 
 }  // namespace
 
@@ -56,13 +55,13 @@ static int DlIteratePhdrCallback(struct dl_phdr_info *info, size_t size,
   // Skip uninteresting info.
   if (param->dl_path != nullptr && strcmp(param->dl_path, info->dlpi_name) != 0)
     return 0;  // 0 indicates we want to see the other entries.
-  uintptr_t some_code_address =
-      reinterpret_cast<uintptr_t>(DlIteratePhdrCallback);
-  uintptr_t some_global_address = reinterpret_cast<uintptr_t>(&some_global);
+
+  auto some_code_address = reinterpret_cast<uintptr_t>(DlIteratePhdrCallback);
+  auto some_global_address = reinterpret_cast<uintptr_t>(&g_some_global);
 
   result.start_address = info->dlpi_addr;
   // Iterate program headers.
-  for (int j = 0; j < info->dlpi_phnum; j++) {
+  for (int j = 0; j < info->dlpi_phnum; ++j) {
     // We are only interested in "Loadable program segments".
     const auto &phdr = info->dlpi_phdr[j];
     if (phdr.p_type != PT_LOAD) continue;
@@ -75,7 +74,7 @@ static int DlIteratePhdrCallback(struct dl_phdr_info *info, size_t size,
 
     // phdr.p_flags indicates RWX access rights for the segment,
     // e.g. `phdr.p_flags & PF_X` is non-zero if the segment is executable.
-    if (kDlDebug) {
+    if constexpr (kDlDebug) {
       char executable_bit = (phdr.p_flags & PF_X) ? 'X' : '-';
       char writable_bit = (phdr.p_flags & PF_W) ? 'W' : '-';
       char readable_bit = (phdr.p_flags & PF_R) ? 'R' : '-';
@@ -86,7 +85,8 @@ static int DlIteratePhdrCallback(struct dl_phdr_info *info, size_t size,
               executable_bit, writable_bit, readable_bit);
     }
   }
-  if (kDlDebug) {
+
+  if constexpr (kDlDebug) {
     fprintf(stderr,
             "%s: name: %s addr: %" PRIx64 " size: %" PRIu64
             " addr+size: %" PRIx64 " code: %" PRIx64 " global: %" PRIx64 "\n",
