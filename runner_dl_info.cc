@@ -19,6 +19,7 @@
 #include <link.h>  // dl_iterate_phdr
 
 #include <cstdint>
+#include <cinttypes>
 #include <cstdio>
 #include <cstring>
 
@@ -74,22 +75,24 @@ static int DlIteratePhdrCallback(struct dl_phdr_info *info, size_t size,
 
     // phdr.p_flags indicates RWX access rights for the segment,
     // e.g. `phdr.p_flags & PF_X` is non-zero if the segment is executable.
-    bool is_executable = phdr.p_flags & PF_X;
-    bool is_writable = phdr.p_flags & PF_W;
-    bool is_readable = phdr.p_flags & PF_R;
     if (kDlDebug) {
+      char executable_bit = (phdr.p_flags & PF_X) ? 'X' : '-';
+      char writable_bit = (phdr.p_flags & PF_W) ? 'W' : '-';
+      char readable_bit = (phdr.p_flags & PF_R) ? 'R' : '-';
       fprintf(stderr,
-              "dl-debug: segment [%d] p_vaddr: %zx p_memsz: %zx flags %s%s%s\n",
-              j, phdr.p_vaddr, phdr.p_memsz, is_executable ? "X" : "",
-              is_writable ? "W" : "", is_readable ? "R" : "");
+              "%s: segment [%d] name: %s addr: %" PRIx64 " size: %" PRIu64
+              " flags: %c%c%c\n",
+              __func__, j, info->dlpi_name, phdr.p_vaddr, phdr.p_memsz,
+              executable_bit, writable_bit, readable_bit);
     }
   }
   if (kDlDebug) {
     fprintf(stderr,
-            "dl-debug: dlpi_addr: %zx size: %zx dlpi_addr+size: %zx "
-            "code: %zx global: %zx\n",
-            info->dlpi_addr, result.size, info->dlpi_addr + result.size,
-            some_code_address, some_global_address);
+            "%s: name: %s addr: %" PRIx64 " size: %" PRIu64
+            " addr+size: %" PRIx64 " code: %" PRIx64 " global: %" PRIx64 "\n",
+            __func__, info->dlpi_name, info->dlpi_addr, result.size,
+            info->dlpi_addr + result.size, some_code_address,
+            some_global_address);
   }
 
   RunnerCheck(result.size != 0,
