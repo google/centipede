@@ -176,8 +176,7 @@ int CentipedeMain(const Environment &env,
 
   auto one_time_callbacks = callbacks_factory.create(env);
   BinaryInfo binary_info;
-  one_time_callbacks->PopulateSymbolAndPcTables(binary_info.symbols,
-                                                binary_info.pc_table);
+  one_time_callbacks->PopulateBinaryInfo(binary_info);
   callbacks_factory.destroy(one_time_callbacks);
 
   if (env.analyze)
@@ -197,8 +196,8 @@ int CentipedeMain(const Environment &env,
 
     auto user_callbacks = callbacks_factory.create(my_env);
     my_env.ReadKnobsFileIfSpecified();
-    Centipede centipede(my_env, *user_callbacks, binary_info.pc_table,
-                        binary_info.symbols, coverage_logger, stats);
+    Centipede centipede(my_env, *user_callbacks, binary_info, coverage_logger,
+                        stats);
     centipede.FuzzingLoop();
     callbacks_factory.destroy(user_callbacks);
   };

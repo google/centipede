@@ -73,13 +73,11 @@ class CentipedeCallbacks {
   virtual void Mutate(const std::vector<ByteArray> &inputs, size_t num_mutants,
                       std::vector<ByteArray> &mutants) = 0;
 
-  // Populates the symbol and PC tables using the `symbolizer_path` and
-  // `coverage_binary` in `env_`.
-  // The tables may not be populated if the PC table cannot be determined from
-  // the `coverage_binary` or if symbolization fails.
-  // Exits if PC table was not populated and `env_.require_pc_table` is set.
-  virtual void PopulateSymbolAndPcTables(SymbolTable &symbols,
-                                         PCTable &pc_table);
+  // Populates the BinaryInfo using the `symbolizer_path` and `coverage_binary`
+  // in `env_`. The tables may not be populated if the PC table cannot be
+  // determined from the `coverage_binary` or if symbolization fails. Exits if
+  // PC table was not populated and `env_.require_pc_table` is set.
+  virtual void PopulateBinaryInfo(BinaryInfo &binary_info);
 
   // Returns some simple non-empty valid input.
   virtual ByteArray DummyValidInput() { return {0}; }

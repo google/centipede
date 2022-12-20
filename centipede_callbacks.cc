@@ -34,16 +34,16 @@
 
 namespace centipede {
 
-void CentipedeCallbacks::PopulateSymbolAndPcTables(SymbolTable &symbols,
-                                                   PCTable &pc_table) {
+void CentipedeCallbacks::PopulateBinaryInfo(BinaryInfo &binary_info) {
   // Running in main thread, create our own temp dir.
   if (!std::filesystem::exists(temp_dir_)) {
     CreateLocalDirRemovedAtExit(temp_dir_);
   }
   std::string pc_table_path =
       std::filesystem::path(temp_dir_).append("pc_table");
-  pc_table = GetPcTableFromBinary(env_.coverage_binary, pc_table_path);
-  if (pc_table.empty()) {
+  binary_info.pc_table =
+      GetPcTableFromBinary(env_.coverage_binary, pc_table_path);
+  if (binary_info.pc_table.empty()) {
     if (env_.require_pc_table) {
       LOG(INFO) << "Could not get PCTable, exiting (override with "
                    "--require_pc_table=0)";
@@ -57,8 +57,8 @@ void CentipedeCallbacks::PopulateSymbolAndPcTables(SymbolTable &symbols,
     std::string binary_name = coverage_binary_argv[0];
     std::string tmp1 = std::filesystem::path(temp_dir_).append("sym-tmp1");
     std::string tmp2 = std::filesystem::path(temp_dir_).append("sym-tmp2");
-    symbols.GetSymbolsFromBinary(pc_table, binary_name, env_.symbolizer_path,
-                                 tmp1, tmp2);
+    binary_info.symbols.GetSymbolsFromBinary(binary_info.pc_table, binary_name,
+                                             env_.symbolizer_path, tmp1, tmp2);
   }
 }
 

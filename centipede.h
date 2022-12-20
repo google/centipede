@@ -40,8 +40,7 @@ namespace centipede {
 class Centipede {
  public:
   Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
-            const PCTable &pc_table,
-            const SymbolTable &symbols, CoverageLogger &coverage_logger,
+            const BinaryInfo &binary_info, CoverageLogger &coverage_logger,
             Stats &stats);
   virtual ~Centipede() {}
 
