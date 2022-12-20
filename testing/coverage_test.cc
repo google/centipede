@@ -447,8 +447,8 @@ TEST(FrontierWeight, ComputeFrontierWeight) {
   std::vector<uintptr_t> callees1 = {0, 1, 3, 4};
   std::vector<uintptr_t> callees2 = {0, 1};
   std::vector<uintptr_t> callees3 = {0};
-  // PCs 2 and 99 should have no effect on computed weight.
-  std::vector<uintptr_t> callees4 = {1, 3, 2, 99};
+  // PC 99 should have no effect on computed weight.
+  std::vector<uintptr_t> callees4 = {1, 3, 99};
 
   auto weight1 = ComputeFrontierWeight(g_coverage, cfg, callees1);
   ASSERT_EQ(weight1, 408);
@@ -461,6 +461,16 @@ TEST(FrontierWeight, ComputeFrontierWeight) {
 
   auto weight4 = ComputeFrontierWeight(g_coverage, cfg, callees4);
   ASSERT_EQ(weight4, 230);
+}
+
+TEST(FrontierWeightDeath, InvalidCallee) {
+  // Makes call to ComputeFrontierWeight with some non-function PCs.
+  PCTable g_pc_table{{0, PCInfo::kFuncEntry}, {1, 0}, {2, 0}};
+  CFTable g_cf_table{0, 1, 0, 0, 1, 2, 0, 0, 2, 0, 0};
+  Coverage g_coverage(g_pc_table, {0, 1});
+  ControlFlowGraph cfg(g_cf_table, g_pc_table);
+  EXPECT_DEATH(ComputeFrontierWeight(g_coverage, cfg, {0, 1}), "");
+  EXPECT_DEATH(ComputeFrontierWeight(g_coverage, cfg, {1, 2}), "");
 }
 
 }  // namespace

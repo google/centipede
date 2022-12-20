@@ -118,7 +118,7 @@ class ControlFlowGraph {
 
   // Returns true if the given basic block is function entry.
   bool BlockIsFunctionEntry(PCIndex pc_index) const {
-    return func_entries_[pc_index];
+    return pc_index < func_entries_.size() ? func_entries_[pc_index]: false;
   }
 
   // Returns the idx in pc_table associated with the PC, CHECK-fails if the PC
@@ -128,6 +128,9 @@ class ControlFlowGraph {
     CHECK(it != pc_index_map_.end());
     return it->second;
   }
+
+  // Returns true if the PC is in PCTable.
+  bool IsInPcTable(uintptr_t pc) const { return pc_index_map_.contains(pc); }
 
  private:
   // Map from PC to the idx in pc_table.
