@@ -175,18 +175,19 @@ int CentipedeMain(const Environment &env,
   RemoteMkdir(env.MakeCoverageDirPath());
 
   auto one_time_callbacks = callbacks_factory.create(env);
-  PCTable pc_table;
-  SymbolTable symbols;
-  one_time_callbacks->PopulateSymbolAndPcTables(symbols, pc_table);
+  BinaryInfo binary_info;
+  one_time_callbacks->PopulateSymbolAndPcTables(binary_info.symbols,
+                                                binary_info.pc_table);
   callbacks_factory.destroy(one_time_callbacks);
 
-  if (env.analyze) return Analyze(env, pc_table, symbols);
+  if (env.analyze)
+    return Analyze(env, binary_info.pc_table, binary_info.symbols);
 
   if (env.use_pcpair_features) {
-    CHECK(!pc_table.empty())
+    CHECK(!binary_info.pc_table.empty())
         << "use_pcpair_features requires non-empty pc_table";
   }
-  CoverageLogger coverage_logger(pc_table, symbols);
+  CoverageLogger coverage_logger(binary_info.pc_table, binary_info.symbols);
 
   auto thread_callback = [&](Environment &my_env, Stats &stats) {
     CreateLocalDirRemovedAtExit(TemporaryLocalDirPath());  // creates temp dir.
@@ -196,8 +197,8 @@ int CentipedeMain(const Environment &env,
 
     auto user_callbacks = callbacks_factory.create(my_env);
     my_env.ReadKnobsFileIfSpecified();
-    Centipede centipede(my_env, *user_callbacks, pc_table, symbols,
-                        coverage_logger, stats);
+    Centipede centipede(my_env, *user_callbacks, binary_info.pc_table,
+                        binary_info.symbols, coverage_logger, stats);
     centipede.FuzzingLoop();
     callbacks_factory.destroy(user_callbacks);
   };
