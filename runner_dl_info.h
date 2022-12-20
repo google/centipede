@@ -23,8 +23,11 @@ namespace centipede {
 struct DlInfo {
   uintptr_t start_address = 0;  // Address in memory where the object is loaded.
   uintptr_t size = 0;           // Number of bytes in the object.
-  // Returns true if this object has been set;
-  bool IsSet() const { return start_address != 0 && size != 0; }
+  // Returns true if this object has been set.
+  bool IsSet() const {
+    // start_address can be zero for a non-PIE binary, but size can't be zero.
+    return size != 0;
+  }
   // Returns true if `addr` is in [start_address, start_address + size).
   bool InBounds(uintptr_t addr) const {
     return addr >= start_address && addr < start_address + size;
