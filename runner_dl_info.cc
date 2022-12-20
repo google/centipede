@@ -48,12 +48,16 @@ static int some_global;  // Used in DlIteratePhdrCallback.
 // otherwise leaves result unchanged.
 static int DlIteratePhdrCallback(struct dl_phdr_info *info, size_t size,
                                  void *param_voidptr) {
+  constexpr bool kDlDebug = true;  // we may want to make it a runtime flag.
   DlCallbackParam *param = static_cast<DlCallbackParam *>(param_voidptr);
   DlInfo &result = param->result;
   RunnerCheck(!result.IsSet(), "result is already set");
   // Skip uninteresting info.
   if (param->dl_path != nullptr && strcmp(param->dl_path, info->dlpi_name) != 0)
     return 0;  // 0 indicates we want to see the other entries.
+  uintptr_t some_code_address =
+      reinterpret_cast<uintptr_t>(DlIteratePhdrCallback);
+  uintptr_t some_global_address = reinterpret_cast<uintptr_t>(&some_global);
 
   result.start_address = info->dlpi_addr;
   // Iterate program headers.
@@ -70,14 +74,24 @@ static int DlIteratePhdrCallback(struct dl_phdr_info *info, size_t size,
 
     // phdr.p_flags indicates RWX access rights for the segment,
     // e.g. `phdr.p_flags & PF_X` is non-zero if the segment is executable.
-    // Uncomment the code below to debug:
-    // bool is_executable = phdr.p_flags & PF_X;
-    // bool is_writable = phdr.p_flags & PF_W;
-    // bool is_readable = phdr.p_flags & PF_R;
-    // fprintf(stderr, "zzz [%d] p_vaddr: %zx p_memsz: %zx flags %s%s%s\n", j,
-    //         phdr.p_vaddr, phdr.p_memsz, is_executable ? "X" : "",
-    //         is_writable ? "W" : "", is_readable ? "R" : "");
+    bool is_executable = phdr.p_flags & PF_X;
+    bool is_writable = phdr.p_flags & PF_W;
+    bool is_readable = phdr.p_flags & PF_R;
+    if (kDlDebug) {
+      fprintf(stderr,
+              "dl-debug: segment [%d] p_vaddr: %zx p_memsz: %zx flags %s%s%s\n",
+              j, phdr.p_vaddr, phdr.p_memsz, is_executable ? "X" : "",
+              is_writable ? "W" : "", is_readable ? "R" : "");
+    }
   }
+  if (kDlDebug) {
+    fprintf(stderr,
+            "dl-debug: dlpi_addr: %zx size: %zx dlpi_addr+size: %zx "
+            "code: %zx global: %zx\n",
+            info->dlpi_addr, result.size, info->dlpi_addr + result.size,
+            some_code_address, some_global_address);
+  }
+
   RunnerCheck(result.size != 0,
               "DlIteratePhdrCallback failed to compute result.size");
   if (param->dl_path == nullptr) {
@@ -85,9 +99,6 @@ static int DlIteratePhdrCallback(struct dl_phdr_info *info, size_t size,
     // statically linking this runner. Which means, that the runner itself
     // is part of the main binary and we can do additional checks, which we
     // can't do if the runner is a separate library.
-    uintptr_t some_code_address =
-        reinterpret_cast<uintptr_t>(DlIteratePhdrCallback);
-    uintptr_t some_global_address = reinterpret_cast<uintptr_t>(&some_global);
     RunnerCheck(result.InBounds(some_code_address),
                 "DlIteratePhdrCallback: a sample code address is not in bounds "
                 "of main executable");
