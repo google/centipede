@@ -120,14 +120,20 @@ ABSL_FLAG(size_t, rss_limit_mb, 4096,
           "--rss_limit_mb allows Centipede to *report* an OOM condition in "
           "most cases, while --address_space_limit_mb will cause a crash that "
           "may be hard to attribute to OOM.");
-ABSL_FLAG(size_t, timeout, 60,
+ABSL_FLAG(size_t, timeout_per_input, 60,
           "If not zero, the timeout in seconds for a single input. If an input "
           "runs longer than this, the runner process will abort. Support may "
           "vary depending on the runner.");
+ABSL_FLAG(size_t, timeout, 60,
+          "An alias for --timout_per_input. If both are passed, the last of "
+          "the two wins.")
+    .OnUpdate([]() {
+      absl::SetFlag(&FLAGS_timeout_per_input, absl::GetFlag(FLAGS_timeout));
+    });
 ABSL_FLAG(size_t, timeout_per_batch, 0,
           "If not zero, the collective timeout budget in seconds for a single "
           "batch of inputs. Each input in a batch still has up to "
-          "--timeout seconds to finish, but the entire batch must "
+          "--timeout_per_input seconds to finish, but the entire batch must "
           "finish within --timeout_per_batch seconds. The default is computed "
           "as a function of --timeout * --batch_size. Support may vary "
           "depending on the runner.");
@@ -342,10 +348,10 @@ Environment::Environment(const std::vector<std::string> &argv)
       prune_frequency(absl::GetFlag(FLAGS_prune_frequency)),
       address_space_limit_mb(absl::GetFlag(FLAGS_address_space_limit_mb)),
       rss_limit_mb(absl::GetFlag(FLAGS_rss_limit_mb)),
-      timeout(absl::GetFlag(FLAGS_timeout)),
+      timeout_per_input(absl::GetFlag(FLAGS_timeout_per_input)),
       timeout_per_batch(ComputeTimeoutPerBatch(    //
           absl::GetFlag(FLAGS_timeout_per_batch),  //
-          absl::GetFlag(FLAGS_timeout),            //
+          absl::GetFlag(FLAGS_timeout_per_input),  //
           absl::GetFlag(FLAGS_batch_size))),
       fork_server(absl::GetFlag(FLAGS_fork_server)),
       full_sync(absl::GetFlag(FLAGS_full_sync)),

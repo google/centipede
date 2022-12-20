@@ -113,13 +113,12 @@ static void CheckOOM() {
 }
 
 static void CheckTimeout() {
-  time_t start_time = state.timer;
-  time_t curr_time = time(nullptr);
-  if (state.run_time_flags.timeout_in_seconds != 0) {
-    if (curr_time - start_time >
-        static_cast<time_t>(state.run_time_flags.timeout_in_seconds)) {
+  if (state.run_time_flags.timeout_per_input != 0) {
+    time_t curr_time = time(nullptr);
+    if (curr_time - state.input_start_time >
+        static_cast<time_t>(state.run_time_flags.timeout_per_input)) {
       fprintf(stderr, "========= Timeout of %zd seconds exceeded; exiting\n",
-              state.run_time_flags.timeout_in_seconds);
+              state.run_time_flags.timeout_per_input);
       WriteFailureDescription("timeout-exceeded");
       _exit(EXIT_FAILURE);
     }
@@ -127,30 +126,32 @@ static void CheckTimeout() {
 }
 
 // Timer thread. Periodically checks if it's time to abort due to a timeout/OOM.
-[[noreturn]] static void *TimerThread(void *unused) {
+[[noreturn]] static void *WatchdogThread(void *unused) {
   while (true) {
     sleep(1);
-    if (state.timer == 0) continue;  // No calls to ResetTimer() yet.
+
+    // No calls to ResetInputTimer() yet: input execution hasn't started.
+    if (state.input_start_time == 0) continue;
 
     CheckTimeout();
     CheckOOM();
   }
 }
 
-void GlobalRunnerState::StartTimerThread() {
-  if (state.run_time_flags.timeout_in_seconds == 0 &&
+void GlobalRunnerState::StartWatchdogThread() {
+  if (state.run_time_flags.timeout_per_input == 0 &&
       state.run_time_flags.rss_limit_mb == 0) {
     return;
   }
-  fprintf(stderr, "timeout_in_seconds: %zd rss_limit_mb: %zd\n",
-          state.run_time_flags.timeout_in_seconds,
+  fprintf(stderr, "timeout_per_input: %zd rss_limit_mb: %zd\n",
+          state.run_time_flags.timeout_per_input,
           state.run_time_flags.rss_limit_mb);
-  pthread_t timer_thread;
-  pthread_create(&timer_thread, nullptr, TimerThread, nullptr);
-  pthread_detach(timer_thread);
+  pthread_t watchdog_thread;
+  pthread_create(&watchdog_thread, nullptr, WatchdogThread, nullptr);
+  pthread_detach(watchdog_thread);
 }
 
-void GlobalRunnerState::ResetTimer() { timer = time(nullptr); }
+void GlobalRunnerState::ResetInputTimer() { input_start_time = time(nullptr); }
 
 // Byte array mutation fallback for a custom mutator, as defined here:
 // https://github.com/google/fuzzing/blob/master/docs/structure-aware-fuzzing.md
@@ -284,7 +285,7 @@ static void RunOneInput(const uint8_t *data, size_t size,
   UsecSinceLast();
   PrepareCoverage();
   state.stats.prep_time_usec = UsecSinceLast();
-  state.ResetTimer();
+  state.ResetInputTimer();
   int target_return_value = test_one_input_cb(data, size);
   state.stats.exec_time_usec = UsecSinceLast();
   centipede::CheckOOM();
@@ -617,7 +618,7 @@ GlobalRunnerState::GlobalRunnerState() {
   // TODO(kcc): move some code from CentipedeRunnerMain() here so that it works
   // even if CentipedeRunnerMain() is not called.
   tls.OnThreadStart();
-  state.StartTimerThread();
+  state.StartWatchdogThread();
 
   centipede::SetLimits();
 

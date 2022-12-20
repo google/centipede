@@ -91,10 +91,10 @@ CENTIPEDE_RUNNER_FLAGS=":rss_limit_mb=4096:" $target "${oom}" \
 CENTIPEDE_RUNNER_FLAGS=":rss_limit_mb=8192:" $target "${oom}"  # must pass
 
 echo ======== Check timeout
-CENTIPEDE_RUNNER_FLAGS=":timeout_in_seconds=567:" "${target}" \
-  2>&1 | grep "^timeout_in_seconds:.567"
+CENTIPEDE_RUNNER_FLAGS=":timeout_per_input=567:" "${target}" \
+  2>&1 | grep "^timeout_per_input:.567"
 
-CENTIPEDE_RUNNER_FLAGS=":timeout_in_seconds=2:" "${target}" "${slo}" \
+CENTIPEDE_RUNNER_FLAGS=":timeout_per_input=2:" "${target}" "${slo}" \
   2>&1 | grep "======= Timeout.*; exiting"
 
 echo "PASS"

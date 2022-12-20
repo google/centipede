@@ -62,7 +62,7 @@ function Run() {
     --binary "${puzzle_path}" \
     --seed="${seed}" \
     --num_runs=2000000 \
-    --timeout=10 \
+    --timeout_per_input=10 \
     --exit_on_crash \
     "$@" \
     > "${log}" 2>&1 && exit 1  # Centipede must exit with failure.
