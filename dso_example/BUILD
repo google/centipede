@@ -32,7 +32,6 @@ cc_binary(
     linkstatic = False,
     deps = [
         ":fuzz_me",
-        "//base:system_malloc",  # to avoid any extra dependencies.
     ],
 )
 
