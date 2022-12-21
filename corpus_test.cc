@@ -153,7 +153,8 @@ TEST(FeatureSet, CountUnseenAndPruneFrequentFeatures_IncrementFrequencies) {
 
 TEST(Corpus, GetCmpArgs) {
   PCTable pc_table(100);
-  CoverageFrontier coverage_frontier(pc_table);
+  CFTable cf_table(100);
+  CoverageFrontier coverage_frontier(pc_table, cf_table);
   FeatureSet fs(3);
   Corpus corpus;
   ByteArray cmp_args{2, 0, 1, 2, 3};
@@ -166,7 +167,8 @@ TEST(Corpus, GetCmpArgs) {
 
 TEST(Corpus, PrintStats) {
   PCTable pc_table(100);
-  CoverageFrontier coverage_frontier(pc_table);
+  CFTable cf_table(100);
+  CoverageFrontier coverage_frontier(pc_table, cf_table);
   FeatureSet fs(3);
   Corpus corpus;
   FeatureVec features1 = {10, 20, 30};
@@ -186,7 +188,8 @@ TEST(Corpus, PrintStats) {
 TEST(Corpus, Prune) {
   // Prune will remove an input if all of its features appear at least 3 times.
   PCTable pc_table(100);
-  CoverageFrontier coverage_frontier(pc_table);
+  CFTable cf_table(100);
+  CoverageFrontier coverage_frontier(pc_table, cf_table);
   FeatureSet fs(3);
   Corpus corpus;
   Rng rng(0);
@@ -243,7 +246,8 @@ TEST(Corpus, Prune) {
 // Regression test for a crash in Corpus::Prune().
 TEST(Corpus, PruneRegressionTest1) {
   PCTable pc_table(100);
-  CoverageFrontier coverage_frontier(pc_table);
+  CFTable cf_table(100);
+  CoverageFrontier coverage_frontier(pc_table, cf_table);
   FeatureSet fs(2);
   Corpus corpus;
   Rng rng(0);
@@ -353,13 +357,22 @@ TEST(WeightedDistribution, WeightedDistribution) {
   compute_freq();
 }
 
+// TODO(navidem): based on comment from sergeygs -- This is becoming difficult
+// to maintain: various bits of the input data are stored in independent arrays,
+// other bits are dynamically initialized, and the matching expected results are
+// listed in two long chains of EXPECT's. I think it should be doable to
+// refactor this to use something like a TestCase struct tying all that
+// together, then iterate over test_cases once to populate pc_table etc, and a
+// second time to e.g. EXPECT_EQ(frontier.PcIndexIsFrontier(i),
+// test_cases[i].expected_is_frontier).
 TEST(CoverageFrontier, Compute) {
   // Function [0, 1): Fully covered.
   // Function [1, 2): Not covered.
-  // Function [2, 4): Partially covered => part of frontier.
+  // Function [2, 4): Partially covered => has one frontier.
   // Function [4, 6): Not covered.
-  // Function [6, 9): Partially covered => part of frontier.
+  // Function [6, 9): Partially covered => has one frontier.
   // Function [9, 12): Fully covered.
+  // Function [12, 19): Partially covered => has two frontiers.
   PCTable pc_table{{0, PCInfo::kFuncEntry},  // Covered.
                    {1, PCInfo::kFuncEntry},
                    {2, PCInfo::kFuncEntry},  // Covered.
@@ -369,10 +382,35 @@ TEST(CoverageFrontier, Compute) {
                    {6, PCInfo::kFuncEntry},  // Covered.
                    {7, 0},                   // Covered.
                    {8, 0},
-                   {9, PCInfo::kFuncEntry},  // Covered.
-                   {10, 0},                  // Covered.
-                   {11, 0}};                 // Covered.
-  CoverageFrontier frontier(pc_table);
+                   {9, PCInfo::kFuncEntry},   // Covered.
+                   {10, 0},                   // Covered.
+                   {11, 0},                   // Covered.
+                   {12, PCInfo::kFuncEntry},  // Covered.
+                   {13, 0},                   // Covered.
+                   {14, 0},                   // Covered.
+                   {15, 0},
+                   {16, 0},  // Covered.
+                   {17, 0},  // Covered.
+                   {18, 0}};
+  CFTable cf_table{
+      0,  0,  9,  0,     // 0 calls 9.
+      1,  0,  6,  0,     // 1 calls 6.
+      2,  3,  0,  0,     // 2 calls 4 in bb 3.
+      3,  0,  4,  0,     // This bb calls 4.
+      4,  5,  0,  0,     // 4 calls 9 in bb 5.
+      5,  0,  9,  0,     // This bb calls 9.
+      6,  7,  8,  0, 0,  // 6 calls 2 and makes indirect call in bb 8.
+      7,  0,  0,  8, 0,  2,  -1, 0,  // This bb calls 2 and makes an indirect
+                                     // call.
+      9,  10, 0,  0,                 // 9 calls no one.
+      10, 11, 0,  0, 11, 0,  0,  12, 13, 14, 0,  0,  // 12 call 9 and 99 in bb
+                                                     // 15, and calls 4 in
+                                                     // bb 18.
+      13, 15, 16, 0, 0,  14, 17, 18, 0,  0,  15, 0, 9,
+      99, 0,                                     // This bb calls 9 and 99.
+      16, 13, 0,  0, 17, 0,  0,  18, 0,  4,  0,  // This bb calls 4.
+  };
+  CoverageFrontier frontier(pc_table, cf_table);
   FeatureVec pcs(pc_table.size());
   for (size_t i = 0; i < pc_table.size(); i++) {
     pcs[i] = feature_domains::k8bitCounters.ConvertToMe(
@@ -388,7 +426,7 @@ TEST(CoverageFrontier, Compute) {
   };
 
   // Add PC-based features.
-  for (size_t idx : {0, 2, 6, 7, 9, 10, 11}) {
+  for (size_t idx : {0, 2, 6, 7, 9, 10, 11, 12, 13, 14, 16, 17}) {
     Add(pcs[idx]);
   }
   // add some non-pc features.
@@ -397,20 +435,63 @@ TEST(CoverageFrontier, Compute) {
   }
 
   // Compute and check the frontier.
-  EXPECT_EQ(frontier.Compute(corpus), 2);
-  EXPECT_EQ(frontier.NumFunctionsInFrontier(), 2);
+  EXPECT_EQ(frontier.Compute(corpus), 3);
+  EXPECT_EQ(frontier.NumFunctionsInFrontier(), 3);
   EXPECT_FALSE(frontier.PcIndexIsFrontier(0));
   EXPECT_FALSE(frontier.PcIndexIsFrontier(1));
   EXPECT_TRUE(frontier.PcIndexIsFrontier(2));
-  EXPECT_TRUE(frontier.PcIndexIsFrontier(3));
+  EXPECT_FALSE(frontier.PcIndexIsFrontier(3));
   EXPECT_FALSE(frontier.PcIndexIsFrontier(4));
   EXPECT_FALSE(frontier.PcIndexIsFrontier(5));
   EXPECT_TRUE(frontier.PcIndexIsFrontier(6));
-  EXPECT_TRUE(frontier.PcIndexIsFrontier(7));
-  EXPECT_TRUE(frontier.PcIndexIsFrontier(8));
+  EXPECT_FALSE(frontier.PcIndexIsFrontier(7));
+  EXPECT_FALSE(frontier.PcIndexIsFrontier(8));
   EXPECT_FALSE(frontier.PcIndexIsFrontier(9));
   EXPECT_FALSE(frontier.PcIndexIsFrontier(10));
   EXPECT_FALSE(frontier.PcIndexIsFrontier(11));
+  EXPECT_FALSE(frontier.PcIndexIsFrontier(12));
+  EXPECT_TRUE(frontier.PcIndexIsFrontier(13));
+  EXPECT_TRUE(frontier.PcIndexIsFrontier(14));
+  EXPECT_FALSE(frontier.PcIndexIsFrontier(15));
+  EXPECT_FALSE(frontier.PcIndexIsFrontier(16));
+  EXPECT_FALSE(frontier.PcIndexIsFrontier(17));
+  EXPECT_FALSE(frontier.PcIndexIsFrontier(18));
+
+  // Check frontier weight.
+  EXPECT_EQ(frontier.FrontierWeight(0), 0);
+  EXPECT_EQ(frontier.FrontierWeight(1), 0);
+  EXPECT_EQ(frontier.FrontierWeight(2), 153);
+  EXPECT_EQ(frontier.FrontierWeight(3), 0);
+  EXPECT_EQ(frontier.FrontierWeight(4), 0);
+  EXPECT_EQ(frontier.FrontierWeight(5), 0);
+  EXPECT_EQ(frontier.FrontierWeight(6), 230);
+  EXPECT_EQ(frontier.FrontierWeight(7), 0);
+  EXPECT_EQ(frontier.FrontierWeight(8), 0);
+  EXPECT_EQ(frontier.FrontierWeight(9), 0);
+  EXPECT_EQ(frontier.FrontierWeight(10), 0);
+  EXPECT_EQ(frontier.FrontierWeight(11), 0);
+  EXPECT_EQ(frontier.FrontierWeight(12), 0);
+  EXPECT_EQ(frontier.FrontierWeight(13), 25);
+  EXPECT_EQ(frontier.FrontierWeight(14), 153);
+  EXPECT_EQ(frontier.FrontierWeight(15), 0);
+  EXPECT_EQ(frontier.FrontierWeight(16), 0);
+  EXPECT_EQ(frontier.FrontierWeight(17), 0);
+  EXPECT_EQ(frontier.FrontierWeight(18), 0);
+}
+
+TEST(CoverageFrontierDeath, InvalidIndexToFrontier) {
+  PCTable pc_table = {{0, PCInfo::kFuncEntry}, {1, 0}};
+  CFTable cf_table = {
+      0, 1, 0, 0,
+      1, 0, 0,
+  };
+  Corpus corpus;
+  CoverageFrontier frontier(pc_table, cf_table);
+  frontier.Compute(corpus);
+    // Check with a non-existent idx.
+  // TODO(navidem): enable the following test once CHECK is used in
+  // PcIndexIsFrontier. EXPECT_DEATH(frontier.PcIndexIsFrontier(666), "");
+  EXPECT_DEATH(frontier.FrontierWeight(666), "");
 }
 
 }  // namespace

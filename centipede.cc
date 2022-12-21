@@ -88,7 +88,7 @@ Centipede::Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
       rng_(env_.seed),
       // TODO(kcc): [impl] find a better way to compute frequency_threshold.
       fs_(env_.feature_frequency_threshold),
-      coverage_frontier_(binary_info.pc_table),
+      coverage_frontier_(binary_info.pc_table, {}),   // TODO(navidem): fixit.
       pc_table_(binary_info.pc_table),
       symbols_(binary_info.symbols),
       function_filter_(env_.function_filter, symbols_),

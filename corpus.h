@@ -218,21 +218,17 @@ class Corpus {
 
 // Coverage frontier is a set of PCs that are themselves covered, but some of
 // adjacent PCs in the same function are not.
-// This class implements a bit simplified variant of coverage frontier:
-// If a function is partially covered, all of its PCs are in the frontier.
-// If a function is fully covered or not covered, all of it's PCs are not in the
-// frontier.
-//
-// Rationale:
-// If a function is fully covered, there is little to be gained by
-// focusing on this function (compared to not-fully covered ones).
-// If a function is not covered, we can not focus on it, and need to find a call
-// statement that calls it, which is most likely in an uncovered part of a
-// partially covered function.
+// This class identifies precise frontiers. Each frontier is assigned a weight.
+// Frontier weight is a representation of how much code is behind the
+// frontier. Therefore it should be used to prioritize which frontier to focus
+// first.
 class CoverageFrontier {
  public:
-  CoverageFrontier(const PCTable &pc_table)
-      : pc_table_(pc_table), frontier_(pc_table.size()) {}
+  CoverageFrontier(const PCTable &pc_table, const CFTable &cf_table)
+      : pc_table_(pc_table),
+        cf_table_(cf_table),
+        frontier_(pc_table.size()),
+        frontier_weight_(pc_table.size()) {}
 
   // Computes the coverage frontier of `corpus`.
   // Returns the number of functions in the frontier.
@@ -243,17 +239,27 @@ class CoverageFrontier {
 
   // Returns true iff `idx` belongs to the frontier.
   bool PcIndexIsFrontier(size_t idx) const {
+    // TODO(navidem): use this instead CHECK_LT(idx, MaxPcIndex());
     return idx < MaxPcIndex() && frontier_[idx];
   }
 
   // Returns the size of the pc_table used to create `this`.
   size_t MaxPcIndex() const { return pc_table_.size(); }
 
+  // Returns the frontier weight of pc at `idx`, weight of a non-frontier is 0.
+  uint32_t FrontierWeight(size_t idx) const {
+    CHECK_LT(idx, MaxPcIndex());
+    return frontier_weight_[idx];
+  }
+
  private:
   const PCTable pc_table_;
+  const CFTable cf_table_;
 
   // frontier_[idx] is true iff pc_table_[i] is part of the coverage frontier.
   std::vector<bool> frontier_;
+  // Stores the weight associated with frontier_[idx].
+  std::vector<uint32_t> frontier_weight_;
 
   // The number of functions in the frontier.
   size_t num_functions_in_frontier_ = 0;

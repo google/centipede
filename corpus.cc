@@ -20,8 +20,11 @@
 #include <string>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_cat.h"
+#include "./call_graph.h"
+#include "./control_flow.h"
 #include "./coverage.h"
 #include "./defs.h"
 #include "./feature.h"
@@ -251,36 +254,61 @@ uint32_t WeightedDistribution::PopBack() {
 
 //================= CoverageFrontier
 size_t CoverageFrontier::Compute(const Corpus &corpus) {
+  // Initialize the vectors.
   std::fill(frontier_.begin(), frontier_.end(), false);
+  std::fill(frontier_weight_.begin(), frontier_weight_.end(), 0);
 
-  // Use frontier_ as a scratch to record all PCs covered by corpus.
+  // A vector of covered indices in pc_table. Needed for Coverage object.
+  PCIndexVec covered_pcs;
   for (const auto &record : corpus.records_) {
     for (auto feature : record.features) {
       if (!feature_domains::k8bitCounters.Contains(feature)) continue;
       size_t idx = Convert8bitCounterFeatureToPcIndex(feature);
       if (idx >= pc_table_.size()) continue;
+      covered_pcs.push_back(idx);
       frontier_[idx] = true;
     }
   }
 
-  // Iterate all functions, set frontier_[] depending on whether the function
-  // is partially covered or not.
+  Coverage coverage(pc_table_, covered_pcs);
+  ControlFlowGraph cfg(cf_table_, pc_table_);
+
+  CallGraph call_graph;
+  call_graph.ReadFromCfTable(cf_table_, pc_table_);
+  // TODO(navidem): the above objects will be provided by centipede.
+
   num_functions_in_frontier_ = 0;
-  IteratePcTableFunctions(pc_table_, [this](size_t beg, size_t end) {
-    auto frontier_begin = frontier_.begin() + beg;
-    auto frontier_end = frontier_.begin() + end;
-    size_t cov_size_in_this_func =
-        std::count(frontier_begin, frontier_end, true);
-    if (cov_size_in_this_func == 0) return;  // Function not covered.
-    if (cov_size_in_this_func == end - beg) {
-      // function fully covered => not in the frontier.
-      std::fill(frontier_begin, frontier_end, false);
-      return;
-    }
-    // This function is in the frontier.
-    std::fill(frontier_begin, frontier_end, true);
-    ++num_functions_in_frontier_;
-  });
+  IteratePcTableFunctions(
+      pc_table_, [this, &coverage, &cfg, &call_graph](size_t beg, size_t end) {
+        auto frontier_begin = frontier_.begin() + beg;
+        auto frontier_end = frontier_.begin() + end;
+        size_t cov_size_in_this_func =
+            std::count(frontier_begin, frontier_end, true);
+        if (cov_size_in_this_func > 0 && cov_size_in_this_func < end - beg)
+          ++num_functions_in_frontier_;
+        // Reset the frontier_ entries.
+        std::fill(frontier_begin, frontier_end, false);
+        // Iterate over BBs in the function and check the coverage statue.
+        for (size_t i = beg; i < end; ++i) {
+          // If the current pc is not covered, it cannot be a frontier.
+          if (!coverage.BlockIsCovered(i)) continue;
+          auto pc = pc_table_[i].pc;
+          // Current pc is covered, look for a non-covered successor.
+          for (auto successor : cfg.GetSuccessors(pc)) {
+            auto succ_idx = cfg.GetPcIndex(successor);
+            if (coverage.BlockIsCovered(succ_idx))
+              continue;  // This successor is covered, skip it.
+            // Now we have a frontier, compute the weight.
+            frontier_[i] = true;
+            // Calculate frontier weight.
+            // TODO(navidem): This is too shallow. Use reachability computation
+            // to identify all BBs affected by this blocked successor.
+            frontier_weight_[i] += ComputeFrontierWeight(
+                coverage, cfg, call_graph.GetBasicBlockCallees(successor));
+          }
+        }
+      });
+
   return num_functions_in_frontier_;
 }
 
