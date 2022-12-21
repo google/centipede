@@ -144,10 +144,13 @@ class Centipede {
   CoverageFrontier coverage_frontier_;
   size_t num_runs_ = 0;  // counts executed inputs
 
-  // Coverage-related data, initialized at startup, once per process,
-  // by calling the PopulateSymbolAndPcTables callback.
+  // Binary-related data, initialized at startup, once per process,
+  // by calling the PopulateBinaryInfo callback.
   const PCTable &pc_table_;
   const SymbolTable &symbols_;
+  const BinaryInfo &binary_info_;
+  // TODO(navidem) replace pc_table_ with binary_info_.pc_table and same for
+  // symbols_
 
   // Derived from env_.function_filter. Currently, duplicated by every thread.
   // In future, threads may have different filters.
