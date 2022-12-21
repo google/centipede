@@ -67,7 +67,6 @@ set -e
 # Capture the build log as a fake test to reduce download spam
 declare -r FULL_BUILD_LOG_DIR="bazel_full_build_log"
 mkdir -p "${KOKORO_ARTIFACTS_DIR}/${FULL_BUILD_LOG_DIR}"
-chmod a+w "${FULL_BUILD_LOG_DIR}"
 cp "${BAZEL_OUTPUT_DIR}/command.log" "${KOKORO_ARTIFACTS_DIR}/${FULL_BUILD_LOG_DIR}/sponge_log.log"
 cat >"${KOKORO_ARTIFACTS_DIR}/${FULL_BUILD_LOG_DIR}/sponge_log.xml" <<DOC
 <?xml version="1.0" encoding="UTF-8"?>
@@ -75,6 +74,7 @@ cat >"${KOKORO_ARTIFACTS_DIR}/${FULL_BUILD_LOG_DIR}/sponge_log.xml" <<DOC
   <testsuite name="${FULL_BUILD_LOG_DIR}" tests="1" errors="${exit_code}"></testsuite>
 </testsuites>
 DOC
+chmod -R a+w "${FULL_BUILD_LOG_DIR}"
 
 ########################################
 # REMAP OUTPUT FILES
@@ -82,13 +82,14 @@ DOC
 declare -r KOKORO_BAZEL_LOGS_DIR="${KOKORO_ARTIFACTS_DIR}/bazel_test_logs"
 rm -rf "${KOKORO_BAZEL_LOGS_DIR}"  # For local testing
 mkdir -p "${KOKORO_BAZEL_LOGS_DIR}"
-chmod a+w "${KOKORO_BAZEL_LOGS_DIR}"
 
 # Copy test.{log,xml} files to kokoro artifacts directory, then rename them.
 find -L bazel-testlogs -name "test.log" -exec cp --parents {} "${KOKORO_BAZEL_LOGS_DIR}" \;
 find -L "${KOKORO_BAZEL_LOGS_DIR}" -name "test.log" -exec rename 's/test\.log/sponge_log.log/' {} \;
 find -L bazel-testlogs -name "test.xml" -exec cp --parents {} "${KOKORO_BAZEL_LOGS_DIR}" \;
 find -L "${KOKORO_BAZEL_LOGS_DIR}" -name "test.xml" -exec rename 's/test\.xml/sponge_log.xml/' {} \;
+
+chmod -R a+w "${KOKORO_BAZEL_LOGS_DIR}"
 
 date --rfc-3339=seconds
 echo "Exiting Docker"

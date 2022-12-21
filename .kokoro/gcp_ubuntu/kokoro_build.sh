@@ -35,7 +35,7 @@ if [[ -n "${KOKORO_ARTIFACTS_DIR+x}" ]]; then
   # the checked out GitHub repo, so we just define $KOKORO_CENTIPEDE_DIR.
   declare -r KOKORO_CENTIPEDE_DIR="${KOKORO_ARTIFACTS_DIR}/github/centipede"
   # No need for sudo when run by Kokoro.
-  declare -r MAYBE_SUDO=""
+  declare -r DOCKER_CMD="docker"
 else
   # If KOKORO_ARTIFACTS_DIR is undefined, we assume the script is being run
   # manually, and define both $KOKORO_CENTIPEDE_DIR and $KOKORO_ARTIFACTS_DIR.
@@ -43,7 +43,7 @@ else
   declare -r KOKORO_ARTIFACTS_DIR
   declare -r KOKORO_CENTIPEDE_DIR="${KOKORO_ARTIFACTS_DIR}"
   # Must run under sudo, or else docker trips over insufficient permissions.
-  declare -r MAYBE_SUDO="sudo"
+  declare -r DOCKER_CMD="sudo docker"
 fi
 
 # Code under repo is checked out to ${KOKORO_ARTIFACTS_DIR}/github.
@@ -53,7 +53,7 @@ cd "${KOKORO_CENTIPEDE_DIR}/.kokoro/gcp_ubuntu"
 
 declare -r DOCKER_IMAGE=debian
 
-"${MAYBE_SUDO}" docker run \
+${DOCKER_CMD} run \
   -v "${KOKORO_CENTIPEDE_DIR}:/app" \
   -v "${KOKORO_ARTIFACTS_DIR}:/kokoro" \
   --env KOKORO_ARTIFACTS_DIR=/kokoro \
