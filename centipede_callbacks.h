@@ -40,6 +40,7 @@ namespace centipede {
 struct BinaryInfo {
   PCTable pc_table;
   SymbolTable symbols;
+  CFTable cf_table;
 };
 
 // User must inherit from this class and override at least the

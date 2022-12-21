@@ -39,6 +39,8 @@ void CentipedeCallbacks::PopulateBinaryInfo(BinaryInfo &binary_info) {
   if (!std::filesystem::exists(temp_dir_)) {
     CreateLocalDirRemovedAtExit(temp_dir_);
   }
+
+  // Load PC table.
   std::string pc_table_path =
       std::filesystem::path(temp_dir_).append("pc_table");
   binary_info.pc_table =
@@ -49,17 +51,30 @@ void CentipedeCallbacks::PopulateBinaryInfo(BinaryInfo &binary_info) {
                    "--require_pc_table=0)";
       exit(EXIT_FAILURE);
     }
-    LOG(INFO) << "Could not get PCTable, debug symbols will not be used";
-  } else {
-    std::vector<std::string> coverage_binary_argv = absl::StrSplit(
-        env_.coverage_binary, absl::ByAnyChar{" \t\n"}, absl::SkipWhitespace{});
-    CHECK(!coverage_binary_argv.empty());
-    std::string binary_name = coverage_binary_argv[0];
-    std::string tmp1 = std::filesystem::path(temp_dir_).append("sym-tmp1");
-    std::string tmp2 = std::filesystem::path(temp_dir_).append("sym-tmp2");
-    binary_info.symbols.GetSymbolsFromBinary(binary_info.pc_table, binary_name,
-                                             env_.symbolizer_path, tmp1, tmp2);
+    LOG(INFO)
+        << "Could not get PCTable, CFTable and debug symbols will not be used";
+    return;
   }
+  // Load CF table.
+  std::string cf_table_path =
+      std::filesystem::path(temp_dir_).append("cf_table");
+  binary_info.cf_table =
+      GetCfTableFromBinary(env_.coverage_binary, cf_table_path);
+  if (binary_info.cf_table.empty()) {
+    LOG(INFO) << "Could not get CFTable from " << env_.coverage_binary
+              << "\nThe binary should be built with clang 16 and with "
+                 "-fsanitize=control-flow flag.";
+  }
+
+  // Load Symbols.
+  std::vector<std::string> coverage_binary_argv = absl::StrSplit(
+      env_.coverage_binary, absl::ByAnyChar{" \t\n"}, absl::SkipWhitespace{});
+  CHECK(!coverage_binary_argv.empty());
+  std::string binary_name = coverage_binary_argv[0];
+  std::string tmp1 = std::filesystem::path(temp_dir_).append("sym-tmp1");
+  std::string tmp2 = std::filesystem::path(temp_dir_).append("sym-tmp2");
+  binary_info.symbols.GetSymbolsFromBinary(binary_info.pc_table, binary_name,
+                                           env_.symbolizer_path, tmp1, tmp2);
 }
 
 std::string CentipedeCallbacks::ConstructRunnerFlags(
