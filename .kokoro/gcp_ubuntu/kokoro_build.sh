@@ -23,10 +23,12 @@
 
 set -eu
 
-if [[ "${PWD}" =~ google3 ]]; then
-  echo "First export OSS variant by running ../../copybara/local_copy.sh, "\
-    "then run this script in created ~/centipede_oss"
-  kill -9 $$
+SCRIPT_DIR="$(cd -L "$(dirname "$0")" && echo "${PWD}")"
+readonly SCRIPT_DIR
+
+if [[ "${SCRIPT_DIR}" =~ google3 ]]; then
+  echo "First run ${SCRIPT_DIR}/../../copybara/local_copy.sh to export OSS "\
+    "variant to ~/centipede_oss, then run this script there."
   exit 1
 fi
 
@@ -39,8 +41,7 @@ if [[ -n "${KOKORO_ARTIFACTS_DIR+x}" ]]; then
 else
   # If KOKORO_ARTIFACTS_DIR is undefined, we assume the script is being run
   # manually, and define both $KOKORO_CENTIPEDE_DIR and $KOKORO_ARTIFACTS_DIR.
-  KOKORO_ARTIFACTS_DIR="$(cd -L "$(dirname "$0")/../../" && echo "${PWD}")"
-  declare -r KOKORO_ARTIFACTS_DIR
+  declare -r KOKORO_ARTIFACTS_DIR="${SCRIPT_DIR}/../.."
   declare -r KOKORO_CENTIPEDE_DIR="${KOKORO_ARTIFACTS_DIR}"
   # Must run under sudo, or else docker trips over insufficient permissions.
   declare -r DOCKER_CMD="sudo docker"
