@@ -47,6 +47,13 @@ centipede_fuzz_target(
     sancov = "trace-pc",
 )
 
+# Target built with non-pie.
+centipede_fuzz_target(
+    name = "test_fuzz_target_non_pie",
+    srcs = ["test_fuzz_target.cc"],
+    linkopts = ["-no-pie"],
+)
+
 # Target instrumented with -fsanitize-coverage=trace-pc.
 centipede_fuzz_target(
     name = "abort_fuzz_target_trace_pc",
@@ -160,6 +167,7 @@ sh_test(
     srcs = ["runner_test.sh"],
     data = [
         ":test_fuzz_target",
+        ":test_fuzz_target_non_pie",
         "@centipede//:test_util_sh",
     ],
 )

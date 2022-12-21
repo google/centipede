@@ -22,6 +22,7 @@ set -eu
 source "$(dirname "$0")/../test_util.sh"
 
 target="$(centipede::get_centipede_test_srcdir)/testing/test_fuzz_target"
+non_pie_target="$(centipede::get_centipede_test_srcdir)/testing/test_fuzz_target_non_pie"
 
 # Create input files.
 oom="${TEST_TMPDIR}/oom"
@@ -66,6 +67,9 @@ echo ======== Run f1
 "${target}" "${f1}"   | grep "{66, 31}"
 echo ======== Run func1
 "${target}" "${func1}"  | grep "{66, 75, 6e, 63, 31}"
+
+echo ======== Trying non-pie target binary
+"${non_pie_target}" "${f1}"   | grep "{66, 31}"
 
 check_features_files_f1_and_f02
 
