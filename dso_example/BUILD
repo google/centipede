@@ -16,23 +16,40 @@
 
 # Shared library that we want to fuzz, built with (some) coverage instrumentation.
 # It links the centipede runtime dynamically.
-cc_library(
-    name = "fuzz_me",
+cc_binary(
+    name = "fuzz_me.so",
     srcs = ["fuzz_me.cc"],
     copts = ["-fsanitize-coverage=trace-pc"],
+    linkshared = True,
     linkstatic = False,
-    deps = ["@centipede//:centipede_runner_no_main"],
+    deps = ["@centipede//:centipede_runner_no_main"],  # build-cleaner:keep
 )
 
 # The main binary that calls into :fuzz_me, which is linked dynamically.
 # Not instrumented with coverage.
 cc_binary(
     name = "main",
-    srcs = ["main.cc"],
-    linkstatic = False,
-    deps = [
-        ":fuzz_me",
+    srcs = [
+        "main.cc",
+        ":fuzz_me.so",
     ],
+    linkstatic = False,
 )
 
-# TODO(kcc): add a test that runs centipede on :main
+# TODO(kcc): remove manual/notap. May need to disable sanitizers for that.
+sh_test(
+    name = "dso_example_test",
+    srcs = ["dso_example_test.sh"],
+    data = [
+        ":fuzz_me.so",
+        ":main",
+        "@centipede",
+    ],
+    tags = [
+        "manual",
+        "notap",
+    ],
+    deps = [
+        "@centipede//:test_util_sh",
+    ],
+)
