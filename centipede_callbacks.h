@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "./byte_array_mutator.h"
+#include "./call_graph.h"
 #include "./command.h"
 #include "./control_flow.h"
 #include "./defs.h"
@@ -41,6 +42,8 @@ struct BinaryInfo {
   PCTable pc_table;
   SymbolTable symbols;
   CFTable cf_table;
+  ControlFlowGraph control_flow_graph;
+  CallGraph call_graph;
 };
 
 // User must inherit from this class and override at least the

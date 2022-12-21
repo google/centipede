@@ -131,6 +131,7 @@ CFTable GetCfTableFromBinary(std::string_view binary_path,
 ControlFlowGraph::ControlFlowGraph(const CFTable &cf_table,
                                    const PCTable &pc_table)
     : func_entries_(pc_table.size()) {
+  CHECK(!cf_table.empty());
   for (size_t j = 0; j < cf_table.size();) {
     std::vector<uintptr_t> successors;
     auto curr_pc = cf_table[j];
@@ -187,6 +188,12 @@ uint32_t ComputeFunctionCyclomaticComplexity(uintptr_t pc,
     if (!visited_pcs.insert(currnet_pc).second) continue;
     ++node_num;
     for (auto &successor : cfg.GetSuccessors(currnet_pc)) {
+      // TODO(navidem): The following is checking for specific edge case that we
+      // see a PC only in successors of CFTable but neither in PCTable nor as an
+      // entry in CFTable. Removing this will cause the following tests to fail:
+      // //third_party/centipede/google:centipede_main_cns_test
+      // //third_party/centipede/testing:centipede_main_test.
+      if (!cfg.exists(successor)) continue;
       ++edge_num;
       worklist.push(successor);
     }

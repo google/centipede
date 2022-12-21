@@ -93,6 +93,7 @@ CFTable GetCfTableFromBinary(std::string_view binary_path,
 
 class ControlFlowGraph {
  public:
+  ControlFlowGraph() = default;
   // Reads form __sancov_cfs section. On error it crashes, if the section is not
   // there, the graph_ will be empty.
   ControlFlowGraph(const CFTable &cf_table, const PCTable &pc_table);
@@ -118,7 +119,9 @@ class ControlFlowGraph {
 
   // Returns true if the given basic block is function entry.
   bool BlockIsFunctionEntry(PCIndex pc_index) const {
-    return pc_index < func_entries_.size() ? func_entries_[pc_index]: false;
+    // TODO(navidem): Change the following to use CHECK_LE(pc_index,
+    // func_entries_.size()) and have a death test.
+    return pc_index < func_entries_.size() ? func_entries_[pc_index] : false;
   }
 
   // Returns the idx in pc_table associated with the PC, CHECK-fails if the PC

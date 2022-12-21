@@ -362,6 +362,7 @@ cc_library(
     ],
     deps = [
         ":byte_array_mutator",
+        ":call_graph",
         ":command",
         ":control_flow",
         ":defs",
