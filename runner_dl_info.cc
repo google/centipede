@@ -48,7 +48,7 @@ int g_some_global;  // Used in DlIteratePhdrCallback.
 // otherwise leaves result unchanged.
 static int DlIteratePhdrCallback(struct dl_phdr_info *info, size_t size,
                                  void *param_voidptr) {
-  constexpr bool kDlDebug = true;  // we may want to make it a runtime flag.
+  constexpr bool kDlDebug = false;  // we may want to make it a runtime flag.
   DlCallbackParam *param = static_cast<DlCallbackParam *>(param_voidptr);
   DlInfo &result = param->result;
   RunnerCheck(!result.IsSet(), "result is already set");
