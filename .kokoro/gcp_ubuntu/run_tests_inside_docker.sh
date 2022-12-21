@@ -74,7 +74,7 @@ cat >"${KOKORO_ARTIFACTS_DIR}/${FULL_BUILD_LOG_DIR}/sponge_log.xml" <<DOC
   <testsuite name="${FULL_BUILD_LOG_DIR}" tests="1" errors="${exit_code}"></testsuite>
 </testsuites>
 DOC
-chmod -R a+w "${FULL_BUILD_LOG_DIR}"
+chmod -R a+w "${KOKORO_ARTIFACTS_DIR}/${FULL_BUILD_LOG_DIR}"
 
 ########################################
 # REMAP OUTPUT FILES
