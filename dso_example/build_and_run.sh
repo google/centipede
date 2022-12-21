@@ -57,4 +57,4 @@ mkdir /tmp/wd
 echo "Fuzzing until the first crash"
 /tmp/centipede --workdir=/tmp/wd \
   --binary="./main_executable @@" --exit_on_crash=1 \
-  --coverage_binary="${PWD}/fuzz_me.so" --runner_dl_path="${PWD}/fuzz_me.so"
+  --coverage_binary="${PWD}/fuzz_me.so" --runner_dl_path_suffix="/fuzz_me.so"

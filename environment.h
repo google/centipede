@@ -78,7 +78,7 @@ struct Environment {
   std::string export_corpus_from_local_dir;
   std::vector<std::string> corpus_dir;
   std::string symbolizer_path;
-  std::string runner_dl_path;
+  std::string runner_dl_path_suffix;
   std::string input_filter;
   std::vector<std::string> dictionary;
   std::string function_filter;

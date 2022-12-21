@@ -34,10 +34,10 @@ struct DlInfo {
   }
 };
 
-// Returns DlInfo for the dynamic library who's exact path is `dl_path`.
-// If `dl_path` is `nullptr`, returns DlInfo for the main binary.
+// Returns DlInfo for the dynamic library who's exact path is `dl_path_suffix`.
+// If `dl_path_suffix` is `nullptr`, returns DlInfo for the main binary.
 // If the required library is not found, returns empty DlInfo (`!IsSet()`).
-DlInfo GetDlInfo(const char *dl_path);
+DlInfo GetDlInfo(const char *dl_path_suffix);
 
 }  // namespace centipede
 

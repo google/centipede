@@ -96,8 +96,10 @@ std::string CentipedeCallbacks::ConstructRunnerFlags(
       env_.use_dataflow_features && !disable_coverage
           ? ":use_dataflow_features:"
           : "",
-      env_.runner_dl_path.empty() ? "" : ":dl_path=", env_.runner_dl_path,
-      ":crossover_level=", env_.crossover_level, ":", extra_flags);
+      env_.runner_dl_path_suffix.empty() ? "" : ":dl_path_suffix=",
+      env_.runner_dl_path_suffix.empty() ? "" : env_.runner_dl_path_suffix,
+      ":crossover_level=", env_.crossover_level,
+      ":", extra_flags);
 }
 
 Command &CentipedeCallbacks::GetOrCreateCommandForBinary(

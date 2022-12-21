@@ -172,8 +172,8 @@ struct GlobalRunnerState {
   // Usually, the main object is the executable binary containing main()
   // and most of the executable code (we assume that the target is
   // built in mostly-static mode, i.e. -dynamic_mode=off).
-  // When the `dl_path` runner flag is provided, the main_object refers to
-  // the dynamic library (DSO) pointed to by this flag.
+  // When the `dl_path_suffix` runner flag is provided, the main_object refers
+  // to the dynamic library (DSO) pointed to by this flag.
   //
   // Note: this runner currently does not support more than one instrumented
   // DSO in the process, i.e. you either instrument the main binary, or one DSO.

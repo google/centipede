@@ -623,10 +623,11 @@ GlobalRunnerState::GlobalRunnerState() {
   centipede::SetLimits();
 
   // Compute main_object.
-  main_object = GetDlInfo(state.GetStringFlag(":dl_path="));
-  RunnerCheck(main_object.IsSet(),
-              "GetDlInfo failed to find the requested object at :dl_path= "
-              "(the main binary if :dl_path= is empty)");
+  main_object = GetDlInfo(state.GetStringFlag(":dl_path_suffix="));
+  RunnerCheck(
+      main_object.IsSet(),
+      "GetDlInfo failed to find the requested object at :dl_path_suffix= "
+      "(the main binary if :dl_path_suffix= is empty)");
 
   // Dump the pc table, if instructed.
   if (state.HasFlag(":dump_pc_table:")) {

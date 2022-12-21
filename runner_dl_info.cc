@@ -30,10 +30,16 @@ namespace {
 // Struct to pass to dl_iterate_phdr's callback.
 struct DlCallbackParam {
   // Full path to the instrumented library or nullptr for the main binary.
-  const char *dl_path;
+  const char *dl_path_suffix;
   // DlInfo to set on success.
   DlInfo &result;
 };
+
+bool StringEndsWithSuffix(const char *string, const char *suffix) {
+  const char *pos = strstr(string, suffix);
+  if (pos == nullptr) return false;
+  return pos == string + strlen(string) - strlen(suffix);
+}
 
 int g_some_global;  // Used in DlIteratePhdrCallback.
 
@@ -41,11 +47,11 @@ int g_some_global;  // Used in DlIteratePhdrCallback.
 
 // See man dl_iterate_phdr.
 // `param_voidptr` is cast to a `DlCallbackParam *param`.
-// Looks for the dynamic library with `dlpi_name == param->dl_path`
-// or for the main binary if `param->dl_path == nullptr`.
-// The code assumes that the main binary is the first one to be iterated on.
-// If the desired library is found, sets result.start_address and result.size,
-// otherwise leaves result unchanged.
+// Looks for the dynamic library who's dlpi_name ends with
+// `param->dl_path_suffix` or for the main binary if `param->dl_path_suffix ==
+// nullptr`. The code assumes that the main binary is the first one to be
+// iterated on. If the desired library is found, sets result.start_address and
+// result.size, otherwise leaves result unchanged.
 static int DlIteratePhdrCallback(struct dl_phdr_info *info, size_t size,
                                  void *param_voidptr) {
   constexpr bool kDlDebug = false;  // we may want to make it a runtime flag.
@@ -53,8 +59,10 @@ static int DlIteratePhdrCallback(struct dl_phdr_info *info, size_t size,
   DlInfo &result = param->result;
   RunnerCheck(!result.IsSet(), "result is already set");
   // Skip uninteresting info.
-  if (param->dl_path != nullptr && strcmp(param->dl_path, info->dlpi_name) != 0)
+  if (param->dl_path_suffix != nullptr &&
+      StringEndsWithSuffix(info->dlpi_name, param->dl_path_suffix)) {
     return 0;  // 0 indicates we want to see the other entries.
+  }
 
   auto some_code_address = reinterpret_cast<uintptr_t>(DlIteratePhdrCallback);
   auto some_global_address = reinterpret_cast<uintptr_t>(&g_some_global);
@@ -97,7 +105,7 @@ static int DlIteratePhdrCallback(struct dl_phdr_info *info, size_t size,
 
   RunnerCheck(result.size != 0,
               "DlIteratePhdrCallback failed to compute result.size");
-  if (param->dl_path == nullptr) {
+  if (param->dl_path_suffix == nullptr) {
     // When the main binary is coverage-instrumented, we currently only support
     // statically linking this runner. Which means, that the runner itself
     // is part of the main binary and we can do additional checks, which we
@@ -112,9 +120,9 @@ static int DlIteratePhdrCallback(struct dl_phdr_info *info, size_t size,
   return result.IsSet();  // return 1 if we found what we were looking for.
 }
 
-DlInfo GetDlInfo(const char *dl_path) {
+DlInfo GetDlInfo(const char *dl_path_suffix) {
   DlInfo result;
-  DlCallbackParam callback_param = {dl_path, result};
+  DlCallbackParam callback_param = {dl_path_suffix, result};
   dl_iterate_phdr(DlIteratePhdrCallback, &callback_param);
   return result;
 }
