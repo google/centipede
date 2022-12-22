@@ -102,15 +102,18 @@ FeatureSet::ComputeWeight(const FeatureVec &features) const {
 static size_t ComputeWeight(const FeatureVec &fv, const FeatureSet &fs,
                             const CoverageFrontier &coverage_frontier) {
   size_t weight = fs.ComputeWeight(fv);
-  size_t num_features_in_frontier = 0;
+  size_t frontier_weights_sum = 0;
   for (const auto feature : fv) {
     if (!feature_domains::k8bitCounters.Contains(feature)) continue;
     const auto pc_index = Convert8bitCounterFeatureToPcIndex(feature);
+    // TODO(navidem): This check should not be needed. Investigate why pc_index
+    // can become greater than pc_table size!
+    if (pc_index >= coverage_frontier.MaxPcIndex()) continue;
     if (coverage_frontier.PcIndexIsFrontier(pc_index)) {
-      ++num_features_in_frontier;
+      frontier_weights_sum += coverage_frontier.FrontierWeight(pc_index);
     }
   }
-  return weight * (num_features_in_frontier + 1);  // Multiply by at least 1.
+  return weight * (frontier_weights_sum + 1);  // Multiply by at least 1.
 }
 
 size_t Corpus::Prune(const FeatureSet &fs,
