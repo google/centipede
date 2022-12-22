@@ -16,6 +16,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
@@ -28,7 +29,6 @@
 #include "./util.h"
 
 namespace centipede {
-namespace {
 
 // Mock CFTable representing the following cfg:
 //    1
@@ -36,10 +36,28 @@ namespace {
 // 2     3
 //  \   /
 //    4
+// TODO(navidem): Change PCs to 100, 200 etc, to avoid confusion with PCIndex.
 static const CFTable g_cf_table = {1, 2, 3, 0, 0, 2, 4, 0,
                                    0, 3, 4, 0, 0, 4, 0, 0};
 static const PCTable g_pc_table = {
     {1, PCInfo::kFuncEntry}, {2, 0}, {3, 0}, {4, 0}};
+
+TEST(ControlFlowGraph, ComputeReachabilityForPc) {
+  ControlFlowGraph cfg(g_cf_table, g_pc_table);
+  EXPECT_NE(cfg.size(), 0);
+
+  auto reach1 = cfg.ComputeReachabilityForPc(1);
+  auto reach2 = cfg.ComputeReachabilityForPc(2);
+  auto reach3 = cfg.ComputeReachabilityForPc(3);
+  auto reach4 = cfg.ComputeReachabilityForPc(4);
+
+  EXPECT_THAT(reach1, testing::UnorderedElementsAre(1, 2, 3, 4));
+  EXPECT_THAT(reach2, testing::UnorderedElementsAre(2, 4));
+  EXPECT_THAT(reach3, testing::UnorderedElementsAre(3, 4));
+  EXPECT_THAT(reach4, testing::ElementsAre(4));
+}
+
+namespace {
 
 TEST(CFTable, MakeCfgFromCfTable) {
   ControlFlowGraph cfg(g_cf_table, g_pc_table);

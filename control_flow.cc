@@ -19,6 +19,7 @@
 #include <ostream>
 #include <queue>
 #include <string>
+#include <vector>
 
 #include "./command.h"
 #include "./defs.h"
@@ -171,6 +172,24 @@ const std::vector<uintptr_t> &ControlFlowGraph::GetSuccessors(
   auto it = graph_.find(basic_block);
   CHECK(it != graph_.end());
   return it->second;
+}
+
+std::vector<uintptr_t> ControlFlowGraph::ComputeReachabilityForPc(
+    uintptr_t pc) const {
+  absl::flat_hash_set<uintptr_t> visited_pcs;
+  std::queue<uintptr_t> worklist;
+
+  worklist.push(pc);
+  while (!worklist.empty()) {
+    auto current_pc = worklist.front();
+    worklist.pop();
+    if (!visited_pcs.insert(current_pc).second) continue;
+    for (const auto &successor : graph_.at(current_pc)) {
+      if (!exists(successor)) continue;
+      worklist.push(successor);
+    }
+  }
+  return {visited_pcs.begin(), visited_pcs.end()};
 }
 
 uint32_t ComputeFunctionCyclomaticComplexity(uintptr_t pc,

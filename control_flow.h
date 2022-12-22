@@ -21,6 +21,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
+#include "./defs.h"
 #include "./logging.h"
 
 namespace centipede {
@@ -146,6 +147,12 @@ class ControlFlowGraph {
   // A map from function PC to its calculated cyclomatic complexity. It is
   // to avoid unnecessary calls to ComputeFunctionCyclomaticComplexity.
   absl::flat_hash_map<uintptr_t, uint32_t> function_complexities_;
+
+  // Returns a vector of PCs reachable from `pc`, not in any particular order.
+  // The result always includes `pc`, since any block is reachable from itself.
+  std::vector<uintptr_t> ComputeReachabilityForPc(uintptr_t pc) const;
+
+  FRIEND_TEST(ControlFlowGraph, ComputeReachabilityForPc);
 };
 
 // Computes the Cyclomatic Complexity for the given function,
