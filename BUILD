@@ -353,6 +353,17 @@ cc_library(
 )
 
 cc_library(
+    name = "binary_info",
+    hdrs = [
+        "binary_info.h",
+    ],
+    deps = [
+        ":call_graph",
+        ":control_flow",
+    ],
+)
+
+cc_library(
     name = "centipede_callbacks",
     srcs = [
         "centipede_callbacks.cc",
@@ -361,6 +372,7 @@ cc_library(
         "centipede_callbacks.h",
     ],
     deps = [
+        ":binary_info",
         ":byte_array_mutator",
         ":call_graph",
         ":command",
