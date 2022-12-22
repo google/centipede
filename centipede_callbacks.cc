@@ -63,11 +63,9 @@ void CentipedeCallbacks::PopulateBinaryInfo(BinaryInfo &binary_info) {
   if (binary_info.cf_table.empty()) {
     LOG(INFO) << "Could not get CFTable from " << env_.coverage_binary
               << "\nThe binary should be built with clang 16 and with "
-                 "-fsanitize=control-flow flag.";
+                 "-fsanitize-coverage=control-flow flag.";
   } else {
     // Construct call-graph and cfg using loaded cf_table.
-    // TODO(navidem): Unify the interface for cfg and call-graph: either ctor,
-    // or a separate function to read from cf_table.
     binary_info.control_flow_graph =
         ControlFlowGraph(binary_info.cf_table, binary_info.pc_table);
 
