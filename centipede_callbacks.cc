@@ -71,8 +71,8 @@ void CentipedeCallbacks::PopulateBinaryInfo(BinaryInfo &binary_info) {
     binary_info.control_flow_graph =
         ControlFlowGraph(binary_info.cf_table, binary_info.pc_table);
 
-    binary_info.call_graph.ReadFromCfTable(binary_info.cf_table,
-                                           binary_info.pc_table);
+    binary_info.call_graph =
+        CallGraph(binary_info.cf_table, binary_info.pc_table);
   }
 
   // Load Symbols.
@@ -107,8 +107,7 @@ std::string CentipedeCallbacks::ConstructRunnerFlags(
           : "",
       env_.runner_dl_path_suffix.empty() ? "" : ":dl_path_suffix=",
       env_.runner_dl_path_suffix.empty() ? "" : env_.runner_dl_path_suffix,
-      ":crossover_level=", env_.crossover_level,
-      ":", extra_flags);
+      ":crossover_level=", env_.crossover_level, ":", extra_flags);
 }
 
 Command &CentipedeCallbacks::GetOrCreateCommandForBinary(

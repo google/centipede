@@ -20,8 +20,7 @@
 
 namespace centipede {
 
-void CallGraph::ReadFromCfTable(const CFTable &cf_table,
-                                const PCTable &pc_table) {
+CallGraph::CallGraph(const CFTable &cf_table, const PCTable &pc_table) {
   // Find all function entries.
   for (auto pc_info : pc_table) {
     if (pc_info.has_flag(PCInfo::kFuncEntry))

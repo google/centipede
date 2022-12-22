@@ -273,8 +273,7 @@ size_t CoverageFrontier::Compute(const Corpus &corpus) {
   Coverage coverage(pc_table_, covered_pcs);
   ControlFlowGraph cfg(cf_table_, pc_table_);
 
-  CallGraph call_graph;
-  call_graph.ReadFromCfTable(cf_table_, pc_table_);
+  CallGraph call_graph(cf_table_, pc_table_);
   // TODO(navidem): the above objects will be provided by centipede.
 
   num_functions_in_frontier_ = 0;

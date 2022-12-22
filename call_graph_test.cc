@@ -59,8 +59,7 @@ static const PCTable g_pc_table = {
 };
 
 TEST(CallGraphDeathTest, CgNoneExistentPc) {
-  CallGraph call_graph;
-  call_graph.ReadFromCfTable(g_cf_table, g_pc_table);
+  CallGraph call_graph(g_cf_table, g_pc_table);
 
   // Check with a non-existent PC to make map::at fail.
   EXPECT_DEATH(call_graph.GetFunctionCallees(666), "");
@@ -68,8 +67,7 @@ TEST(CallGraphDeathTest, CgNoneExistentPc) {
 }
 
 TEST(CallGraph, BuildCgFromCfTable) {
-  CallGraph call_graph;
-  call_graph.ReadFromCfTable(g_cf_table, g_pc_table);
+  CallGraph call_graph(g_cf_table, g_pc_table);
 
   absl::flat_hash_set<uintptr_t> instrumented_pcs;
   for (auto &pc_info : g_pc_table) {
