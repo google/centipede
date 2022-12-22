@@ -326,6 +326,7 @@ cc_library(
     srcs = ["corpus.cc"],
     hdrs = ["corpus.h"],
     deps = [
+        ":binary_info",
         ":call_graph",
         ":control_flow",
         ":coverage",

@@ -154,7 +154,7 @@ TEST(FeatureSet, CountUnseenAndPruneFrequentFeatures_IncrementFrequencies) {
 TEST(Corpus, GetCmpArgs) {
   PCTable pc_table(100);
   CFTable cf_table(100);
-  CoverageFrontier coverage_frontier(pc_table, cf_table);
+  CoverageFrontier coverage_frontier({pc_table, {}, cf_table, {}, {}});
   FeatureSet fs(3);
   Corpus corpus;
   ByteArray cmp_args{2, 0, 1, 2, 3};
@@ -168,7 +168,7 @@ TEST(Corpus, GetCmpArgs) {
 TEST(Corpus, PrintStats) {
   PCTable pc_table(100);
   CFTable cf_table(100);
-  CoverageFrontier coverage_frontier(pc_table, cf_table);
+  CoverageFrontier coverage_frontier({pc_table, {}, cf_table, {}, {}});
   FeatureSet fs(3);
   Corpus corpus;
   FeatureVec features1 = {10, 20, 30};
@@ -189,7 +189,7 @@ TEST(Corpus, Prune) {
   // Prune will remove an input if all of its features appear at least 3 times.
   PCTable pc_table(100);
   CFTable cf_table(100);
-  CoverageFrontier coverage_frontier(pc_table, cf_table);
+  CoverageFrontier coverage_frontier({pc_table, {}, cf_table, {}, {}});
   FeatureSet fs(3);
   Corpus corpus;
   Rng rng(0);
@@ -247,7 +247,7 @@ TEST(Corpus, Prune) {
 TEST(Corpus, PruneRegressionTest1) {
   PCTable pc_table(100);
   CFTable cf_table(100);
-  CoverageFrontier coverage_frontier(pc_table, cf_table);
+  CoverageFrontier coverage_frontier({pc_table, {}, cf_table, {}, {}});
   FeatureSet fs(2);
   Corpus corpus;
   Rng rng(0);
@@ -393,24 +393,29 @@ TEST(CoverageFrontier, Compute) {
                    {17, 0},  // Covered.
                    {18, 0}};
   CFTable cf_table{
-      0,  0,  9,  0,     // 0 calls 9.
-      1,  0,  6,  0,     // 1 calls 6.
-      2,  3,  0,  0,     // 2 calls 4 in bb 3.
-      3,  0,  4,  0,     // This bb calls 4.
-      4,  5,  0,  0,     // 4 calls 9 in bb 5.
-      5,  0,  9,  0,     // This bb calls 9.
-      6,  7,  8,  0, 0,  // 6 calls 2 and makes indirect call in bb 8.
-      7,  0,  0,  8, 0,  2,  -1, 0,  // This bb calls 2 and makes an indirect
-                                     // call.
-      9,  10, 0,  0,                 // 9 calls no one.
-      10, 11, 0,  0, 11, 0,  0,  12, 13, 14, 0,  0,  // 12 call 9 and 99 in bb
-                                                     // 15, and calls 4 in
-                                                     // bb 18.
-      13, 15, 16, 0, 0,  14, 17, 18, 0,  0,  15, 0, 9,
-      99, 0,                                     // This bb calls 9 and 99.
-      16, 13, 0,  0, 17, 0,  0,  18, 0,  4,  0,  // This bb calls 4.
+      0, 0, 9, 0,               // 0 calls 9.
+      1, 0, 6, 0,               // 1 calls 6.
+      2, 3, 0, 0,               // 2 calls 4 in bb 3.
+      3, 0, 4, 0,               // This bb calls 4.
+      4, 5, 0, 0,               // 4 calls 9 in bb 5.
+      5, 0, 9, 0,               // This bb calls 9.
+      6, 7, 8, 0, 0,            // 6 calls 2 and makes indirect call in bb 8.
+      7, 0, 0, 8, 0, 2, -1, 0,  // This bb calls 2 and makes an indirect
+                                // call.
+      9, 10, 0, 0,              // 9 calls no one.
+      10, 11, 0, 0, 11, 0, 0, 12, 13, 14, 0, 0,  // 12 call 9 and 99 in bb
+                                                 // 15, and calls 4 in
+                                                 // bb 18.
+      13, 15, 16, 0, 0, 14, 17, 18, 0, 0, 15, 0, 9, 99,
+      0,                                    // This bb calls 9 and 99.
+      16, 13, 0, 0, 17, 0, 0, 18, 0, 4, 0,  // This bb calls 4.
   };
-  CoverageFrontier frontier(pc_table, cf_table);
+
+  ControlFlowGraph cfg(cf_table, pc_table);
+  CallGraph call_graph(cf_table, pc_table);
+  BinaryInfo bin_info = {pc_table, {}, cf_table, cfg, call_graph};
+  CoverageFrontier frontier(bin_info);
+
   FeatureVec pcs(pc_table.size());
   for (size_t i = 0; i < pc_table.size(); i++) {
     pcs[i] = feature_domains::k8bitCounters.ConvertToMe(
@@ -482,13 +487,18 @@ TEST(CoverageFrontier, Compute) {
 TEST(CoverageFrontierDeath, InvalidIndexToFrontier) {
   PCTable pc_table = {{0, PCInfo::kFuncEntry}, {1, 0}};
   CFTable cf_table = {
-      0, 1, 0, 0,
-      1, 0, 0,
+      0, 1, 0, 0, 1, 0, 0,
   };
+
+  ControlFlowGraph cfg(cf_table, pc_table);
+  CallGraph call_graph(cf_table, pc_table);
+
+  BinaryInfo bin_info = {pc_table, {}, cf_table, cfg, call_graph};
+  CoverageFrontier frontier(bin_info);
+
   Corpus corpus;
-  CoverageFrontier frontier(pc_table, cf_table);
   frontier.Compute(corpus);
-    // Check with a non-existent idx.
+  // Check with a non-existent idx.
   // TODO(navidem): enable the following test once CHECK is used in
   // PcIndexIsFrontier. EXPECT_DEATH(frontier.PcIndexIsFrontier(666), "");
   EXPECT_DEATH(frontier.FrontierWeight(666), "");

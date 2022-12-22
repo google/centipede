@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_set.h"
+#include "./binary_info.h"
 #include "./control_flow.h"
 #include "./coverage.h"
 #include "./defs.h"
@@ -224,11 +225,10 @@ class Corpus {
 // first.
 class CoverageFrontier {
  public:
-  CoverageFrontier(const PCTable &pc_table, const CFTable &cf_table)
-      : pc_table_(pc_table),
-        cf_table_(cf_table),
-        frontier_(pc_table.size()),
-        frontier_weight_(pc_table.size()) {}
+  CoverageFrontier(const BinaryInfo &binary_info)
+      : binary_info_(binary_info),
+        frontier_(binary_info.pc_table.size()),
+        frontier_weight_(binary_info.pc_table.size()) {}
 
   // Computes the coverage frontier of `corpus`.
   // Returns the number of functions in the frontier.
@@ -244,7 +244,7 @@ class CoverageFrontier {
   }
 
   // Returns the size of the pc_table used to create `this`.
-  size_t MaxPcIndex() const { return pc_table_.size(); }
+  size_t MaxPcIndex() const { return binary_info_.pc_table.size(); }
 
   // Returns the frontier weight of pc at `idx`, weight of a non-frontier is 0.
   uint32_t FrontierWeight(size_t idx) const {
@@ -253,8 +253,7 @@ class CoverageFrontier {
   }
 
  private:
-  const PCTable pc_table_;
-  const CFTable cf_table_;
+  const BinaryInfo &binary_info_;
 
   // frontier_[idx] is true iff pc_table_[i] is part of the coverage frontier.
   std::vector<bool> frontier_;

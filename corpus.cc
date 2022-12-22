@@ -264,49 +264,46 @@ size_t CoverageFrontier::Compute(const Corpus &corpus) {
     for (auto feature : record.features) {
       if (!feature_domains::k8bitCounters.Contains(feature)) continue;
       size_t idx = Convert8bitCounterFeatureToPcIndex(feature);
-      if (idx >= pc_table_.size()) continue;
+      if (idx >= binary_info_.pc_table.size()) continue;
       covered_pcs.push_back(idx);
       frontier_[idx] = true;
     }
   }
 
-  Coverage coverage(pc_table_, covered_pcs);
-  ControlFlowGraph cfg(cf_table_, pc_table_);
-
-  CallGraph call_graph(cf_table_, pc_table_);
-  // TODO(navidem): the above objects will be provided by centipede.
+  Coverage coverage(binary_info_.pc_table, covered_pcs);
 
   num_functions_in_frontier_ = 0;
-  IteratePcTableFunctions(
-      pc_table_, [this, &coverage, &cfg, &call_graph](size_t beg, size_t end) {
-        auto frontier_begin = frontier_.begin() + beg;
-        auto frontier_end = frontier_.begin() + end;
-        size_t cov_size_in_this_func =
-            std::count(frontier_begin, frontier_end, true);
-        if (cov_size_in_this_func > 0 && cov_size_in_this_func < end - beg)
-          ++num_functions_in_frontier_;
-        // Reset the frontier_ entries.
-        std::fill(frontier_begin, frontier_end, false);
-        // Iterate over BBs in the function and check the coverage statue.
-        for (size_t i = beg; i < end; ++i) {
-          // If the current pc is not covered, it cannot be a frontier.
-          if (!coverage.BlockIsCovered(i)) continue;
-          auto pc = pc_table_[i].pc;
-          // Current pc is covered, look for a non-covered successor.
-          for (auto successor : cfg.GetSuccessors(pc)) {
-            auto succ_idx = cfg.GetPcIndex(successor);
-            if (coverage.BlockIsCovered(succ_idx))
-              continue;  // This successor is covered, skip it.
-            // Now we have a frontier, compute the weight.
-            frontier_[i] = true;
-            // Calculate frontier weight.
-            // TODO(navidem): This is too shallow. Use reachability computation
-            // to identify all BBs affected by this blocked successor.
-            frontier_weight_[i] += ComputeFrontierWeight(
-                coverage, cfg, call_graph.GetBasicBlockCallees(successor));
-          }
-        }
-      });
+  IteratePcTableFunctions(binary_info_.pc_table, [this, &coverage](size_t beg,
+                                                                   size_t end) {
+    auto frontier_begin = frontier_.begin() + beg;
+    auto frontier_end = frontier_.begin() + end;
+    size_t cov_size_in_this_func =
+        std::count(frontier_begin, frontier_end, true);
+    if (cov_size_in_this_func > 0 && cov_size_in_this_func < end - beg)
+      ++num_functions_in_frontier_;
+    // Reset the frontier_ entries.
+    std::fill(frontier_begin, frontier_end, false);
+    // Iterate over BBs in the function and check the coverage statue.
+    for (size_t i = beg; i < end; ++i) {
+      // If the current pc is not covered, it cannot be a frontier.
+      if (!coverage.BlockIsCovered(i)) continue;
+      auto pc = binary_info_.pc_table[i].pc;
+      // Current pc is covered, look for a non-covered successor.
+      for (auto successor : binary_info_.control_flow_graph.GetSuccessors(pc)) {
+        auto succ_idx = binary_info_.control_flow_graph.GetPcIndex(successor);
+        if (coverage.BlockIsCovered(succ_idx))
+          continue;  // This successor is covered, skip it.
+        // Now we have a frontier, compute the weight.
+        frontier_[i] = true;
+        // Calculate frontier weight.
+        // TODO(navidem): This is too shallow. Use reachability computation
+        // to identify all BBs affected by this blocked successor.
+        frontier_weight_[i] += ComputeFrontierWeight(
+            coverage, binary_info_.control_flow_graph,
+            binary_info_.call_graph.GetBasicBlockCallees(successor));
+      }
+    }
+  });
 
   return num_functions_in_frontier_;
 }
