@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_join.h"
 #include "absl/strings/str_split.h"
 #include "./command.h"
 #include "./control_flow.h"
@@ -86,27 +87,27 @@ void CentipedeCallbacks::PopulateBinaryInfo(BinaryInfo &binary_info) {
 
 std::string CentipedeCallbacks::ConstructRunnerFlags(
     std::string_view extra_flags, bool disable_coverage) {
-  std::string path_level;
-  if (!disable_coverage)
-    path_level = absl::StrCat(":path_level=", env_.path_level, ":");
-  return absl::StrCat(
-      "CENTIPEDE_RUNNER_FLAGS=", ":timeout_per_input=", env_.timeout_per_input,
-      ":", ":timeout_per_batch=", env_.timeout_per_batch, ":",
-      ":address_space_limit_mb=", env_.address_space_limit_mb, ":",
-      ":rss_limit_mb=", env_.rss_limit_mb, ":",
-      env_.use_pc_features && !disable_coverage ? ":use_pc_features:" : "",
-      env_.use_counter_features && !disable_coverage ? ":use_counter_features:"
-                                                     : "",
-      path_level,
-      env_.use_cmp_features && !disable_coverage ? ":use_cmp_features:" : "",
-      env_.use_auto_dictionary && !disable_coverage ? ":use_auto_dictionary:"
-                                                    : "",
-      env_.use_dataflow_features && !disable_coverage
-          ? ":use_dataflow_features:"
-          : "",
-      env_.runner_dl_path_suffix.empty() ? "" : ":dl_path_suffix=",
-      env_.runner_dl_path_suffix.empty() ? "" : env_.runner_dl_path_suffix,
-      ":crossover_level=", env_.crossover_level, ":", extra_flags);
+  std::vector<std::string> flags = {
+      "CENTIPEDE_RUNNER_FLAGS=",
+      absl::StrCat("timeout_per_input=", env_.timeout_per_input),
+      absl::StrCat("timeout_per_batch=", env_.timeout_per_batch),
+      absl::StrCat("address_space_limit_mb=", env_.address_space_limit_mb),
+      absl::StrCat("rss_limit_mb=", env_.rss_limit_mb),
+      absl::StrCat("crossover_level=", env_.crossover_level),
+  };
+  if (!disable_coverage) {
+    flags.emplace_back(absl::StrCat("path_level=", env_.path_level));
+    if (env_.use_pc_features) flags.emplace_back("use_pc_features");
+    if (env_.use_counter_features) flags.emplace_back("use_counter_features");
+    if (env_.use_cmp_features) flags.emplace_back("use_cmp_features");
+    if (env_.use_auto_dictionary) flags.emplace_back("use_auto_dictionary");
+    if (env_.use_dataflow_features) flags.emplace_back("use_dataflow_features");
+  }
+  if (env_.runner_dl_path_suffix.empty())
+    flags.emplace_back(absl::StrCat("dl_path=", env_.runner_dl_path_suffix));
+  if (!extra_flags.empty()) flags.emplace_back(extra_flags);
+  flags.emplace_back("");
+  return absl::StrJoin(flags, ":");
 }
 
 Command &CentipedeCallbacks::GetOrCreateCommandForBinary(
