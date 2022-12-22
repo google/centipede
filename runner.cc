@@ -34,6 +34,7 @@
 #include <unistd.h>
 
 #include <cinttypes>
+#include <cstdint>
 #include <cstdlib>
 #include <vector>
 
@@ -100,42 +101,45 @@ static uint64_t TimeInUsec() {
   return tv.tv_sec * kUsecInSec + tv.tv_usec;
 }
 
-static void CheckOOM() {
-  if (state.run_time_flags.rss_limit_mb > 0) {
-    size_t current_rss_mb = GetPeakRSSMb();
-    if (current_rss_mb > state.run_time_flags.rss_limit_mb) {
+static void CheckWatchdogLimits() {
+  const uint64_t curr_time = time(nullptr);
+  struct Resource {
+    const char *what;
+    const char *units;
+    uint64_t value;
+    uint64_t limit;
+    const char *failure;
+  };
+  const Resource resources[] = {
+      {
+          .what = "Per-input timeout",
+          .units = "sec",
+          .value = curr_time - state.input_start_time,
+          .limit = state.run_time_flags.timeout_per_input,
+          .failure = "per-input-timeout-exceeded",
+      },
+      {
+          .what = "Per-batch timeout",
+          .units = "sec",
+          .value = curr_time - state.batch_start_time,
+          .limit = state.run_time_flags.timeout_per_batch,
+          .failure = "per-batch-timeout-exceeded",
+      },
+      {
+          .what = "RSS limit",
+          .units = "MB",
+          .value = GetPeakRSSMb(),
+          .limit = state.run_time_flags.rss_limit_mb,
+          .failure = "rss-limit-exceeded",
+      },
+  };
+  for (const auto &resource : resources) {
+    if (resource.limit != 0 && resource.value > resource.limit) {
       fprintf(stderr,
-              "========= OOM, RSS limit of %zdMb exceeded (%zdMb); exiting\n",
-              state.run_time_flags.rss_limit_mb, current_rss_mb);
-      WriteFailureDescription("rss-limit-exceeded");
-      _exit(EXIT_FAILURE);
-    }
-  }
-}
-
-static void CheckPerInputTimeout() {
-  if (state.run_time_flags.timeout_per_input != 0) {
-    time_t curr_time = time(nullptr);
-    if (curr_time - state.input_start_time >
-        static_cast<time_t>(state.run_time_flags.timeout_per_input)) {
-      fprintf(stderr,
-              "========= Per-input timeout of %zd seconds exceeded; exiting\n",
-              state.run_time_flags.timeout_per_input);
-      WriteFailureDescription("per-input-timeout-exceeded");
-      _exit(EXIT_FAILURE);
-    }
-  }
-}
-
-static void CheckPerBatchTimeout() {
-  time_t curr_time = time(nullptr);
-  if (state.run_time_flags.timeout_per_batch != 0) {
-    if (curr_time - state.batch_start_time >
-        static_cast<time_t>(state.run_time_flags.timeout_per_batch)) {
-      fprintf(stderr,
-              "========= Per-batch timeout of %zd seconds exceeded; exiting\n",
-              state.run_time_flags.timeout_per_batch);
-      WriteFailureDescription("per-batch-timeout-exceeded");
+              "========= %s exceeded: %" PRIu64 " > %" PRIu64
+              " (%s); exiting\n",
+              resource.what, resource.value, resource.limit, resource.units);
+      WriteFailureDescription(resource.failure);
       _exit(EXIT_FAILURE);
     }
   }
@@ -150,9 +154,7 @@ static void CheckPerBatchTimeout() {
     // No calls to ResetInputTimer() yet: input execution hasn't started.
     if (state.input_start_time == 0) continue;
 
-    CheckPerInputTimeout();
-    CheckPerBatchTimeout();
-    CheckOOM();
+    CheckWatchdogLimits();
   }
 }
 
@@ -165,7 +167,7 @@ void GlobalRunnerState::StartWatchdogThread() {
   fprintf(stderr,
           "Starting watchdog thread: timeout_per_input: %" PRIu64
           " sec; timeout_per_batch: %" PRIu64 " sec; rss_limit_mb: %" PRIu64
-          " Mb\n",
+          " MB\n",
           state.run_time_flags.timeout_per_input,
           state.run_time_flags.timeout_per_batch,
           state.run_time_flags.rss_limit_mb);
@@ -319,7 +321,7 @@ static void RunOneInput(const uint8_t *data, size_t size,
   state.ResetTimers();
   int target_return_value = test_one_input_cb(data, size);
   state.stats.exec_time_usec = UsecSinceLast();
-  centipede::CheckOOM();
+  CheckWatchdogLimits();
   PostProcessCoverage(target_return_value);
   state.stats.post_time_usec = UsecSinceLast();
   state.stats.peak_rss_mb = centipede::GetPeakRSSMb();

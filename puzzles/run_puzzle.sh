@@ -78,21 +78,21 @@ function SolutionIs() {
 # Expects that Centipede found a per-input timeout.
 function ExpectPerInputTimeout() {
   echo "======= ${FUNCNAME[0]}"
-  centipede::assert_regex_in_file "Per-input timeout .* exceeded" "${log}"
+  centipede::assert_regex_in_file "Per-input timeout exceeded" "${log}"
   centipede::assert_regex_in_file "Failure.*: per-input-timeout-exceeded" "${log}"
 }
 
 # Expects that Centipede found a per-batch timeout.
 function ExpectPerBatchTimeout() {
   echo "======= ${FUNCNAME[0]}"
-  centipede::assert_regex_in_file "Per-batch timeout .* exceeded" "${log}"
+  centipede::assert_regex_in_file "Per-batch timeout exceeded" "${log}"
   centipede::assert_regex_in_file "Failure.*: per-batch-timeout-exceeded" "${log}"
 }
 
 # Expects that Centipede found a OOM.
 function ExpectOOM() {
   echo "======= ${FUNCNAME[0]}"
-  centipede::assert_regex_in_file "RSS limit .* exceeded" "${log}"
+  centipede::assert_regex_in_file "RSS limit exceeded" "${log}"
   centipede::assert_regex_in_file "Failure.*: rss-limit-exceeded" "${log}"
 }
 

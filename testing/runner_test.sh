@@ -99,6 +99,6 @@ CENTIPEDE_RUNNER_FLAGS=":timeout_per_input=567:" "${target}" \
   2>&1 | grep "timeout_per_input:.567"
 
 CENTIPEDE_RUNNER_FLAGS=":timeout_per_input=2:" "${target}" "${slo}" \
-  2>&1 | grep "Per-input timeout .* exceeded"
+  2>&1 | grep "Per-input timeout exceeded"
 
 echo "PASS"
