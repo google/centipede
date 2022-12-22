@@ -18,7 +18,6 @@
 #include <cmath>
 #include <cstddef>
 #include <filesystem>  // NOLINT
-#include <limits>
 #include <string>
 #include <vector>
 
@@ -135,8 +134,8 @@ ABSL_FLAG(size_t, timeout_per_batch, 0,
           "batch of inputs. Each input in a batch still has up to "
           "--timeout_per_input seconds to finish, but the entire batch must "
           "finish within --timeout_per_batch seconds. The default is computed "
-          "as a function of --timeout * --batch_size. Support may vary "
-          "depending on the runner.");
+          "as a function of --timeout_per_input * --batch_size. Support may "
+          "vary depending on the runner.");
 ABSL_FLAG(bool, fork_server, true,
           "If true (default) tries to execute the target(s) via the fork "
           "server, if supported by the target(s). Prepend the binary path with "
@@ -298,10 +297,9 @@ size_t ComputeTimeoutPerBatch(  //
     size_t timeout_per_batch, size_t timeout_per_input, size_t batch_size) {
   if (timeout_per_batch == 0) {
     CHECK_GT(batch_size, 0);
-    if (timeout_per_input == 0) {
-      timeout_per_batch =
-          std::numeric_limits<decltype(timeout_per_batch)>::max();
-    } else {
+    // NOTE: If `timeout_per_input` == 0, leave `timeout_per_batch` at 0 too:
+    // the implementation interprets both as "no limit".
+    if (timeout_per_input != 0) {
       // TODO(ussuri): The formula here is an unscientific heuristic conjured
       //  up for CPU instruction fuzzing. `timeout_per_input` is interpreted as
       //  the long tail of the input runtime distribution of yet-unknown nature.

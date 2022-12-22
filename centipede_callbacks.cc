@@ -91,7 +91,8 @@ std::string CentipedeCallbacks::ConstructRunnerFlags(
     path_level = absl::StrCat(":path_level=", env_.path_level, ":");
   return absl::StrCat(
       "CENTIPEDE_RUNNER_FLAGS=", ":timeout_per_input=", env_.timeout_per_input,
-      ":", ":address_space_limit_mb=", env_.address_space_limit_mb, ":",
+      ":", ":timeout_per_batch=", env_.timeout_per_batch, ":",
+      ":address_space_limit_mb=", env_.address_space_limit_mb, ":",
       ":rss_limit_mb=", env_.rss_limit_mb, ":",
       env_.use_pc_features && !disable_coverage ? ":use_pc_features:" : "",
       env_.use_counter_features && !disable_coverage ? ":use_counter_features:"

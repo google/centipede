@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Centipede puzzle: easy-to-reach timeout.
-// RUN: Run --timeout=2 && SolutionIs SLO && ExpectTimeout
+// Centipede puzzle: easy-to-reach per-input timeout.
+// RUN: Run --timeout_per_input=2 && SolutionIs SLO && ExpectPerInputTimeout
 
 #include <unistd.h>
 

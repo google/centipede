@@ -33,6 +33,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <cinttypes>
 #include <cstdlib>
 #include <vector>
 
@@ -106,26 +107,42 @@ static void CheckOOM() {
       fprintf(stderr,
               "========= OOM, RSS limit of %zdMb exceeded (%zdMb); exiting\n",
               state.run_time_flags.rss_limit_mb, current_rss_mb);
-      WriteFailureDescription("out-of-memory");
+      WriteFailureDescription("rss-limit-exceeded");
       _exit(EXIT_FAILURE);
     }
   }
 }
 
-static void CheckTimeout() {
+static void CheckPerInputTimeout() {
   if (state.run_time_flags.timeout_per_input != 0) {
     time_t curr_time = time(nullptr);
     if (curr_time - state.input_start_time >
         static_cast<time_t>(state.run_time_flags.timeout_per_input)) {
-      fprintf(stderr, "========= Timeout of %zd seconds exceeded; exiting\n",
+      fprintf(stderr,
+              "========= Per-input timeout of %zd seconds exceeded; exiting\n",
               state.run_time_flags.timeout_per_input);
-      WriteFailureDescription("timeout-exceeded");
+      WriteFailureDescription("per-input-timeout-exceeded");
       _exit(EXIT_FAILURE);
     }
   }
 }
 
-// Timer thread. Periodically checks if it's time to abort due to a timeout/OOM.
+static void CheckPerBatchTimeout() {
+  time_t curr_time = time(nullptr);
+  if (state.run_time_flags.timeout_per_batch != 0) {
+    if (curr_time - state.batch_start_time >
+        static_cast<time_t>(state.run_time_flags.timeout_per_batch)) {
+      fprintf(stderr,
+              "========= Per-batch timeout of %zd seconds exceeded; exiting\n",
+              state.run_time_flags.timeout_per_batch);
+      WriteFailureDescription("per-batch-timeout-exceeded");
+      _exit(EXIT_FAILURE);
+    }
+  }
+}
+
+// Watchdog thread. Periodically checks if it's time to abort due to a
+// timeout/OOM.
 [[noreturn]] static void *WatchdogThread(void *unused) {
   while (true) {
     sleep(1);
@@ -133,25 +150,39 @@ static void CheckTimeout() {
     // No calls to ResetInputTimer() yet: input execution hasn't started.
     if (state.input_start_time == 0) continue;
 
-    CheckTimeout();
+    CheckPerInputTimeout();
+    CheckPerBatchTimeout();
     CheckOOM();
   }
 }
 
 void GlobalRunnerState::StartWatchdogThread() {
   if (state.run_time_flags.timeout_per_input == 0 &&
+      state.run_time_flags.timeout_per_batch == 0 &&
       state.run_time_flags.rss_limit_mb == 0) {
     return;
   }
-  fprintf(stderr, "timeout_per_input: %zd rss_limit_mb: %zd\n",
+  fprintf(stderr,
+          "Starting watchdog thread: timeout_per_input: %" PRIu64
+          " sec; timeout_per_batch: %" PRIu64 " sec; rss_limit_mb: %" PRIu64
+          " Mb\n",
           state.run_time_flags.timeout_per_input,
+          state.run_time_flags.timeout_per_batch,
           state.run_time_flags.rss_limit_mb);
   pthread_t watchdog_thread;
   pthread_create(&watchdog_thread, nullptr, WatchdogThread, nullptr);
   pthread_detach(watchdog_thread);
 }
 
-void GlobalRunnerState::ResetInputTimer() { input_start_time = time(nullptr); }
+void GlobalRunnerState::ResetTimers() {
+  const auto curr_time = time(nullptr);
+  input_start_time = curr_time;
+  // batch_start_time is set only once -- just before the first input of the
+  // batch is about to start running.
+  if (batch_start_time == 0) {
+    batch_start_time = curr_time;
+  }
+}
 
 // Byte array mutation fallback for a custom mutator, as defined here:
 // https://github.com/google/fuzzing/blob/master/docs/structure-aware-fuzzing.md
@@ -285,7 +316,7 @@ static void RunOneInput(const uint8_t *data, size_t size,
   UsecSinceLast();
   PrepareCoverage();
   state.stats.prep_time_usec = UsecSinceLast();
-  state.ResetInputTimer();
+  state.ResetTimers();
   int target_return_value = test_one_input_cb(data, size);
   state.stats.exec_time_usec = UsecSinceLast();
   centipede::CheckOOM();

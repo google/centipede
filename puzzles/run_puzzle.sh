@@ -75,17 +75,25 @@ function SolutionIs() {
   centipede::assert_regex_in_file "Input bytes.*: $1" "${log}"
 }
 
-# Expects that Centipede found a timeout.
-function ExpectTimeout() {
+# Expects that Centipede found a per-input timeout.
+function ExpectPerInputTimeout() {
   echo "======= ${FUNCNAME[0]}"
-  centipede::assert_regex_in_file "Timeout of .* seconds exceeded; exiting" "${log}"
-  centipede::assert_regex_in_file "Failure.*: timeout-exceeded" "${log}"
+  centipede::assert_regex_in_file "Per-input timeout .* exceeded" "${log}"
+  centipede::assert_regex_in_file "Failure.*: per-input-timeout-exceeded" "${log}"
+}
+
+# Expects that Centipede found a per-batch timeout.
+function ExpectPerBatchTimeout() {
+  echo "======= ${FUNCNAME[0]}"
+  centipede::assert_regex_in_file "Per-batch timeout .* exceeded" "${log}"
+  centipede::assert_regex_in_file "Failure.*: per-batch-timeout-exceeded" "${log}"
 }
 
 # Expects that Centipede found a OOM.
 function ExpectOOM() {
   echo "======= ${FUNCNAME[0]}"
-  centipede::assert_regex_in_file "Failure.*: out-of-memory" "${log}"
+  centipede::assert_regex_in_file "RSS limit .* exceeded" "${log}"
+  centipede::assert_regex_in_file "Failure.*: rss-limit-exceeded" "${log}"
 }
 
 # Expects that $1 is found in the log.
