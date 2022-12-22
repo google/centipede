@@ -79,7 +79,7 @@ class ExecutionResult {
   //  * `value1` (`size` bytes)
   std::vector<uint8_t> cmp_args_;
 
-  Stats stats_;          // Stats from executing one input.
+  Stats stats_;  // Stats from executing one input.
 };
 
 // BatchResult is the communication API between Centipede and its runner.
@@ -136,12 +136,15 @@ class BatchResult {
   // Accessors.
   std::vector<ExecutionResult>& results() { return results_; }
   const std::vector<ExecutionResult>& results() const { return results_; }
-  std::string &log() { return log_; }
-  const std::string &log() const { return log_; }
+  std::string& log() { return log_; }
+  const std::string& log() const { return log_; }
   int& exit_code() { return exit_code_; }
   int exit_code() const { return exit_code_; }
   size_t num_outputs_read() const { return num_outputs_read_; }
-  std::string &failure_description() { return failure_description_; }
+  std::string& failure_description() { return failure_description_; }
+  const std::string& failure_description() const {
+    return failure_description_;
+  }
 
  private:
   std::vector<ExecutionResult> results_;

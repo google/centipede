@@ -693,6 +693,7 @@ void Centipede::ReportCrash(std::string_view binary,
   LOG(INFO) << log_prefix << "Batch execution failed:"
             << "\nBinary          : " << binary
             << "\nExit code       : " << batch_result.exit_code()
+            << "\nFailure         : " << batch_result.failure_description()
             << "\nNumber of inputs: " << input_vec.size()
             << "\nCrash log       :\n\n";
   for (const auto &log_line :
