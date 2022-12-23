@@ -175,7 +175,14 @@ int CentipedeMain(const Environment &env,
   RemoteMkdir(env.MakeCoverageDirPath());
 
   auto one_time_callbacks = callbacks_factory.create(env);
-  BinaryInfo binary_info;
+  PCTable pct;
+  CFTable cft;
+  SymbolTable st;
+  ControlFlowGraph cfg;
+  CallGraph cg;
+  BinaryInfo binary_info = {pct, st, cft, cfg, cg};
+  // TODO(navidem): Better to load binary_info contents and use those for
+  // initialization.
   one_time_callbacks->PopulateBinaryInfo(binary_info);
   callbacks_factory.destroy(one_time_callbacks);
 
