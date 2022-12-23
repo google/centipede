@@ -255,15 +255,15 @@ size_t CentipedeCallbacks::LoadDictionary(std::string_view dictionary_path) {
     return entries.size();
   }
   // Didn't parse as plain text. Assume Centipede-native corpus format.
-  ByteArray packed_corpus(text.begin(), text.end());
-  std::vector<ByteArray> unpacked_corpus;
-  UnpackBytesFromAppendFile(packed_corpus, &unpacked_corpus);
-  CHECK(!unpacked_corpus.empty())
+  ByteArray packed_dictionary(text.begin(), text.end());
+  std::vector<ByteArray> unpacked_dictionary;
+  UnpackBytesFromAppendFile(packed_dictionary, &unpacked_dictionary);
+  CHECK(!unpacked_dictionary.empty())
       << "Empty or corrupt dictionary file: " << dictionary_path;
-  byte_array_mutator_.AddToDictionary(unpacked_corpus);
-  LOG(INFO) << "Loaded " << unpacked_corpus.size()
+  byte_array_mutator_.AddToDictionary(unpacked_dictionary);
+  LOG(INFO) << "Loaded " << unpacked_dictionary.size()
             << " dictionary entries from " << dictionary_path;
-  return unpacked_corpus.size();
+  return unpacked_dictionary.size();
 }
 
 }  // namespace centipede
