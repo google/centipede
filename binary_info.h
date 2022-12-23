@@ -24,11 +24,11 @@ namespace centipede {
 // Information about the binary being fuzzed. Created once at program startup
 // and doesn't change (other than for lazily initialized fields)
 struct BinaryInfo {
-  PCTable pc_table;
-  SymbolTable symbols;
-  CFTable cf_table;
-  ControlFlowGraph control_flow_graph;
-  CallGraph call_graph;
+  PCTable &pc_table;
+  SymbolTable &symbols;
+  CFTable &cf_table;
+  ControlFlowGraph &control_flow_graph;
+  CallGraph &call_graph;
 };
 
 }  // namespace centipede

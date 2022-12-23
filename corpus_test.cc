@@ -24,6 +24,7 @@
 #include "./coverage.h"
 #include "./defs.h"
 #include "./feature.h"
+#include "./symbol_table.h"
 #include "./util.h"
 
 namespace centipede {
@@ -154,7 +155,10 @@ TEST(FeatureSet, CountUnseenAndPruneFrequentFeatures_IncrementFrequencies) {
 TEST(Corpus, GetCmpArgs) {
   PCTable pc_table(100);
   CFTable cf_table(100);
-  CoverageFrontier coverage_frontier({pc_table, {}, cf_table, {}, {}});
+  SymbolTable sym;
+  ControlFlowGraph cfg;
+  CallGraph cg;
+  CoverageFrontier coverage_frontier({pc_table, sym, cf_table, cfg, cg});
   FeatureSet fs(3);
   Corpus corpus;
   ByteArray cmp_args{2, 0, 1, 2, 3};
@@ -168,7 +172,10 @@ TEST(Corpus, GetCmpArgs) {
 TEST(Corpus, PrintStats) {
   PCTable pc_table(100);
   CFTable cf_table(100);
-  CoverageFrontier coverage_frontier({pc_table, {}, cf_table, {}, {}});
+  SymbolTable sym;
+  ControlFlowGraph cfg;
+  CallGraph cg;
+  CoverageFrontier coverage_frontier({pc_table, sym, cf_table, cfg, cg});
   FeatureSet fs(3);
   Corpus corpus;
   FeatureVec features1 = {10, 20, 30};
@@ -189,7 +196,10 @@ TEST(Corpus, Prune) {
   // Prune will remove an input if all of its features appear at least 3 times.
   PCTable pc_table(100);
   CFTable cf_table(100);
-  CoverageFrontier coverage_frontier({pc_table, {}, cf_table, {}, {}});
+  SymbolTable sym;
+  ControlFlowGraph cfg;
+  CallGraph cg;
+  CoverageFrontier coverage_frontier({pc_table, sym, cf_table, cfg, cg});
   FeatureSet fs(3);
   Corpus corpus;
   Rng rng(0);
@@ -247,7 +257,10 @@ TEST(Corpus, Prune) {
 TEST(Corpus, PruneRegressionTest1) {
   PCTable pc_table(100);
   CFTable cf_table(100);
-  CoverageFrontier coverage_frontier({pc_table, {}, cf_table, {}, {}});
+  SymbolTable sym;
+  ControlFlowGraph cfg;
+  CallGraph cg;
+  CoverageFrontier coverage_frontier({pc_table, sym, cf_table, cfg, cg});
   FeatureSet fs(2);
   Corpus corpus;
   Rng rng(0);
@@ -413,7 +426,8 @@ TEST(CoverageFrontier, Compute) {
 
   ControlFlowGraph cfg(cf_table, pc_table);
   CallGraph call_graph(cf_table, pc_table);
-  BinaryInfo bin_info = {pc_table, {}, cf_table, cfg, call_graph};
+  SymbolTable sym;
+  BinaryInfo bin_info = {pc_table, sym, cf_table, cfg, call_graph};
   CoverageFrontier frontier(bin_info);
 
   FeatureVec pcs(pc_table.size());
@@ -492,8 +506,8 @@ TEST(CoverageFrontierDeath, InvalidIndexToFrontier) {
 
   ControlFlowGraph cfg(cf_table, pc_table);
   CallGraph call_graph(cf_table, pc_table);
-
-  BinaryInfo bin_info = {pc_table, {}, cf_table, cfg, call_graph};
+  SymbolTable sym;
+  BinaryInfo bin_info = {pc_table, sym, cf_table, cfg, call_graph};
   CoverageFrontier frontier(bin_info);
 
   Corpus corpus;
