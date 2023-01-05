@@ -154,7 +154,8 @@ TEST(FeatureSet, CountUnseenAndPruneFrequentFeatures_IncrementFrequencies) {
 TEST(Corpus, GetCmpArgs) {
   PCTable pc_table(100);
   CFTable cf_table(100);
-  CoverageFrontier coverage_frontier({pc_table, {}, cf_table, {}, {}});
+  BinaryInfo bin_info{pc_table, {}, cf_table, {}, {}};
+  CoverageFrontier coverage_frontier(bin_info);
   FeatureSet fs(3);
   Corpus corpus;
   ByteArray cmp_args{2, 0, 1, 2, 3};
@@ -168,7 +169,8 @@ TEST(Corpus, GetCmpArgs) {
 TEST(Corpus, PrintStats) {
   PCTable pc_table(100);
   CFTable cf_table(100);
-  CoverageFrontier coverage_frontier({pc_table, {}, cf_table, {}, {}});
+  BinaryInfo bin_info{pc_table, {}, cf_table, {}, {}};
+  CoverageFrontier coverage_frontier(bin_info);
   FeatureSet fs(3);
   Corpus corpus;
   FeatureVec features1 = {10, 20, 30};
@@ -189,7 +191,8 @@ TEST(Corpus, Prune) {
   // Prune will remove an input if all of its features appear at least 3 times.
   PCTable pc_table(100);
   CFTable cf_table(100);
-  CoverageFrontier coverage_frontier({pc_table, {}, cf_table, {}, {}});
+  BinaryInfo bin_info{pc_table, {}, cf_table, {}, {}};
+  CoverageFrontier coverage_frontier(bin_info);
   FeatureSet fs(3);
   Corpus corpus;
   Rng rng(0);
@@ -247,7 +250,8 @@ TEST(Corpus, Prune) {
 TEST(Corpus, PruneRegressionTest1) {
   PCTable pc_table(100);
   CFTable cf_table(100);
-  CoverageFrontier coverage_frontier({pc_table, {}, cf_table, {}, {}});
+  BinaryInfo bin_info{pc_table, {}, cf_table, {}, {}};
+  CoverageFrontier coverage_frontier(bin_info);
   FeatureSet fs(2);
   Corpus corpus;
   Rng rng(0);
@@ -499,8 +503,7 @@ TEST(CoverageFrontierDeath, InvalidIndexToFrontier) {
   Corpus corpus;
   frontier.Compute(corpus);
   // Check with a non-existent idx.
-  // TODO(navidem): enable the following test once CHECK is used in
-  // PcIndexIsFrontier. EXPECT_DEATH(frontier.PcIndexIsFrontier(666), "");
+  EXPECT_DEATH(frontier.PcIndexIsFrontier(666), "");
   EXPECT_DEATH(frontier.FrontierWeight(666), "");
 }
 

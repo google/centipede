@@ -239,8 +239,8 @@ class CoverageFrontier {
 
   // Returns true iff `idx` belongs to the frontier.
   bool PcIndexIsFrontier(size_t idx) const {
-    // TODO(navidem): use this instead CHECK_LT(idx, MaxPcIndex());
-    return idx < MaxPcIndex() && frontier_[idx];
+    CHECK_LT(idx, MaxPcIndex());
+    return frontier_[idx];
   }
 
   // Returns the size of the pc_table used to create `this`.
