@@ -4,3 +4,6 @@
 /production
 /puzzles
 /testing
+
+/bazel-*
+.clwb
