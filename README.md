@@ -53,7 +53,7 @@ target can be a Centipede's target. Read
 more [here](https://github.com/google/fuzzing/blob/master/docs/good-fuzz-target.md)
 .
 
-#### Input {#input}
+#### Input
 
 A sequence of bytes that can be fed to a target. The input can be an arbitrary
 bag of bytes, or some structured data, e.g. serialized proto.
@@ -151,7 +151,7 @@ You can keep these files where they are or copy them somewhere.
 
 We provide two examples of building the target: one tiny single-file target and
 libpng. Once you've built your target, proceed to the
-[fuzz target running step](#run-step).
+[fuzz target running step](#run-centipede-locally).
 
 ### The simple example
 
@@ -179,7 +179,7 @@ clang++ $BIN_DIR/$FUZZ_TARGET.o $BIN_DIR/libcentipede_runner.pic.a \
     -ldl -lrt -lpthread -o $BIN_DIR/$FUZZ_TARGET
 ```
 
-Skip to the [running step](#run-step).
+Skip to the [running step](#run-centipede-locally).
 
 ### The libpng example
 
@@ -206,7 +206,7 @@ clang++ -include cstdlib \
     -o $BIN_DIR/$FUZZ_TARGET
 ```
 
-## Run Centipede locally {#run-step}
+## Run Centipede locally
 
 Running locally will not give the full scale, but it could be useful during the
 fuzzer development stage. We recommend that both the fuzzer and the target are
