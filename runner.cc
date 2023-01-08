@@ -55,11 +55,20 @@ thread_local ThreadLocalRunnerState tls;
 
 // Tries to write `description` to `state.failure_description_path`.
 static void WriteFailureDescription(const char *description) {
+  // TODO(b/264715830): Remove I/O error logging once the bug is fixed?
   if (!state.failure_description_path) return;
   FILE *f = fopen(state.failure_description_path, "w");
-  if (!f) return;
-  fwrite(description, 1, strlen(description), f);
-  fclose(f);
+  if (!f) {
+    perror("FAILURE: fopen()");
+    return;
+  }
+  const auto len = strlen(description);
+  if (fwrite(description, 1, len, f) != len) {
+    perror("FAILURE: fwrite()");
+  }
+  if (fclose(f) != 0) {
+    perror("FAILURE: fclose()");
+  }
 }
 
 void ThreadLocalRunnerState::OnThreadStart() {

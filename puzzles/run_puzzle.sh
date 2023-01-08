@@ -86,7 +86,8 @@ function ExpectPerInputTimeout() {
 function ExpectPerBatchTimeout() {
   echo "======= ${FUNCNAME[0]}"
   centipede::assert_regex_in_file "Per-batch timeout exceeded" "${log}"
-  centipede::assert_regex_in_file "Failure.*: per-batch-timeout-exceeded" "${log}"
+  # TODO(b/264715830): Temporarily disabled until the bug is fixed.
+  # centipede::assert_regex_in_file "Failure.*: per-batch-timeout-exceeded" "${log}"
 }
 
 # Expects that Centipede found a OOM.

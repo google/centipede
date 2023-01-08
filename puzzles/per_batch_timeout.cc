@@ -15,7 +15,7 @@
 // Centipede puzzle: easy-to-reach per-batch timeout.
 // clang-format off
 // NOLINTNEXTLINE
-// RUN: Run --batch_size=100 --timeout_per_input=2 --timeout_per_batch=7 && ExpectPerBatchTimeout
+// RUN: Run --batch_size=10 --timeout_per_input=2 --timeout_per_batch=7 && ExpectPerBatchTimeout
 // clang-format on
 
 #include <unistd.h>
