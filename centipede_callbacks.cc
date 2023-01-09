@@ -103,8 +103,11 @@ std::string CentipedeCallbacks::ConstructRunnerFlags(
     if (env_.use_auto_dictionary) flags.emplace_back("use_auto_dictionary");
     if (env_.use_dataflow_features) flags.emplace_back("use_dataflow_features");
   }
-  if (env_.runner_dl_path_suffix.empty())
-    flags.emplace_back(absl::StrCat("dl_path=", env_.runner_dl_path_suffix));
+  // TODO(kcc): add a proper test for dl_path_suffix.
+  if (!env_.runner_dl_path_suffix.empty()) {
+    flags.emplace_back(
+        absl::StrCat("dl_path_prefix=", env_.runner_dl_path_suffix));
+  }
   if (!extra_flags.empty()) flags.emplace_back(extra_flags);
   flags.emplace_back("");
   return absl::StrJoin(flags, ":");
