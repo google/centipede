@@ -67,11 +67,11 @@ void CentipedeCallbacks::PopulateBinaryInfo(BinaryInfo &binary_info) {
                  "-fsanitize-coverage=control-flow flag.";
   } else {
     // Construct call-graph and cfg using loaded cf_table.
-    binary_info.control_flow_graph =
-        ControlFlowGraph(binary_info.cf_table, binary_info.pc_table);
+    binary_info.control_flow_graph.InitializeControlFlowGraph(
+        binary_info.cf_table, binary_info.pc_table);
 
-    binary_info.call_graph =
-        CallGraph(binary_info.cf_table, binary_info.pc_table);
+    binary_info.call_graph.InitializeCallGraph(binary_info.cf_table,
+                                               binary_info.pc_table);
   }
 
   // Load Symbols.

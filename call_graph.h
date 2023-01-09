@@ -29,10 +29,9 @@ namespace centipede {
 
 class CallGraph {
  public:
-  CallGraph() = default;
   // Reads in the CfTable from __sancov_cfs section. On error it crashes, if the
   // section is not available, the hash maps will be empty.
-  CallGraph(const CFTable& cf_table, const PCTable& pc_table);
+  void InitializeCallGraph(const CFTable& cf_table, const PCTable& pc_table);
 
   const std::vector<uintptr_t>& GetFunctionCallees(uintptr_t pc) const {
     const auto it = call_graph_.find(pc);

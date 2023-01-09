@@ -94,10 +94,10 @@ CFTable GetCfTableFromBinary(std::string_view binary_path,
 
 class ControlFlowGraph {
  public:
-  ControlFlowGraph() = default;
   // Reads form __sancov_cfs section. On error it crashes, if the section is not
   // there, the graph_ will be empty.
-  ControlFlowGraph(const CFTable &cf_table, const PCTable &pc_table);
+  void InitializeControlFlowGraph(const CFTable &cf_table,
+                                  const PCTable &pc_table);
 
   // Returns the vector of successor PCs for the given basic block PC.
   const std::vector<uintptr_t> &GetSuccessors(uintptr_t basic_block) const;

@@ -442,7 +442,8 @@ TEST(FrontierWeight, ComputeFrontierWeight) {
   };
 
   Coverage g_coverage(g_pc_table, {0, 1});
-  ControlFlowGraph cfg(g_cf_table, g_pc_table);
+  ControlFlowGraph cfg;
+  cfg.InitializeControlFlowGraph(g_cf_table, g_pc_table);
 
   std::vector<uintptr_t> callees1 = {0, 1, 3, 4};
   std::vector<uintptr_t> callees2 = {0, 1};
@@ -468,7 +469,8 @@ TEST(FrontierWeightDeath, InvalidCallee) {
   PCTable g_pc_table{{0, PCInfo::kFuncEntry}, {1, 0}, {2, 0}};
   CFTable g_cf_table{0, 1, 0, 0, 1, 2, 0, 0, 2, 0, 0};
   Coverage g_coverage(g_pc_table, {0, 1});
-  ControlFlowGraph cfg(g_cf_table, g_pc_table);
+  ControlFlowGraph cfg;
+  cfg.InitializeControlFlowGraph(g_cf_table, g_pc_table);
   EXPECT_DEATH(ComputeFrontierWeight(g_coverage, cfg, {0, 1}), "");
   EXPECT_DEATH(ComputeFrontierWeight(g_coverage, cfg, {1, 2}), "");
 }

@@ -22,7 +22,7 @@
 namespace centipede {
 
 // Information about the binary being fuzzed. Created once at program startup
-// and doesn't change (other than for lazily initialized fields)
+// and doesn't change (other than for lazily initialized fields).
 struct BinaryInfo {
   PCTable pc_table;
   SymbolTable symbols;

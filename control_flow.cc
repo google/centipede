@@ -129,10 +129,10 @@ CFTable GetCfTableFromBinary(std::string_view binary_path,
   return cf_table;
 }
 
-ControlFlowGraph::ControlFlowGraph(const CFTable &cf_table,
-                                   const PCTable &pc_table)
-    : func_entries_(pc_table.size()) {
+void ControlFlowGraph::InitializeControlFlowGraph(const CFTable &cf_table,
+                                   const PCTable &pc_table) {
   CHECK(!cf_table.empty());
+  func_entries_.resize(pc_table.size());
   for (size_t j = 0; j < cf_table.size();) {
     std::vector<uintptr_t> successors;
     auto curr_pc = cf_table[j];

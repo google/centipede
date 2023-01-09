@@ -43,7 +43,8 @@ static const PCTable g_pc_table = {
     {1, PCInfo::kFuncEntry}, {2, 0}, {3, 0}, {4, 0}};
 
 TEST(ControlFlowGraph, ComputeReachabilityForPc) {
-  ControlFlowGraph cfg(g_cf_table, g_pc_table);
+  ControlFlowGraph cfg;
+  cfg.InitializeControlFlowGraph(g_cf_table, g_pc_table);
   EXPECT_NE(cfg.size(), 0);
 
   auto reach1 = cfg.ComputeReachabilityForPc(1);
@@ -60,7 +61,8 @@ TEST(ControlFlowGraph, ComputeReachabilityForPc) {
 namespace {
 
 TEST(CFTable, MakeCfgFromCfTable) {
-  ControlFlowGraph cfg(g_cf_table, g_pc_table);
+  ControlFlowGraph cfg;
+  cfg.InitializeControlFlowGraph(g_cf_table, g_pc_table);
   EXPECT_NE(cfg.size(), 0);
 
   for (auto &pc : {1, 2, 3, 4}) {
@@ -114,16 +116,20 @@ TEST(FunctionComplexity, ComputeFuncComplexity) {
       4, 0, 0         // 4 goes nowhere.
   };
 
-  ControlFlowGraph cfg1(g_cf_table1, g_pc_table);
+  ControlFlowGraph cfg1;
+  cfg1.InitializeControlFlowGraph(g_cf_table1, g_pc_table);
   EXPECT_NE(cfg1.size(), 0);
 
-  ControlFlowGraph cfg2(g_cf_table2, g_pc_table);
+  ControlFlowGraph cfg2;
+  cfg2.InitializeControlFlowGraph(g_cf_table2, g_pc_table);
   EXPECT_NE(cfg2.size(), 0);
 
-  ControlFlowGraph cfg3(g_cf_table3, g_pc_table);
+  ControlFlowGraph cfg3;
+  cfg3.InitializeControlFlowGraph(g_cf_table3, g_pc_table);
   EXPECT_NE(cfg3.size(), 0);
 
-  ControlFlowGraph cfg4(g_cf_table4, g_pc_table);
+  ControlFlowGraph cfg4;
+  cfg4.InitializeControlFlowGraph(g_cf_table4, g_pc_table);
   EXPECT_NE(cfg4.size(), 0);
 
   EXPECT_EQ(ComputeFunctionCyclomaticComplexity(1, cfg1), 4);
