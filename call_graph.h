@@ -34,15 +34,15 @@ class CallGraph {
   void InitializeCallGraph(const CFTable& cf_table, const PCTable& pc_table);
 
   const std::vector<uintptr_t>& GetFunctionCallees(uintptr_t pc) const {
+    CHECK(IsFunctionEntry(pc)) << VV(pc) << " is not a function entry.";
     const auto it = call_graph_.find(pc);
-    CHECK(it != call_graph_.cend())
-        << "Couldn't find function callees for " << VV(pc);
+    if (it == call_graph_.cend()) return empty_;
     return it->second;
   }
   const std::vector<uintptr_t>& GetBasicBlockCallees(uintptr_t pc) const {
+    CHECK(basic_blocks_.contains(pc)) << VV(pc) << " is not a basic block.";
     const auto it = basic_block_callees_.find(pc);
-    CHECK(it != basic_block_callees_.cend())
-        << "Couldn't find basic block callees for " << VV(pc);
+    if (it == basic_block_callees_.cend()) return empty_;
     return it->second;
   }
   const absl::flat_hash_set<uintptr_t>& GetFunctionEntries() const {
@@ -55,12 +55,16 @@ class CallGraph {
 
  private:
   // call_graph_: the key is function entry PC and value is all the
-  // callees of that function.
+  // callees of that function. It keep only non-zero vectors in a map. Meaning
+  // that if a function does not have any callee, it won't be in this map.
   absl::flat_hash_map<uintptr_t, std::vector<uintptr_t>> call_graph_;
   // bb_callees_: the key is a basic block PC and value is all callees in
-  // that basic block.
+  // that basic block. It keep only non-zero vectors in a map. Meaning that if a
+  // basic_block does not have any callee, it won't be in this map.
   absl::flat_hash_map<uintptr_t, std::vector<uintptr_t>> basic_block_callees_;
   absl::flat_hash_set<uintptr_t> function_entries_;
+  absl::flat_hash_set<uintptr_t> basic_blocks_;
+  const std::vector<uintptr_t> empty_;
 };
 
 }  // namespace centipede

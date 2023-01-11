@@ -22,8 +22,9 @@ namespace centipede {
 
 void CallGraph::InitializeCallGraph(const CFTable &cf_table,
                                     const PCTable &pc_table) {
-  // Find all function entries.
+  // Find all valid basic blocks and function entries.
   for (auto pc_info : pc_table) {
+    basic_blocks_.insert(pc_info.pc);
     if (pc_info.has_flag(PCInfo::kFuncEntry))
       function_entries_.insert(pc_info.pc);
   }
@@ -51,12 +52,15 @@ void CallGraph::InitializeCallGraph(const CFTable &cf_table,
     ++j;  // Step over the delimeter.
     CHECK_LE(j, cf_table.size());
 
+    if (current_callees.empty()) continue;
     basic_block_callees_[current_pc] = current_callees;
     // Append collected callees to the call graph.
     call_graph_[current_function_entry].insert(
         call_graph_[current_function_entry].end(), current_callees.begin(),
         current_callees.end());
   }
+  // This should stay empty.
+  CHECK(empty_.empty());
 }
 
 }  // namespace centipede

@@ -108,8 +108,10 @@ TEST(CallGraph, BuildCgFromCfTable) {
       EXPECT_THAT(call_graph.GetBasicBlockCallees(pc).size(), 1);
     } else if (pc == 6 || pc == 7) {
       EXPECT_THAT(call_graph.GetFunctionCallees(pc).size(), 0);
+      EXPECT_THAT(call_graph.GetBasicBlockCallees(pc).size(), 0);
     } else if (pc == 8) {
       EXPECT_THAT(call_graph.GetFunctionCallees(pc).size(), 1);
+      EXPECT_THAT(call_graph.GetBasicBlockCallees(pc).size(), 1);
     }
   }
 }
