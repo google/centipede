@@ -130,7 +130,7 @@ class ControlFlowGraph {
   // is not in the pc_table.
   PCIndex GetPcIndex(uintptr_t pc) const {
     auto it = pc_index_map_.find(pc);
-    CHECK(it != pc_index_map_.end());
+    CHECK(it != pc_index_map_.end()) << VV(pc) << " is not in pc_table.";
     return it->second;
   }
 

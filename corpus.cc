@@ -293,6 +293,8 @@ size_t CoverageFrontier::Compute(const Corpus &corpus) {
       auto pc = binary_info_.pc_table[i].pc;
       // Current pc is covered, look for a non-covered successor.
       for (auto successor : binary_info_.control_flow_graph.GetSuccessors(pc)) {
+        // Successor pc may not be in PCTable because of pruning.
+        if (!binary_info_.control_flow_graph.IsInPcTable(successor)) continue;
         auto succ_idx = binary_info_.control_flow_graph.GetPcIndex(successor);
         if (coverage.BlockIsCovered(succ_idx))
           continue;  // This successor is covered, skip it.

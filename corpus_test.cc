@@ -406,7 +406,8 @@ TEST(CoverageFrontier, Compute) {
       6, 7, 8, 0, 0,            // 6 calls 2 and makes indirect call in bb 8.
       7, 0, 0, 8, 0, 2, -1, 0,  // This bb calls 2 and makes an indirect
                                 // call.
-      9, 10, 0, 0,              // 9 calls no one.
+      9, 66, 10, 0, 0,  // 9 calls no one. 9 has a successor (66) which is not
+                        // in pc_table. This may happen as a result of pruning.
       10, 11, 0, 0, 11, 0, 0, 12, 13, 14, 0, 0,  // 12 call 9 and 99 in bb
                                                  // 15, and calls 4 in
                                                  // bb 18.
