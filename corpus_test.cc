@@ -415,11 +415,10 @@ TEST(CoverageFrontier, Compute) {
       16, 13, 0, 0, 17, 0, 0, 18, 0, 4, 0,  // This bb calls 4.
   };
 
-  ControlFlowGraph cfg;
-  cfg.InitializeControlFlowGraph(cf_table, pc_table);
-  CallGraph call_graph;
-  call_graph.InitializeCallGraph(cf_table, pc_table);
-  BinaryInfo bin_info = {pc_table, {}, cf_table, cfg, call_graph};
+  BinaryInfo bin_info = {
+      pc_table, {}, cf_table, ControlFlowGraph(), CallGraph()};
+  bin_info.control_flow_graph.InitializeControlFlowGraph(cf_table, pc_table);
+  bin_info.call_graph.InitializeCallGraph(cf_table, pc_table);
   CoverageFrontier frontier(bin_info);
 
   FeatureVec pcs(pc_table.size());
@@ -496,12 +495,10 @@ TEST(CoverageFrontierDeath, InvalidIndexToFrontier) {
       0, 1, 0, 0, 1, 0, 0,
   };
 
-  ControlFlowGraph cfg;
-  cfg.InitializeControlFlowGraph(cf_table, pc_table);
-  CallGraph call_graph;
-  call_graph.InitializeCallGraph(cf_table, pc_table);
-
-  BinaryInfo bin_info = {pc_table, {}, cf_table, cfg, call_graph};
+  BinaryInfo bin_info = {
+      pc_table, {}, cf_table, ControlFlowGraph(), CallGraph()};
+  bin_info.control_flow_graph.InitializeControlFlowGraph(cf_table, pc_table);
+  bin_info.call_graph.InitializeCallGraph(cf_table, pc_table);
   CoverageFrontier frontier(bin_info);
 
   Corpus corpus;

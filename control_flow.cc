@@ -16,6 +16,7 @@
 
 #include <filesystem>  // NOLINT
 #include <fstream>
+#include <mutex>  // NOLINT
 #include <ostream>
 #include <queue>
 #include <string>
@@ -130,9 +131,11 @@ CFTable GetCfTableFromBinary(std::string_view binary_path,
 }
 
 void ControlFlowGraph::InitializeControlFlowGraph(const CFTable &cf_table,
-                                   const PCTable &pc_table) {
+                                                  const PCTable &pc_table) {
   CHECK(!cf_table.empty());
   func_entries_.resize(pc_table.size());
+  reachability_.resize(pc_table.size());
+
   for (size_t j = 0; j < cf_table.size();) {
     std::vector<uintptr_t> successors;
     auto curr_pc = cf_table[j];

@@ -16,6 +16,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <thread>  //NOLINT
 #include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
@@ -136,6 +137,35 @@ TEST(FunctionComplexity, ComputeFuncComplexity) {
   EXPECT_EQ(ComputeFunctionCyclomaticComplexity(1, cfg2), 1);
   EXPECT_EQ(ComputeFunctionCyclomaticComplexity(1, cfg3), 2);
   EXPECT_EQ(ComputeFunctionCyclomaticComplexity(1, cfg4), 2);
+}
+
+TEST(ControlFlowGraph, LazyReachability) {
+  ControlFlowGraph cfg;
+  cfg.InitializeControlFlowGraph(g_cf_table, g_pc_table);
+  EXPECT_NE(cfg.size(), 0);
+
+  auto rt = [&]() {
+    for (int i = 0; i < 10; ++i) {
+      cfg.LazyGetReachabilityForPc(1);
+      cfg.LazyGetReachabilityForPc(2);
+      cfg.LazyGetReachabilityForPc(3);
+      cfg.LazyGetReachabilityForPc(4);
+    }
+    auto reach1 = cfg.LazyGetReachabilityForPc(1);
+    auto reach2 = cfg.LazyGetReachabilityForPc(2);
+    auto reach3 = cfg.LazyGetReachabilityForPc(3);
+    auto reach4 = cfg.LazyGetReachabilityForPc(4);
+
+    EXPECT_THAT(reach1, testing::UnorderedElementsAre(1, 2, 3, 4));
+    EXPECT_THAT(reach2, testing::UnorderedElementsAre(2, 4));
+    EXPECT_THAT(reach3, testing::UnorderedElementsAre(3, 4));
+    EXPECT_THAT(reach4, testing::ElementsAre(4));
+  };
+
+  std::thread t1(rt), t2(rt), t3(rt);
+  t1.join();
+  t2.join();
+  t3.join();
 }
 
 // Returns a path for i-th temporary file.

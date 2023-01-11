@@ -17,6 +17,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <mutex>  //NOLINT
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
@@ -136,6 +137,19 @@ class ControlFlowGraph {
   // Returns true if the PC is in PCTable.
   bool IsInPcTable(uintptr_t pc) const { return pc_index_map_.contains(pc); }
 
+  // Returns a vector& containing all basic blocks (represented by their PCs)
+  // reachable from `pc`. The reachability is computed once, lazily.
+  // The method is const, under the hood it uses a mutable data member.
+  // Thread-safe: can be called concurrently from multiple threads
+  const std::vector<uintptr_t> &LazyGetReachabilityForPc(uintptr_t pc) const {
+    CHECK_EQ(reachability_.size(), pc_index_map_.size());
+    auto pc_index = GetPcIndex(pc);
+    std::call_once(*(reachability_[pc_index].once), [this, &pc, &pc_index]() {
+      reachability_[pc_index].reach = ComputeReachabilityForPc(pc);
+    });
+    return reachability_[pc_index].reach;
+  }
+
  private:
   // Map from PC to the idx in pc_table.
   absl::flat_hash_map<uintptr_t, PCIndex> pc_index_map_;
@@ -151,8 +165,21 @@ class ControlFlowGraph {
   // Returns a vector of PCs reachable from `pc`, not in any particular order.
   // The result always includes `pc`, since any block is reachable from itself.
   std::vector<uintptr_t> ComputeReachabilityForPc(uintptr_t pc) const;
-
   FRIEND_TEST(ControlFlowGraph, ComputeReachabilityForPc);
+
+  // ReachInfo is a struct to store reachability information for each PC in
+  // pc_table. The once flag is used to make sure the reach vector is populated
+  // only once lazily in a thread-friendly manner.
+  struct ReachInfo {
+    mutable std::once_flag *once;
+    mutable std::vector<uintptr_t> reach;
+    ReachInfo() : once(new std::once_flag) {}
+    ~ReachInfo() { delete once; }
+  };
+  // A vector of size PCTable. reachability_[idx] is reachability info for the
+  // `idx`th pc. Conceptually it is constant, but we compute it lazily, hence
+  // 'mutable'
+  std::vector<ReachInfo> reachability_;
 };
 
 // Computes the Cyclomatic Complexity for the given function,
