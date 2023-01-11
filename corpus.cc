@@ -299,11 +299,18 @@ size_t CoverageFrontier::Compute(const Corpus &corpus) {
         // Now we have a frontier, compute the weight.
         frontier_[i] = true;
         // Calculate frontier weight.
-        // TODO(navidem): This is too shallow. Use reachability computation
-        // to identify all BBs affected by this blocked successor.
-        frontier_weight_[i] += ComputeFrontierWeight(
-            coverage, binary_info_.control_flow_graph,
-            binary_info_.call_graph.GetBasicBlockCallees(successor));
+        // Here we use rachability and coverage to indentify all reachable and
+        // non-covered BBs from successor, and then use all functions called
+        // in those BBs.
+        for (auto reachable_bb :
+             binary_info_.control_flow_graph.LazyGetReachabilityForPc(
+                 successor)) {
+          if (coverage.BlockIsCovered(reachable_bb))
+            continue;  // This reachable BB is already covered, not intereting!
+          frontier_weight_[i] += ComputeFrontierWeight(
+              coverage, binary_info_.control_flow_graph,
+              binary_info_.call_graph.GetBasicBlockCallees(reachable_bb));
+        }
       }
     }
   });
