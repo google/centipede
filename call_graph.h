@@ -64,7 +64,7 @@ class CallGraph {
   absl::flat_hash_map<uintptr_t, std::vector<uintptr_t>> basic_block_callees_;
   absl::flat_hash_set<uintptr_t> function_entries_;
   absl::flat_hash_set<uintptr_t> basic_blocks_;
-  const std::vector<uintptr_t> empty_;
+  std::vector<uintptr_t> empty_;
 };
 
 }  // namespace centipede
