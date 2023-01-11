@@ -33,6 +33,7 @@ WEAK_SANCOV_DEF(void, __sanitizer_cov_trace_pc_indir, void) {}
 WEAK_SANCOV_DEF(void, __sanitizer_cov_8bit_counters_init, void) {}
 WEAK_SANCOV_DEF(void, __sanitizer_cov_bool_flag_init, void) {}
 WEAK_SANCOV_DEF(void, __sanitizer_cov_pcs_init, void) {}
+WEAK_SANCOV_DEF(void, __sanitizer_cov_cfs_init, void) {}
 WEAK_SANCOV_DEF(void, __sanitizer_cov_trace_pc_guard, void) {}
 WEAK_SANCOV_DEF(void, __sanitizer_cov_trace_pc_guard_init, void) {}
 WEAK_SANCOV_DEF(void, __sanitizer_cov_load1, void) {}
