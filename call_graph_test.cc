@@ -38,13 +38,14 @@ using ::testing::Contains;
 //    \   /
 //      4 (7)
 static const CFTable g_cf_table = {
-  1, 2, 3, 0, 0,          // PC 1 has no callee.
-  2, 4, 0, 99, 0,         // PC 2 calls 99.
-  3, 4, 0, 6, -1, 8, 0,   // PC 3 calls 6, 8, and has one indirect call.
-  4, 0, 7, 0,             // PC 4 calls 7.
-  6, 0, 0,                // PC 6 has no callees.
-  7, 0, 0,                // PC 7 has no callees.
-  8, 0, 7, 0,             // PC 8 calls 7.
+    1, 2, 3, 0,  0,         // PC 1 has no callee.
+    2, 4, 0, 99, 0,         // PC 2 calls 99.
+    3, 4, 0, 6,  -1, 8, 0,  // PC 3 calls 6, 8, and has one indirect call.
+    4, 0, 7, 0,             // PC 4 calls 7.
+    5, 0, 0,                // PC 5 is not in pc_table.
+    6, 0, 0,                // PC 6 has no callees.
+    7, 0, 0,                // PC 7 has no callees.
+    8, 0, 7, 0,             // PC 8 calls 7.
 };
 
 // Mock PCTable for the above cfg.
@@ -106,6 +107,8 @@ TEST(CallGraph, BuildCgFromCfTable) {
       EXPECT_THAT(std::count(callees.begin(), callees.end(), -1ULL), 1);
     } else if (pc == 4) {
       EXPECT_THAT(call_graph.GetBasicBlockCallees(pc).size(), 1);
+    } else if (pc == 5) {
+      EXPECT_THAT(call_graph.GetFunctionCallees(pc).size(), 0);
     } else if (pc == 6 || pc == 7) {
       EXPECT_THAT(call_graph.GetFunctionCallees(pc).size(), 0);
       EXPECT_THAT(call_graph.GetBasicBlockCallees(pc).size(), 0);

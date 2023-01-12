@@ -22,9 +22,8 @@ namespace centipede {
 
 void CallGraph::InitializeCallGraph(const CFTable &cf_table,
                                     const PCTable &pc_table) {
-  // Find all valid basic blocks and function entries.
+  // Find all function entries.
   for (auto pc_info : pc_table) {
-    basic_blocks_.insert(pc_info.pc);
     if (pc_info.has_flag(PCInfo::kFuncEntry))
       function_entries_.insert(pc_info.pc);
   }
@@ -36,6 +35,7 @@ void CallGraph::InitializeCallGraph(const CFTable &cf_table,
     auto current_pc = cf_table[j];
     ++j;
 
+    basic_blocks_.insert(current_pc);
     if (IsFunctionEntry(current_pc)) current_function_entry = current_pc;
 
     // Iterate over successors.
