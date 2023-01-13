@@ -307,7 +307,10 @@ size_t CoverageFrontier::Compute(const Corpus &corpus) {
         for (auto reachable_bb :
              binary_info_.control_flow_graph.LazyGetReachabilityForPc(
                  successor)) {
-          if (coverage.BlockIsCovered(reachable_bb))
+          if (!binary_info_.control_flow_graph.IsInPcTable(reachable_bb))
+            continue;
+          if (coverage.BlockIsCovered(
+                  binary_info_.control_flow_graph.GetPcIndex(reachable_bb)))
             continue;  // This reachable BB is already covered, not intereting!
           frontier_weight_[i] += ComputeFrontierWeight(
               coverage, binary_info_.control_flow_graph,

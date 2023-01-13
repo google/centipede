@@ -411,9 +411,10 @@ TEST(CoverageFrontier, Compute) {
       10, 11, 0, 0, 11, 0, 0, 12, 13, 14, 0, 0,  // 12 call 9 and 99 in bb
                                                  // 15, and calls 4 in
                                                  // bb 18.
-      13, 15, 16, 0, 0, 14, 17, 18, 0, 0, 15, 0, 9, 99,
-      0,                                    // This bb calls 9 and 99.
+      13, 15, 16, 0, 0, 14, 17, 18, 0, 0, 15, 19, 0, 9, 99,
+      0,  // PC 15 goes to 19 that is not in pc_table. This bb calls 9 and 99.
       16, 13, 0, 0, 17, 0, 0, 18, 0, 4, 0,  // This bb calls 4.
+      19, 0, 0
   };
 
   BinaryInfo bin_info = {
