@@ -112,13 +112,21 @@ const ProcessTimer global_process_timer;
 //------------------------------------------------------------------------------
 
 bool ReadProcFileFields(const std::string& path, const char* format, ...) {
+  bool success = false;
   va_list value_list;
   va_start(value_list, format);
   std::ifstream file{path};
-  CHECK(file.good()) << path;
-  std::stringstream contents;
-  contents << file.rdbuf();
-  bool success = vsscanf(contents.str().c_str(), format, value_list);
+  // TODO(b/265461840): Silently ignoring missing /proc/ files. The current
+  // callers ignore the returned status too. Improve.
+  if (file.good()) {
+    std::stringstream contents;
+    contents << file.rdbuf();
+    if (contents.good()) {
+      if (vsscanf(contents.str().c_str(), format, value_list) != EOF) {
+        success = true;
+      }
+    }
+  }
   va_end(value_list);
   return success;
 }
@@ -127,12 +135,17 @@ template <typename T>
 bool ReadProcFileKeyword(  //
     const std::string& path, const char* format, T* value) {
   std::ifstream file{path};
-  CHECK(file.good()) << path;
-  constexpr std::streamsize kMaxLineLen = 1024;
-  char line[kMaxLineLen] = {0};
-  while (file) {
-    file.getline(line, kMaxLineLen);
-    if (sscanf(line, format, value) == 1) return true;
+  // TODO(b/265461840): Silently ignoring missing /proc/ files. The current
+  // callers ignore the returned status too. Improve.
+  if (file.good()) {
+    constexpr std::streamsize kMaxLineLen = 1024;
+    char line[kMaxLineLen] = {0};
+    while (file.good()) {
+      file.getline(line, kMaxLineLen);
+      if (sscanf(line, format, value) == 1) {
+        return true;
+      }
+    }
   }
   return false;
 }
@@ -322,11 +335,13 @@ RUsageTiming RUsageTiming::Snapshot(const RUsageScope& scope) {
 RUsageTiming RUsageTiming::Snapshot(  //
     const RUsageScope& scope, const ProcessTimer& timer) {
   double user_time = 0, sys_time = 0, wall_time = 0;
+  // TODO(b/265480321): This does not honor `scope`.
   timer.Get(user_time, sys_time, wall_time);
   // Get the CPU utilization in 1/1024th units of the maximum from
   // /proc/self/sched. The maximum se.avg.util_avg field == SCHED_CAPACITY_SCALE
   // == 1024, as defined by the Linux scheduler code.
   double cpu_utilization = 0;
+  // TODO(b/265461840): Handle reading errors.
   (void)detail::ReadProcFileKeyword(  // ignore errors (which are unlikely)
       scope.GetProcFilePath(RUsageScope::ProcFile::kSched),  //
       "se.avg.util_avg : %lf",                               //
@@ -468,13 +483,15 @@ RUsageMemory RUsageMemory::Max() {
 RUsageMemory RUsageMemory::Snapshot(const RUsageScope& scope) {
   // Get memory stats except the VM peak from /proc/self/statm (see `man proc`).
   MemSize vsize = 0, rss = 0, shared = 0, code = 0, unused = 0, data = 0;
-  (void)detail::ReadProcFileFields(  // ignore errors (which are unlikely)
+  // TODO(b/265461840): Handle reading errors.
+  (void)detail::ReadProcFileFields(                          // ignore errors
       scope.GetProcFilePath(RUsageScope::ProcFile::kStatm),  //
       "%lld %lld %lld %lld %lld %lld",                       //
       &vsize, &rss, &shared, &code, &unused, &data);
   // Get the VM peak from /proc/self/status (see `man proc`).
   MemSize vpeak = 0;
-  (void)detail::ReadProcFileKeyword(  // ignore errors (which are unlikely)
+  // TODO(b/265461840): Handle reading errors.
+  (void)detail::ReadProcFileKeyword(                          // ignore errors
       scope.GetProcFilePath(RUsageScope::ProcFile::kStatus),  //
       "VmPeak : %" SCNd64 " kB",                              //
       &vpeak);

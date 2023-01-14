@@ -307,6 +307,20 @@ TEST(RUsageMemoryTest, Accuracy) {
 #endif
 }
 
+TEST(RUsageMemoryTest, BadScope) {
+  constexpr pid_t kBadPid = 999999999;
+  EXPECT_NO_FATAL_FAILURE(  //
+      const auto timing =
+          RUsageTiming::Snapshot(RUsageScope::Process(kBadPid));
+      VLOG(1) << "Timing: " << timing;
+  );
+  EXPECT_NO_FATAL_FAILURE(  //
+      const auto memory =
+          RUsageMemory::Snapshot(RUsageScope::Process(kBadPid));
+      VLOG(1) << "Memory: " << memory;
+  );
+}
+
 TEST(RUsageTimingTest, ConstantsAndMath) {
   const RUsageTiming timing = {
       .wall_time = absl::Seconds(4),
