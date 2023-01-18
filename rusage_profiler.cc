@@ -205,37 +205,29 @@ class ProfileReportGenerator {
 
   // GenChartImpl() wrappers for the 2 available "snap" metrics.
   template <typename MetricT>
-  void GenChart(                       //
-      const std::string& chart_title,  //
-      const MetricT RUsageTiming::*metric_field) {
-    GenChartImpl(                                                      //
-        chart_title, &RUsageProfiler::Snapshot::timing, metric_field,  //
+  void GenChart(const MetricT RUsageTiming::*metric_field) {
+    GenChartImpl(                                         //
+        &RUsageProfiler::Snapshot::timing, metric_field,  //
         timing_low_, timing_high_, /*is_delta=*/false);
   }
   template <typename MetricT>
-  void GenChart(                       //
-      const std::string& chart_title,  //
-      const MetricT RUsageMemory::*metric_field) const {
-    GenChartImpl(                                                      //
-        chart_title, &RUsageProfiler::Snapshot::memory, metric_field,  //
+  void GenChart(const MetricT RUsageMemory::*metric_field) const {
+    GenChartImpl(                                         //
+        &RUsageProfiler::Snapshot::memory, metric_field,  //
         memory_low_, memory_high_, /*is_delta=*/false);
   }
 
   // GenChartImpl() wrappers for the 2 available delta metrics.
   template <typename MetricT>
-  void GenDeltaChart(                  //
-      const std::string& chart_title,  //
-      const MetricT RUsageTiming::*metric_field) {
-    GenChartImpl(                                                            //
-        chart_title, &RUsageProfiler::Snapshot::delta_timing, metric_field,  //
+  void GenDeltaChart(const MetricT RUsageTiming::*metric_field) {
+    GenChartImpl(                                               //
+        &RUsageProfiler::Snapshot::delta_timing, metric_field,  //
         delta_timing_low_, delta_timing_high_, /*is_delta=*/true);
   }
   template <typename MetricT>
-  void GenDeltaChart(                  //
-      const std::string& chart_title,  //
-      const MetricT RUsageMemory::*metric_field) const {
-    GenChartImpl(                                                            //
-        chart_title, &RUsageProfiler::Snapshot::delta_memory, metric_field,  //
+  void GenDeltaChart(const MetricT RUsageMemory::*metric_field) const {
+    GenChartImpl(                                               //
+        &RUsageProfiler::Snapshot::delta_memory, metric_field,  //
         delta_memory_low_, delta_memory_high_, /*is_delta=*/true);
   }
 
@@ -246,14 +238,11 @@ class ProfileReportGenerator {
   // for that is `&RUsageTiming::wall_time`.
   template <typename MetricT, typename SubmetricT>
   void GenChartImpl(                                          //
-      const std::string& chart_title,                         //
       const MetricT RUsageProfiler::Snapshot::*metric_field,  //
       const SubmetricT MetricT::*submetric_field,             //
       MetricT metric_low_water,                               //
       MetricT metric_high_water,                              //
       bool is_delta) const {
-    *report_sink_ << chart_title;
-
     constexpr SubmetricT kZero{};  // works for both ints and absl::Duration
     const SubmetricT low_water = metric_low_water.*submetric_field;
     const SubmetricT high_water = metric_high_water.*submetric_field;
@@ -395,8 +384,11 @@ RUsageProfiler::RUsageProfiler(         //
       id_{next_id_.fetch_add(1, std::memory_order_relaxed)} {
   if (metrics_ == kMetricsOff) return;
 
-  StartTimelapse(  //
-      ctor_loc_, timelapse_interval, also_log_timelapses, "Timelapse");
+  if (timelapse_interval != absl::ZeroDuration() &&
+      timelapse_interval != absl::InfiniteDuration()) {
+    StartTimelapse(  //
+        ctor_loc_, timelapse_interval, also_log_timelapses, "Timelapse");
+  }
 }
 
 RUsageProfiler::~RUsageProfiler() {
@@ -535,43 +527,60 @@ void RUsageProfiler::GenerateReport(ReportSink* report_sink) const {
 
   ProfileReportGenerator gen{snapshots_, report_sink};
 
+  const std::string desc = absl::StrFormat("[P.%d %s]", id_, description_);
   *report_sink << "SCOPE: " << scope_ << "\n";
 
   if (metrics_ & kSnapTiming) {
-    *report_sink << absl::StrFormat(  //
-        "\n=== TIMING [P.%d %s] ===\n", id_, description_);
-    gen.GenChart("\nWALL TIME:\n", &RUsageTiming::wall_time);
-    gen.GenChart("\nUSER TIME:\n", &RUsageTiming::user_time);
-    gen.GenChart("\nSYSTEM TIME:\n", &RUsageTiming::sys_time);
-    gen.GenChart("\nCPU UTILIZATION:\n", &RUsageTiming::cpu_utilization);
-    gen.GenChart("\nAVERAGE CORES:\n", &RUsageTiming::cpu_hyper_cores);
+    *report_sink << "\n=== TIMING " << desc << " ===\n";
+    *report_sink << "\nWALL TIME " << desc << ":\n";
+    gen.GenChart(&RUsageTiming::wall_time);
+    *report_sink << "\nUSER TIME " << desc << ":\n";
+    gen.GenChart(&RUsageTiming::user_time);
+    *report_sink << "\nSYSTEM TIME " << desc << ":\n";
+    gen.GenChart(&RUsageTiming::sys_time);
+    *report_sink << "\nCPU UTILIZATION " << desc << ":\n";
+    gen.GenChart(&RUsageTiming::cpu_utilization);
+    *report_sink << "\nAVERAGE CORES " << desc << ":\n";
+    gen.GenChart(&RUsageTiming::cpu_hyper_cores);
   }
   if (metrics_ & kDeltaTiming) {
-    *report_sink << absl::StrFormat(  //
-        "\n=== Δ TIMING [P.%d %s] ===\n", id_, description_);
-    gen.GenDeltaChart("\nΔ WALL TIME:\n", &RUsageTiming::wall_time);
-    gen.GenDeltaChart("\nΔ USER TIME:\n", &RUsageTiming::user_time);
-    gen.GenDeltaChart("\nΔ SYSTEM TIME:\n", &RUsageTiming::sys_time);
-    gen.GenDeltaChart("\nΔ CPU UTILIZATION:\n", &RUsageTiming::cpu_utilization);
-    gen.GenDeltaChart("\nΔ AVERAGE CORES:\n", &RUsageTiming::cpu_hyper_cores);
+    *report_sink << "\n=== Δ TIMING " << desc << " ===\n";
+    *report_sink << "\nΔ WALL TIME " << desc << ":\n";
+    gen.GenDeltaChart(&RUsageTiming::wall_time);
+    *report_sink << "\nΔ USER TIME " << desc << ":\n";
+    gen.GenDeltaChart(&RUsageTiming::user_time);
+    *report_sink << "\nΔ SYSTEM TIME " << desc << ":\n";
+    gen.GenDeltaChart(&RUsageTiming::sys_time);
+    *report_sink << "\nΔ CPU UTILIZATION " << desc << ":\n";
+    gen.GenDeltaChart(&RUsageTiming::cpu_utilization);
+    *report_sink << "\nΔ AVERAGE CORES " << desc << ":\n";
+    gen.GenDeltaChart(&RUsageTiming::cpu_hyper_cores);
   }
   if (metrics_ & kSnapMemory) {
-    *report_sink << absl::StrFormat(  //
-        "\n=== MEMORY USAGE [P.%d %s] ===\n", id_, description_);
-    gen.GenChart("\nRESIDENT SET SIZE:\n", &RUsageMemory::mem_rss);
-    gen.GenChart("\nVIRTUAL SIZE:\n", &RUsageMemory::mem_vsize);
-    gen.GenChart("\nVIRTUAL PEAK:\n", &RUsageMemory::mem_vpeak);
-    gen.GenChart("\nDATA SEGMENT:\n", &RUsageMemory::mem_data);
-    gen.GenChart("\nSHARED MEMORY:\n", &RUsageMemory::mem_shared);
+    *report_sink << "\n=== MEMORY USAGE " << desc << " ===\n";
+    *report_sink << "\nRESIDENT SET SIZE " << desc << ":\n";
+    gen.GenChart(&RUsageMemory::mem_rss);
+    *report_sink << "\nVIRTUAL SIZE " << desc << ":\n";
+    gen.GenChart(&RUsageMemory::mem_vsize);
+    *report_sink << "\nVIRTUAL PEAK " << desc << ":\n";
+    gen.GenChart(&RUsageMemory::mem_vpeak);
+    *report_sink << "\nDATA SEGMENT " << desc << ":\n";
+    gen.GenChart(&RUsageMemory::mem_data);
+    *report_sink << "\nSHARED MEMORY " << desc << ":\n";
+    gen.GenChart(&RUsageMemory::mem_shared);
   }
   if (metrics_ & kDeltaMemory) {
-    *report_sink << absl::StrFormat(  //
-        "\n=== Δ MEMORY USAGE [P.%d %s] ===\n", id_, description_);
-    gen.GenDeltaChart("\nΔ RESIDENT SET SIZE:\n", &RUsageMemory::mem_rss);
-    gen.GenDeltaChart("\nΔ VIRTUAL SIZE:\n", &RUsageMemory::mem_vsize);
-    gen.GenDeltaChart("\nΔ VIRTUAL PEAK:\n", &RUsageMemory::mem_vpeak);
-    gen.GenDeltaChart("\nΔ DATA SEGMENT:\n", &RUsageMemory::mem_data);
-    gen.GenDeltaChart("\nΔ SHARED MEMORY:\n", &RUsageMemory::mem_shared);
+    *report_sink << "\n=== Δ MEMORY USAGE " << desc << " ===\n";
+    *report_sink << "\nΔ RESIDENT SET SIZE " << desc << ":\n";
+    gen.GenDeltaChart(&RUsageMemory::mem_rss);
+    *report_sink << "\nΔ VIRTUAL SIZE " << desc << ":\n";
+    gen.GenDeltaChart(&RUsageMemory::mem_vsize);
+    *report_sink << "\nΔ VIRTUAL PEAK " << desc << ":\n";
+    gen.GenDeltaChart(&RUsageMemory::mem_vpeak);
+    *report_sink << "\nΔ DATA SEGMENT " << desc << ":\n";
+    gen.GenDeltaChart(&RUsageMemory::mem_data);
+    *report_sink << "\nΔ SHARED MEMORY " << desc << ":\n";
+    gen.GenDeltaChart(&RUsageMemory::mem_shared);
   }
 }
 

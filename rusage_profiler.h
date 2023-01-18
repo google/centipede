@@ -333,7 +333,8 @@ class RUsageProfiler {
       std::string description = "");  // Annotate logs in addition to ID
 
   // This version turns on all RAII logging and immediately initiates timelapse
-  // snapshots at the specified interval.
+  // snapshots at the specified interval, unless the interval is
+  // absl::ZeroDuration or absl::InfiniteDuration.
   //
   // Dtor will stop taking snapshots and print a chronological report.
   // Snapshotting can also be manually stopped at any time using
