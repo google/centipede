@@ -75,6 +75,16 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "reverse_pc_table",
+    hdrs = ["reverse_pc_table.h"],
+    # Avoid non-trivial dependencies here, as this library will be linked to target binaries.
+    deps = [
+        ":defs",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
 # simple definitions only, no code, no deps other than span.
 cc_library(
     name = "defs",
@@ -541,6 +551,7 @@ RUNNER_SOURCES_NO_MAIN = [
     "feature.h",
     "knobs.h",
     "knobs.cc",
+    "reverse_pc_table.h",
     "runner.cc",
     "runner.h",
     "runner_dl_info.h",
@@ -786,6 +797,15 @@ cc_test(
         ":knobs",
         ":logging",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "reverse_pc_table_test",
+    srcs = ["reverse_pc_table_test.cc"],
+    deps = [
+        ":reverse_pc_table",
         "@com_google_googletest//:gtest_main",
     ],
 )
