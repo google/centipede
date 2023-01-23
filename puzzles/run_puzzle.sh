@@ -88,6 +88,10 @@ function ExpectPerBatchTimeout() {
   centipede::assert_regex_in_file "Per-batch timeout exceeded" "${log}"
   # TODO(b/264715830): Temporarily disabled until the bug is fixed.
   # centipede::assert_regex_in_file "Failure.*: per-batch-timeout-exceeded" "${log}"
+  centipede::assert_regex_in_file \
+    "Failure applies to entire batch: not executing inputs one-by-one" "${log}"
+  centipede::assert_regex_not_in_file \
+    "Executing inputs one-by-one, trying to find the reproducer" "${log}"
 }
 
 # Expects that Centipede found a OOM.

@@ -719,6 +719,13 @@ void Centipede::ReportCrash(std::string_view binary,
     input_idxs_to_try.push_front(suspect_input_idx);
   }
 
+  if (batch_result.failure_description() == kExecutionFailurePerBatchTimeout) {
+    LOG(INFO) << log_prefix
+              << "Failure applies to entire batch: not executing inputs "
+                 "one-by-one, trying to find the reproducer";
+    return;
+  }
+
   // Try inputs one-by-one in the determined order.
   LOG(INFO) << log_prefix
             << "Executing inputs one-by-one, trying to find the reproducer";

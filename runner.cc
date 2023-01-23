@@ -125,21 +125,21 @@ static void CheckWatchdogLimits() {
           .units = "sec",
           .value = curr_time - state.input_start_time,
           .limit = state.run_time_flags.timeout_per_input,
-          .failure = "per-input-timeout-exceeded",
+          .failure = kExecutionFailurePerInputTimeout.data(),
       },
       {
           .what = "Per-batch timeout",
           .units = "sec",
           .value = curr_time - state.batch_start_time,
           .limit = state.run_time_flags.timeout_per_batch,
-          .failure = "per-batch-timeout-exceeded",
+          .failure = kExecutionFailurePerBatchTimeout.data(),
       },
       {
           .what = "RSS limit",
           .units = "MB",
           .value = GetPeakRSSMb(),
           .limit = state.run_time_flags.rss_limit_mb,
-          .failure = "rss-limit-exceeded",
+          .failure = kExecutionFailureRssLimitExceeded.data(),
       },
   };
   for (const auto &resource : resources) {

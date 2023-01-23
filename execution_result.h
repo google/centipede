@@ -27,6 +27,13 @@
 
 namespace centipede {
 
+inline constexpr std::string_view kExecutionFailurePerInputTimeout =
+    "per-input-timeout-exceeded";
+inline constexpr std::string_view kExecutionFailurePerBatchTimeout =
+    "per-batch-timeout-exceeded";
+inline constexpr std::string_view kExecutionFailureRssLimitExceeded =
+    "rss-limit-exceeded";
+
 // It represents the results of the execution of one input by the runner.
 class ExecutionResult {
  public:
