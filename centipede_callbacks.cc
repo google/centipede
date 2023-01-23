@@ -45,7 +45,8 @@ void CentipedeCallbacks::PopulateBinaryInfo(BinaryInfo &binary_info) {
   std::string pc_table_path =
       std::filesystem::path(temp_dir_).append("pc_table");
   binary_info.pc_table =
-      GetPcTableFromBinary(env_.coverage_binary, pc_table_path);
+      GetPcTableFromBinary(env_.coverage_binary, pc_table_path,
+                           &binary_info.uses_legacy_trace_pc_instrumentation);
   if (binary_info.pc_table.empty()) {
     if (env_.require_pc_table) {
       LOG(INFO) << "Could not get PCTable, exiting (override with "
@@ -108,6 +109,9 @@ std::string CentipedeCallbacks::ConstructRunnerFlags(
     flags.emplace_back(
         absl::StrCat("dl_path_prefix=", env_.runner_dl_path_suffix));
   }
+  // TODO(kcc): add a proper test for pcs_file_path.
+  if (!env_.pcs_file_path.empty())
+    flags.emplace_back(absl::StrCat("pcs_file_path=", env_.pcs_file_path));
   if (!extra_flags.empty()) flags.emplace_back(extra_flags);
   flags.emplace_back("");
   return absl::StrJoin(flags, ":");

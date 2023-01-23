@@ -107,6 +107,10 @@ struct Environment {
 
   bool dry_run = false;
 
+  // Path to a file with PCs. This file is created once per process
+  // if trace_pc instrumentation is detected.
+  std::string pcs_file_path;
+
   Knobs knobs;  // read from a file by ReadKnobsFileIfSpecified, see knobs.h.
 
   // Returns the path to the coverage dir.

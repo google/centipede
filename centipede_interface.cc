@@ -147,6 +147,14 @@ int Analyze(const Environment &env, const PCTable &pc_table,
   return EXIT_SUCCESS;
 }
 
+void SavePCsToFile(const PCTable &pc_table, std::string_view file_path) {
+  std::vector<uintptr_t> pcs(pc_table.size());
+  for (size_t i = 0; i < pcs.size(); ++i) {
+    pcs[i] = pc_table[i].pc;
+  }
+  WriteToLocalFile(file_path, pcs);
+}
+
 }  // namespace
 
 int CentipedeMain(const Environment &env,
@@ -162,6 +170,9 @@ int CentipedeMain(const Environment &env,
   if (!env.export_corpus_from_local_dir.empty())
     return Centipede::ExportCorpusFromLocalDir(
         env, env.export_corpus_from_local_dir);
+
+  const auto tmpdir = TemporaryLocalDirPath();
+  CreateLocalDirRemovedAtExit(tmpdir);  // creates temp dir.
 
   // Export the corpus from a local dir and then fuzz.
   if (!env.corpus_dir.empty()) {
@@ -179,6 +190,12 @@ int CentipedeMain(const Environment &env,
   one_time_callbacks->PopulateBinaryInfo(binary_info);
   callbacks_factory.destroy(one_time_callbacks);
 
+  std::string pcs_file_path;
+  if (binary_info.uses_legacy_trace_pc_instrumentation) {
+    pcs_file_path = std::filesystem::path(tmpdir).append("pcs");
+    SavePCsToFile(binary_info.pc_table, pcs_file_path);
+  }
+
   if (env.analyze)
     return Analyze(env, binary_info.pc_table, binary_info.symbols);
 
@@ -191,6 +208,7 @@ int CentipedeMain(const Environment &env,
   auto thread_callback = [&](Environment &my_env, Stats &stats) {
     CreateLocalDirRemovedAtExit(TemporaryLocalDirPath());  // creates temp dir.
     my_env.seed = GetRandomSeed(env.seed);  // uses TID, call in this thread.
+    my_env.pcs_file_path = pcs_file_path;   // same for all threads.
 
     if (env.dry_run) return;
 

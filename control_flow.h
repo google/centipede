@@ -56,8 +56,11 @@ using PCTable = std::vector<PCInfo>;
 // * binaries linked with :centipede_runner
 //     and built with -fsanitize-coverage=pc-table,
 // * binaries built with -fsanitize-coverage=trace-pc
+// Sets `*uses_legacy_trace_pc_instrumentation` to true or false, depending
+// on the type of instrumentation detected.
 PCTable GetPcTableFromBinary(std::string_view binary_path,
-                             std::string_view tmp_path);
+                             std::string_view tmp_path,
+                             bool *uses_legacy_trace_pc_instrumentation);
 
 // Helper for GetPcTableFromBinary,
 // for binaries linked with :centipede_runner

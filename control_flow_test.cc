@@ -207,7 +207,10 @@ TEST(CFTable, GetCfTable) {
   LOG(INFO) << VV(cf_table.size());
 
   // Load the pc table.
-  auto pc_table = GetPcTableFromBinary(target_path, tmp_path1);
+  bool uses_legacy_trace_pc_instrumentation = {};
+  auto pc_table = GetPcTableFromBinary(target_path, tmp_path1,
+                                       &uses_legacy_trace_pc_instrumentation);
+  EXPECT_FALSE(uses_legacy_trace_pc_instrumentation);
   ASSERT_FALSE(
       std::filesystem::exists(tmp_path1.c_str()));  // tmp_path1 was deleted.
   EXPECT_THAT(pc_table.empty(), false);

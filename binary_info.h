@@ -29,6 +29,7 @@ struct BinaryInfo {
   CFTable cf_table;
   ControlFlowGraph control_flow_graph;
   CallGraph call_graph;
+  bool uses_legacy_trace_pc_instrumentation = false;
 };
 
 }  // namespace centipede

@@ -245,7 +245,10 @@ TEST(Coverage, CoverageFeatures) {
   EXPECT_EQ(features.size(), 2);
   EXPECT_NE(features[0], features[1]);
   // Get pc_table and symbols.
-  auto pc_table = GetPcTableFromBinary(GetTargetPath(), GetTempFilePath(0));
+  bool uses_legacy_trace_pc_instrumentation = {};
+  auto pc_table = GetPcTableFromBinary(GetTargetPath(), GetTempFilePath(0),
+                                       &uses_legacy_trace_pc_instrumentation);
+  EXPECT_FALSE(uses_legacy_trace_pc_instrumentation);
   SymbolTable symbols;
   symbols.GetSymbolsFromBinary(pc_table, GetTargetPath(),
                                GetLLVMSymbolizerPath(), GetTempFilePath(0),
@@ -358,7 +361,11 @@ TEST(Coverage, PathFeatures) {
 
 TEST(Coverage, FunctionFilter) {
   // initialize coverage data.
-  PCTable pc_table = GetPcTableFromBinary(GetTargetPath(), GetTempFilePath(0));
+  bool uses_legacy_trace_pc_instrumentation = {};
+  PCTable pc_table =
+      GetPcTableFromBinary(GetTargetPath(), GetTempFilePath(0),
+                           &uses_legacy_trace_pc_instrumentation);
+  EXPECT_FALSE(uses_legacy_trace_pc_instrumentation);
   SymbolTable symbols;
   symbols.GetSymbolsFromBinary(pc_table, GetTargetPath(),
                                GetLLVMSymbolizerPath(), GetTempFilePath(0),
