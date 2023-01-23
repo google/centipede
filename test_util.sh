@@ -98,23 +98,46 @@ function centipede::ensure_empty_dir() {
   fileop rm -R -f "${1:?}"/*
 }
 
-# Makes sure that string "$1" exists in file "$2". Works for local and CNS.
-function centipede::assert_regex_in_file() {
+function _assert_regex_in_file_impl() {
   local -r regex="$1"
   local -r file="$2"
+  local -r expected_found="$3"
   set -o pipefail
   if ! fileop ls "${file}" > /dev/null; then
     die "Expected file ${file} doesn't exist"
   fi
-  if ! grep -q -- "${regex}" <(fileop cat "${file}"); then
+  local found
+  if grep -q -- "${regex}" <(fileop cat "${file}"); then
+    found=1
+  else
+    found=0
+  fi
+  if ((found != expected_found)); then
     echo
     echo ">>>>>>>>>> BEGIN ${file} >>>>>>>>>>"
     fileop cat "${file}"
     echo "<<<<<<<<<< END ${file} <<<<<<<<<<"
     echo
-    die "^^^ File ${file} doesn't contain expected regex /${regex}/"
+    if ((expected_found)); then
+      die "^^^ File ${file} doesn't contain expected regex /${regex}/"
+    else
+      die "^^^ File ${file} contains unexpected regex /${regex}/"
+    fi
   fi
   set +o pipefail
+}
+
+# Makes sure that string "$1" exists in file "$2". Works for local and CNS.
+function centipede::assert_regex_in_file() {
+  local -r regex="$1"
+  local -r file="$2"
+  _assert_regex_in_file_impl "${regex}" "${file}" 1
+}
+
+function centipede::assert_regex_not_in_file() {
+  local -r regex="$1"
+  local -r file="$2"
+  _assert_regex_in_file_impl "${regex}" "${file}" 0
 }
 
 # For each of the logs in "$@", asserts that fuzzing started and successfully
