@@ -31,13 +31,17 @@ CentipedeDefaultCallbacks::CentipedeDefaultCallbacks(const Environment &env)
     LoadDictionary(dictionary_path);
   }
   // Check if a custom mutator is available in the target.
+  LOG(INFO) << "Detecting custom mutator in target...";
   std::vector<ByteArray> mutants(1);
-  if (MutateViaExternalBinary(env_.binary, {{0}}, mutants) &&
-      mutants.size() == 1 && !mutants.front().empty()) {
+  const bool external_mutator_ran =
+      MutateViaExternalBinary(env_.binary, {{0}}, mutants);
+  if (external_mutator_ran && mutants.size() == 1 && !mutants.front().empty()) {
     custom_mutator_is_usable_ = true;
-    LOG(INFO) << "Custom mutator detected in the target, will use it";
+    LOG(INFO) << "Custom mutator detected: will use it";
   } else {
-    LOG(INFO) << "No custom mutator detected in the target";
+    LOG(INFO) << "Custom mutator undetected or misbehaving: will use built-in ["
+              << VV(external_mutator_ran) << VV(mutants.size())
+              << VV(!mutants.empty() ? mutants.front().size() : -1) << "]";
   }
 }
 
