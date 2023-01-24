@@ -29,6 +29,7 @@
 #include "./execution_result.h"
 #include "./feature.h"
 #include "./knobs.h"
+#include "./reverse_pc_table.h"
 #include "./runner_cmp_trace.h"
 #include "./runner_dl_info.h"
 
@@ -227,6 +228,9 @@ struct GlobalRunnerState {
 
   // Execution stats for the currently executed input.
   ExecutionResult::Stats stats;
+
+  // Used by trace_pc instrumentation. Populated if `pcs_file_path` flag is set.
+  ReversePCTable reverse_pc_table;
 
   // CentipedeRunnerMain() sets this to true.
   bool centipede_runner_main_executed = false;

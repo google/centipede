@@ -18,6 +18,7 @@
 #include <cstdint>
 
 #include "./feature.h"
+#include "./reverse_pc_table.h"
 #include "./runner.h"
 
 namespace centipede {
@@ -170,6 +171,20 @@ static inline void HandleOnePc(uintptr_t normalized_pc) {
   }
 }
 
+// Caller PC is the PC of the call instruction.
+// Return address is the PC where the callee will return upon completion.
+// On x86_64, CallerPC == ReturnAddress - 5
+// On AArch64, CallerPC == ReturnAddress - 4
+static uintptr_t ReturnAddressToCallerPc(uintptr_t return_address) {
+#ifdef __x86_64__
+  return return_address - 5;
+#elif defined(__aarch64__)
+  return return_address - 4;
+#else
+#error "unsupported architecture"
+#endif
+}
+
 // TODO(kcc): [impl] add proper testing for this callback.
 // TODO(kcc): make sure the pc_table in the engine understands the raw PCs.
 // TODO(kcc): this implementation is temporary. In order for symbolization to
@@ -181,7 +196,9 @@ static inline void HandleOnePc(uintptr_t normalized_pc) {
 void __sanitizer_cov_trace_pc() {
   uintptr_t pc = reinterpret_cast<uintptr_t>(__builtin_return_address(0));
   pc -= state.main_object.start_address;
-  HandleOnePc(pc);
+  pc = ReturnAddressToCallerPc(pc);
+  auto idx = state.reverse_pc_table.GetPCIndex(pc);
+  if (idx != centipede::ReversePCTable::kUnknownPC) HandleOnePc(idx);
 }
 
 // This function is called at the DSO init time.

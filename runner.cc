@@ -29,12 +29,14 @@
 #include <string.h>
 #include <sys/auxv.h>
 #include <sys/resource.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <time.h>
 #include <unistd.h>
 
 #include <cinttypes>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <vector>
 
@@ -336,6 +338,20 @@ static void RunOneInput(const uint8_t *data, size_t size,
   state.stats.peak_rss_mb = centipede::GetPeakRSSMb();
 }
 
+static std::vector<uint8_t> ReadBytesFromFilePath(const char *input_path) {
+  FILE *input_file = fopen(input_path, "r");
+  RunnerCheck(input_file, "can't open the input file");
+  struct stat statbuf = {};
+  RunnerCheck(fstat(fileno(input_file), &statbuf) == 0, "fstat failed");
+  size_t size = statbuf.st_size;
+  RunnerCheck(size != 0, "empty file");
+  std::vector<uint8_t> data(size);
+  auto num_bytes_read = fread(data.data(), 1, data.size(), input_file);
+  RunnerCheck(num_bytes_read == data.size(), "read failed");
+  RunnerCheck(fclose(input_file) == 0, "fclose failed");
+  return data;
+}
+
 // Runs one input provided in file `input_path`.
 // Produces coverage data in file `input_path`-features.
 __attribute__((noinline))  // so that we see it in profile.
@@ -343,17 +359,7 @@ static void
 ReadOneInputExecuteItAndDumpCoverage(
     const char *input_path, FuzzerTestOneInputCallback test_one_input_cb) {
   // Read the input.
-  FILE *input_file = fopen(input_path, "r");
-  PrintErrorAndExitIf(!input_file, "can't open the input file");
-  PrintErrorAndExitIf(fseek(input_file, 0, SEEK_END) != 0, "fseek failed");
-  auto size = ftell(input_file);
-  PrintErrorAndExitIf(size < 0, "ftell failed");
-  PrintErrorAndExitIf(fseek(input_file, 0, SEEK_SET) != 0, "fseek failed");
-  std::vector<uint8_t> data(size);
-
-  auto num_bytes_read = fread(data.data(), 1, data.size(), input_file);
-  PrintErrorAndExitIf(num_bytes_read != data.size(), "read failed");
-  fclose(input_file);
+  auto data = ReadBytesFromFilePath(input_path);
 
   RunOneInput(data.data(), data.size(), test_one_input_cb);
 
@@ -637,6 +643,17 @@ static void SetLimits() {
   }
 }
 
+static void MaybePopluateReversePCTable() {
+  const char *pcs_file_path = state.GetStringFlag(":pcs_file_path=");
+  if (!pcs_file_path) return;
+  const auto bytes = ReadBytesFromFilePath(pcs_file_path);
+  const uintptr_t *pcs_beg = reinterpret_cast<const uintptr_t *>(bytes.data());
+  size_t pcs_size = bytes.size() / sizeof(uintptr_t);
+  RunnerCheck(bytes.size() % sizeof(uintptr_t) == 0,
+              "pcs_size is not multiple of sizeof(uintptr_t)");
+  state.reverse_pc_table.SetFromPCs({pcs_beg, pcs_size});
+}
+
 // Create a fake reference to ForkServerCallMeVeryEarly() here so that the
 // fork server module is not dropped during linking.
 // Alternatives are
@@ -684,6 +701,8 @@ GlobalRunnerState::GlobalRunnerState() {
     centipede::DumpCfTable(state.arg1);
     _exit(EXIT_SUCCESS);
   }
+
+  MaybePopluateReversePCTable();
 }
 
 GlobalRunnerState::~GlobalRunnerState() {
