@@ -68,6 +68,9 @@ static void WriteFailureDescription(const char *description) {
   if (fwrite(description, 1, len, f) != len) {
     perror("FAILURE: fwrite()");
   }
+  if (fflush(f) != 0) {
+    perror("FAILURE: fflush()");
+  }
   if (fclose(f) != 0) {
     perror("FAILURE: fclose()");
   }
