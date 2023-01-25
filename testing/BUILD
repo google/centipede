@@ -180,3 +180,13 @@ sh_test(
         "@centipede//:test_util_sh",
     ],
 )
+
+sh_test(
+    name = "trace_pc_test",
+    srcs = ["trace_pc_test.sh"],
+    data = [
+        ":abort_fuzz_target_trace_pc",
+        "@centipede",
+        "@centipede//:test_util_sh",
+    ],
+)
