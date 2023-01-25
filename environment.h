@@ -71,6 +71,7 @@ struct Environment {
   size_t feature_frequency_threshold;
   bool require_pc_table;
   int telemetry_frequency;
+  bool print_runner_log;
   size_t distill_shards;
   size_t log_features_shards;
   std::string knobs_file;

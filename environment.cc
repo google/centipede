@@ -201,6 +201,9 @@ ABSL_FLAG(int, telemetry_frequency, 0,
           "--telemetry_frequency=-5, dump on batches 32, 64, 128,...). Zero "
           "means no telemetry. Note that the before-fuzzing and after-fuzzing "
           "telemetry are always dumped.");
+ABSL_FLAG(bool, print_runner_log, false,
+          "If true, runner logs are printed after every batch. Note that "
+          "crash logs are always printed regardless of this flag's value.");
 ABSL_FLAG(std::string, knobs_file, "",
           "If not empty, knobs will be read from this (possibly remote) file."
           " The feature is experimental, not yet fully functional.");
@@ -370,6 +373,7 @@ Environment::Environment(const std::vector<std::string> &argv)
           absl::GetFlag(FLAGS_feature_frequency_threshold)),
       require_pc_table(absl::GetFlag(FLAGS_require_pc_table)),
       telemetry_frequency(absl::GetFlag(FLAGS_telemetry_frequency)),
+      print_runner_log(absl::GetFlag(FLAGS_print_runner_log)),
       distill_shards(absl::GetFlag(FLAGS_distill_shards)),
       log_features_shards(absl::GetFlag(FLAGS_log_features_shards)),
       knobs_file(absl::GetFlag(FLAGS_knobs_file)),

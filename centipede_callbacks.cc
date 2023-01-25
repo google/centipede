@@ -202,6 +202,16 @@ int CentipedeCallbacks::ExecuteCentipedeSancovBinaryWithShmem(
               << " outputs; shmem_size_mb might be too small: "
               << env_.shmem_size_mb;
   }
+
+  if (env_.print_runner_log) {
+    std::string log_text;
+    ReadFromLocalFile(execute_log_path_, log_text);
+    for (const auto &log_line :
+         absl::StrSplit(absl::StripAsciiWhitespace(log_text), '\n')) {
+      LOG(INFO).NoPrefix() << "LOG: " << log_line;
+    }
+  }
+
   if (retval != EXIT_SUCCESS) {
     ReadFromLocalFile(execute_log_path_, batch_result.log());
     ReadFromLocalFile(failure_description_path_,
