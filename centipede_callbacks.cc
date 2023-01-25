@@ -107,7 +107,7 @@ std::string CentipedeCallbacks::ConstructRunnerFlags(
   // TODO(kcc): add a proper test for dl_path_suffix.
   if (!env_.runner_dl_path_suffix.empty()) {
     flags.emplace_back(
-        absl::StrCat("dl_path_prefix=", env_.runner_dl_path_suffix));
+        absl::StrCat("dl_path_suffix=", env_.runner_dl_path_suffix));
   }
   // TODO(kcc): add a proper test for pcs_file_path.
   if (!env_.pcs_file_path.empty())
