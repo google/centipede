@@ -141,7 +141,7 @@ Command &CentipedeCallbacks::GetOrCreateCommandForBinary(
   const auto amortized_timeout =
       absl::Seconds(env_.timeout_per_batch) + absl::Seconds(5);
   Command &cmd = commands_.emplace_back(Command(
-      /*path=*/binary, /*args=*/{shmem_name1_, shmem_name2_},
+      /*path=*/binary, /*args=*/{},
       /*env=*/env,
       /*out=*/execute_log_path_,
       /*err=*/execute_log_path_,
