@@ -19,6 +19,7 @@
 #include <unistd.h>
 
 #include <cinttypes>
+#include <cstdarg>
 #include <cstdint>
 #include <cstdio>
 #include <fstream>

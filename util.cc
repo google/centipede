@@ -70,7 +70,8 @@ std::string ResolveExecutablePath(std::string_view path,
   FILE *which_stdout = popen(which_cmd.c_str(), "r");
   PCHECK(which_stdout != nullptr) << "Error running `which`: " << VV(which_cmd);
   char resolved_path_buf[PATH_MAX] = {'\0'};
-  fgets(resolved_path_buf, PATH_MAX, which_stdout);
+  PCHECK(fgets(resolved_path_buf, PATH_MAX, which_stdout) != nullptr)
+      << "Error reading `which` output: " << VV(which_cmd);
   (void)pclose(which_stdout);  // Ignore pclose() errors.
 
   std::string resolved_path{absl::StripAsciiWhitespace(resolved_path_buf)};
