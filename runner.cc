@@ -23,22 +23,18 @@
 #include "./runner.h"
 
 #include <pthread.h>  // NOLINT: use pthread to avoid extra dependencies.
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/auxv.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/time.h>
-#include <time.h>
 #include <unistd.h>
 
 #include <atomic>
 #include <cinttypes>
-#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <ctime>
 #include <vector>
 
 #include "./byte_array_mutator.h"
