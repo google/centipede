@@ -34,6 +34,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <atomic>
 #include <cinttypes>
 #include <cstdint>
 #include <cstdio>
@@ -149,12 +150,18 @@ static void CheckWatchdogLimits() {
   };
   for (const auto &resource : resources) {
     if (resource.limit != 0 && resource.value > resource.limit) {
-      fprintf(stderr,
-              "========= %s exceeded: %" PRIu64 " > %" PRIu64
-              " (%s); exiting\n",
-              resource.what, resource.value, resource.limit, resource.units);
-      WriteFailureDescription(resource.failure);
-      _exit(EXIT_FAILURE);
+      // Allow only one invocation to handle a failure: needed because we call
+      // this function periodically in `WatchdogThread()`, but also call it in
+      // `RunOneInput()` after all the work is done.
+      static std::atomic<bool> already_handling_failure = false;
+      if (!already_handling_failure.exchange(true)) {
+        fprintf(stderr,
+                "========= %s exceeded: %" PRIu64 " > %" PRIu64
+                " (%s); exiting\n",
+                resource.what, resource.value, resource.limit, resource.units);
+        WriteFailureDescription(resource.failure);
+        _exit(EXIT_FAILURE);
+      }
     }
   }
 }
