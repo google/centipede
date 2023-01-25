@@ -30,21 +30,49 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_replace.h"
+#include "absl/strings/strip.h"
 #include "absl/time/clock.h"
 #include "./logging.h"
 #include "./util.h"
 
 namespace centipede {
+namespace {
 
 // See the definition of --fork_server flag.
 inline constexpr std::string_view kCommandLineSeparator(" \\\n");
 inline constexpr std::string_view kNoForkServerRequestPrefix("%f");
+inline constexpr std::string_view kTempFileWildcard = "@@";
+
+// Returns true if `cmd_path` should be executed using the fork server.
+bool IsForkServerEnabled(std::string_view cmd_path) {
+  return !absl::StartsWith(cmd_path, kNoForkServerRequestPrefix);
+}
+
+// Strips the fork server request prefix from `cmd_path`, if any.
+std::string CleanseCommandPath(std::string_view cmd_path,
+                               std::string_view temp_file_path) {
+  std::string cleansed_cmd_path{cmd_path};
+  // Replace the @@ temporary file placeholder with temp_file_path.
+  if (absl::StrContains(cleansed_cmd_path, kTempFileWildcard)) {
+    CHECK(!temp_file_path.empty());
+    cleansed_cmd_path = absl::StrReplaceAll(
+        cleansed_cmd_path, {{kTempFileWildcard, temp_file_path}});
+  }
+  // Remove the %f prefix (=> do not use fork server), if present.
+  if (absl::StartsWith(cleansed_cmd_path, kNoForkServerRequestPrefix)) {
+    cleansed_cmd_path =
+        absl::StripPrefix(cleansed_cmd_path, kNoForkServerRequestPrefix);
+  }
+  return cleansed_cmd_path;
+}
+
+}  // namespace
 
 Command::Command(std::string_view path, std::vector<std::string> args,
                  std::vector<std::string> env, std::string_view out,
                  std::string_view err, absl::Duration timeout,
                  std::string_view temp_file_path)
-    : path_(path),
+    : path_(CleanseCommandPath(path, temp_file_path)),
       args_(std::move(args)),
       env_(std::move(env)),
       out_(out),
@@ -60,18 +88,7 @@ std::string Command::ToString() const {
     ss.emplace_back(env);
   }
   // path.
-  std::string path = path_;
-  // Strip the % prefixes, if any.
-  if (absl::StartsWith(path, kNoForkServerRequestPrefix)) {
-    path = path.substr(kNoForkServerRequestPrefix.size());
-  }
-  // Replace @@ with temp_file_path_.
-  constexpr std::string_view kTempFileWildCard = "@@";
-  if (absl::StrContains(path, kTempFileWildCard)) {
-    CHECK(!temp_file_path_.empty());
-    path = absl::StrReplaceAll(path, {{kTempFileWildCard, temp_file_path_}});
-  }
-  ss.emplace_back(path);
+  ss.push_back(path_);
   // args.
   for (auto &arg : args_) {
     ss.emplace_back(arg);
@@ -87,13 +104,12 @@ std::string Command::ToString() const {
       ss.emplace_back("2>&1");
     }
   }
-  // Trim trailing space and return.
   return absl::StrJoin(ss, kCommandLineSeparator);
 }
 
 bool Command::StartForkServer(std::string_view temp_dir_path,
                               std::string_view prefix) {
-  if (absl::StartsWith(path_, kNoForkServerRequestPrefix)) {
+  if (!IsForkServerEnabled(path_)) {
     LOG(INFO) << "Fork server disabled for " << path();
     return false;
   }
