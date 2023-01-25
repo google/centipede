@@ -97,6 +97,9 @@ bool Command::StartForkServer(std::string_view temp_dir_path,
     LOG(INFO) << "Fork server disabled for " << path();
     return false;
   }
+
+  AssertExecutablePath(path());
+
   LOG(INFO) << "Starting fork server for " << path();
 
   fifo_path_[0] = std::filesystem::path(temp_dir_path)

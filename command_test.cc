@@ -128,6 +128,17 @@ TEST(CommandTest, ForkServer) {
   // TODO(kcc): [impl] test what happens if the child is interrupted.
 }
 
+TEST(CommandDeathTest, ForkServerMissingBinary) {
+  GTEST_FLAG_SET(death_test_style, "threadsafe");
+  EXPECT_DEATH(
+      {
+        const std::string test_tmpdir = GetTestTempDir(test_info_->name());
+        Command missing("missing");
+        missing.StartForkServer(test_tmpdir, "ForkServer");
+      },
+      "No such file or directory");
+}
+
 TEST(CommandDeathTest, ForkServerHangingBinary) {
   GTEST_FLAG_SET(death_test_style, "threadsafe");
   const std::string test_tmpdir = GetTestTempDir(test_info_->name());

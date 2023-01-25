@@ -220,8 +220,9 @@ ABSL_FLAG(std::string, corpus_dir, "",
           "first dir. This makes it more convenient to interop with libFuzzer "
           "corpora.");
 ABSL_FLAG(std::string, symbolizer_path, "llvm-symbolizer",
-          "Path to the symbolizer tool. By default, we use llvm-symbolizer "
-          "and assume it is in PATH.");
+          "Path to the symbolizer tool. By default, we assume llvm-symbolizer "
+          "is installed and findable in $PATH (use "
+          "install_dependencies_debian.sh to install).");
 ABSL_FLAG(std::string, runner_dl_path_suffix, "",
           "If non-empty, this flag is passed to the Centipede runner. "
           "It tells the runner that this dynamic library is instrumented "
@@ -327,14 +328,29 @@ size_t ComputeTimeoutPerBatch(  //
 }  // namespace
 
 Environment::Environment(const std::vector<std::string> &argv)
-    : binary(absl::GetFlag(FLAGS_binary)),
-      coverage_binary(
-          absl::GetFlag(FLAGS_coverage_binary).empty()
-              ? (binary.empty() ? "" : *absl::StrSplit(binary, ' ').begin())
-              : absl::GetFlag(FLAGS_coverage_binary)),
-      clang_coverage_binary(absl::GetFlag(FLAGS_clang_coverage_binary)),
-      extra_binaries(absl::StrSplit(absl::GetFlag(FLAGS_extra_binaries), ',',
-                                    absl::SkipEmpty{})),
+    : binary(ResolveExecutablePath(               //
+          absl::GetFlag(FLAGS_binary),            //
+          "--binary",                             //
+          /*allow_empty=*/getenv("TEST_BINARY"),  // TODO(b/255453511)
+          /*allow_unresolved=*/false)),
+      coverage_binary(ResolveExecutablePath(               //
+          !absl::GetFlag(FLAGS_coverage_binary).empty()    //
+              ? absl::GetFlag(FLAGS_coverage_binary)       //
+              : *absl::StrSplit(binary, ' ').begin(),      //
+          "--coverage_binary (or derived from --binary)",  //
+          /*allow_empty=*/getenv("TEST_BINARY"),           // TODO(b/255453511)
+          /*allow_unresolved=*/true)),                     // TODO(b/255632358)
+      clang_coverage_binary(ResolveExecutablePath(         //
+          absl::GetFlag(FLAGS_clang_coverage_binary),      //
+          "--clang_coverage_binary",                       //
+          /*allow_empty=*/true,                            //
+          /*allow_unresolved=*/false)),
+      extra_binaries(ResolveExecutablePaths(                                 //
+          absl::StrSplit(                                                    //
+              absl::GetFlag(FLAGS_extra_binaries), ',', absl::SkipEmpty{}),  //
+          "--extra_binaries",                                                //
+          /*allow_empty=*/false,  // ensured by absl::SkipEmpty above
+          /*allow_unresolved=*/false)),
       workdir(absl::GetFlag(FLAGS_workdir)),
       merge_from(absl::GetFlag(FLAGS_merge_from)),
       num_runs(absl::GetFlag(FLAGS_num_runs)),
@@ -382,7 +398,11 @@ Environment::Environment(const std::vector<std::string> &argv)
           absl::GetFlag(FLAGS_export_corpus_from_local_dir)),
       corpus_dir(absl::StrSplit(absl::GetFlag(FLAGS_corpus_dir), ',',
                                 absl::SkipEmpty{})),
-      symbolizer_path(absl::GetFlag(FLAGS_symbolizer_path)),
+      symbolizer_path(ResolveExecutablePath(     //
+          absl::GetFlag(FLAGS_symbolizer_path),  //
+          "--symbolizer_path",                   //
+          /*allow_empty=*/true,                  // if so, skip debug symbols
+          /*allow_unresolved=*/true)),           // prioritize runnability
       runner_dl_path_suffix(absl::GetFlag(FLAGS_runner_dl_path_suffix)),
       input_filter(absl::GetFlag(FLAGS_input_filter)),
       dictionary(absl::StrSplit(absl::GetFlag(FLAGS_dictionary), ',',

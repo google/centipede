@@ -33,11 +33,13 @@ centipede::maybe_set_var_to_executable_path \
 centipede::maybe_set_var_to_executable_path \
   LLVM_SYMBOLIZER "$(centipede::get_llvm_symbolizer_path)"
 
-# Shorthand for centipede --binary=test_fuzz_target
+# Shorthand for centipede --binary='test_fuzz_target dummy_arg'. `dummy_arg` is
+# actually ignored by the target: we use it only to test the corner use case
+# when --binary is not a simple path but a command line with arguments.
 test_fuzz() {
   set -x
   "${CENTIPEDE_BINARY}" \
-    --binary="${TEST_TARGET_BINARY}" --symbolizer_path=/dev/null "$@" 2>&1
+    --binary="${TEST_TARGET_BINARY} dummy_arg" --symbolizer_path=/dev/null "$@" 2>&1
   set +x
 }
 

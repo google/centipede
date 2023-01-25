@@ -54,18 +54,29 @@
 
 namespace centipede {
 
-std::string ResolveExecutablePath(std::string_view path,
+std::string ResolveExecutablePath(std::string_view command,
                                   std::string_view description,
                                   bool allow_empty, bool allow_unresolved) {
+  // `command` can be a simple binary path or a real command line with
+  // arguments. Extract the path.
+  // TODO(ussuri): This break for some corner cases, e.g. `ENV_VAR=VAL path`
+  //  or paths with spaces.
+  std::vector<std::string_view> command_argv =
+      absl::StrSplit(command, absl::ByAnyChar{" \t\n"});
+  const std::string_view path = command_argv.front();
+
+  // Handle empty paths.
   if (path.empty() || path == "/dev/null") {
     CHECK(allow_empty) << "Required '" << description
-                       << "' path is empty or /dev/null: " << path;
+                       << "' path is empty or /dev/null: " << VV(command)
+                       << VV(path);
     return "";
   }
 
-  // NOTE: `which` writes nothing to stdout if the path can't be found,
-  // returning a null FILE. We write an empty string using `echo` in this case,
-  // so a null FILE becomes an indicator of a real problem.
+  // Find the path using `which`.
+  // NOTE: `which` writes nothing to stdout if the path can't be found, so we
+  // get a null `which_stdout`. To tell this case from a real problem, we write
+  // an empty string using `echo` when `which` fails.
   const std::string which_cmd = absl::Substitute("which $0 || echo ''", path);
   FILE *which_stdout = popen(which_cmd.c_str(), "r");
   PCHECK(which_stdout != nullptr) << "Error running `which`: " << VV(which_cmd);
@@ -73,33 +84,40 @@ std::string ResolveExecutablePath(std::string_view path,
   PCHECK(fgets(resolved_path_buf, PATH_MAX, which_stdout) != nullptr)
       << "Error reading `which` output: " << VV(which_cmd);
   (void)pclose(which_stdout);  // Ignore pclose() errors.
+  const std::string_view resolved_path =
+      absl::StripAsciiWhitespace(resolved_path_buf);
 
-  std::string resolved_path{absl::StripAsciiWhitespace(resolved_path_buf)};
-
+  // Handle unresolved paths.
   if (resolved_path.empty()) {
     CHECK(allow_unresolved)
         << "Required '" << description
         << "' path not found or is not executable"
-        << (allow_empty ? " (fix or use '' or '/dev/null' to suppress)" : "")
-        << ": " << VV(path) << VV(getenv("PATH"));
+        << (allow_empty ? " (fix or use '' to suppress)" : "") << ": "
+        << VV(command) << VV(path) << VV(getenv("PATH"));
+    return "";
   }
 
-  return resolved_path;
+  // Recombine the command line with the resolved path instead of the original.
+  command_argv.front() = resolved_path;
+  return absl::StrJoin(command_argv, " ");
 }
 
 std::vector<std::string> ResolveExecutablePaths(
-    const std::vector<std::string_view> &paths, std::string_view description,
+    const std::vector<std::string_view> &commands, std::string_view description,
     bool allow_empty, bool allow_unresolved) {
-  std::vector<std::string> resolved_paths;
-  resolved_paths.reserve(paths.size());
-  for (const auto &path : paths) {
-    resolved_paths.emplace_back(ResolveExecutablePath(
-        path, description, allow_empty, allow_unresolved));
+  std::vector<std::string> resolved_commands;
+  resolved_commands.reserve(commands.size());
+  for (const auto &command : commands) {
+    resolved_commands.emplace_back(ResolveExecutablePath(
+        command, description, allow_empty, allow_unresolved));
   }
-  return resolved_paths;
+  return resolved_commands;
 }
 
-void AssertExecutablePath(std::string_view path) {
+void AssertExecutablePath(std::string_view command) {
+  std::vector<std::string_view> command_argv =
+      absl::StrSplit(command, absl::ByAnyChar{" \t\n"}, absl::SkipEmpty{});
+  const std::string_view path = command_argv.front();
   std::error_code error;
   const auto status = std::filesystem::status(path, error);
   CHECK(!error) << "Failed to get file status: " << VV(path) << "; "

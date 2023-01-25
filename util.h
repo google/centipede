@@ -28,7 +28,9 @@
 
 namespace centipede {
 
-// Resolves an executable path using `which`. Returns the resolved path if
+// Resolves the binary path (the first whitespace-separated element) in
+// `command` using `which`. The input `command` can be either a simple path or a
+// path with additional arguments. Returns the command with the updated path if
 // `path` is resolved (i.e. it is either a valid absolute or relative path or
 // can be found via PATH) and is executable by the current user. If the input
 // `path` is empty or "/dev/null": `allow_empty`==true returns "";
@@ -36,17 +38,18 @@ namespace centipede {
 // `allow_unresolved`==true returns ""; `allow_unresolved`==false CHECKs.
 // `description` should say what the path is: it is used in error messages.
 // TODO(ussuri): Return StatusOr while doing a global switch to absl::Status.
-std::string ResolveExecutablePath(std::string_view path,
+std::string ResolveExecutablePath(std::string_view command,
                                   std::string_view description,
                                   bool allow_empty, bool allow_unresolved);
-// Same as `ResolveExecutablePath`, but for a list of paths.
+// Same as `ResolveExecutablePath`, but for a list of command.
 // TODO(ussuri): Return StatusOr while doing a global switch to absl::Status.
 std::vector<std::string> ResolveExecutablePaths(
-    const std::vector<std::string_view> &paths, std::string_view description,
+    const std::vector<std::string_view> &commands, std::string_view description,
     bool allow_empty, bool allow_unresolved);
-// CHECKs with a diagnostic if `path` doesn't exist or is not executable.
+// CHECKs with a diagnostic if the binary path (first whitespace-separated
+// element) in `command` doesn't exist or is not executable.
 // TODO(ussuri): Return StatusOr while doing a global switch to absl::Status.
-void AssertExecutablePath(std::string_view path);
+void AssertExecutablePath(std::string_view command);
 
 // Returns a printable hash of a byte array. Currently sha1 is used.
 std::string Hash(absl::Span<const uint8_t> span);
