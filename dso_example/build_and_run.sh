@@ -19,6 +19,7 @@
 # * (optionally) the shared library needs to be built with GCC and is thus
 #   limited to using the legacy trace-pc instrumentation.
 # * The main binary is not instrumented. It passes inputs to the library.
+# * The instrumented library is dlopen-ed by the main binary.
 
 # Run this script in its own directory.
 set -ue
@@ -43,18 +44,18 @@ echo "Building the instrumented shared library"
 ${CC} -O2 -g -fPIC -shared fuzz_me.cc -fsanitize-coverage=trace-pc -o fuzz_me.so
 
 # Build the main binary without instrumentation.
-# Link it against the centipede runner and the instrumented libary.
-# fuzz_me.so references symbols defined in centipede_runner_no_main.so,
-# so the order is important.
 echo "Building the non-instrumented binary"
-${CXX} -O2 -g main.cc -o main_executable \
-   fuzz_me.so /tmp/centipede_runner_no_main.so  -Wl,-R"${PWD}"
+${CXX} -O2 -g main.cc -o main_executable
 
 echo "Preparing to run fuzzing"
 rm -rf /tmp/wd
 mkdir /tmp/wd
 
+# Run fuzzing.
+# The centipede run-time is LD_PRELOAD-ed.
+# The instrumented library fuzz_me.so is dloped-ed.
 echo "Fuzzing until the first crash"
 /tmp/centipede --workdir=/tmp/wd \
-  --binary="./main_executable @@" --exit_on_crash=1 \
+  --binary="LD_PRELOAD=/tmp/centipede_runner_no_main.so FUZZ_ME_PATH=./fuzz_me.so ./main_executable @@" \
+  --exit_on_crash=1 \
   --coverage_binary="${PWD}/fuzz_me.so" --runner_dl_path_suffix="/fuzz_me.so"
