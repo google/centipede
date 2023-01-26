@@ -36,7 +36,6 @@ cc_binary(
     linkstatic = False,
 )
 
-# TODO(kcc): remove manual/notap. May need to disable sanitizers for that.
 sh_test(
     name = "dso_example_test",
     srcs = ["dso_example_test.sh"],
@@ -44,10 +43,6 @@ sh_test(
         ":fuzz_me.so",
         ":main",
         "@centipede",
-    ],
-    tags = [
-        "manual",
-        "notap",
     ],
     deps = [
         "@centipede//:test_util_sh",
