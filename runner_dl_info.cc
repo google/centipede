@@ -60,7 +60,7 @@ static int DlIteratePhdrCallback(struct dl_phdr_info *info, size_t size,
   RunnerCheck(!result.IsSet(), "result is already set");
   // Skip uninteresting info.
   if (param->dl_path_suffix != nullptr &&
-      StringEndsWithSuffix(info->dlpi_name, param->dl_path_suffix)) {
+      !StringEndsWithSuffix(info->dlpi_name, param->dl_path_suffix)) {
     return 0;  // 0 indicates we want to see the other entries.
   }
 
