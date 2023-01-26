@@ -17,7 +17,7 @@
 #include <cstddef>
 #include <cstdint>
 
-void FuzzMe(const uint8_t *data, size_t size) {
+extern "C" void FuzzMe(const uint8_t *data, size_t size) {
   if (size == 3 && data[0] == 'F' && data[1] == 'U' && data[2] == 'Z')
     __builtin_trap();
 }

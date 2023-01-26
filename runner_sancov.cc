@@ -15,6 +15,8 @@
 // Instrumentation callbacks for SanitizerCoverage (sancov).
 // https://clang.llvm.org/docs/SanitizerCoverage.html
 
+#include <pthread.h>
+
 #include <cstdint>
 
 #include "./feature.h"
@@ -185,6 +187,36 @@ static uintptr_t ReturnAddressToCallerPc(uintptr_t return_address) {
 #endif
 }
 
+// MainObjectLazyInit() and helpers allow us to initialize state.main_object
+// lazily and thread-safely on the first call to __sanitizer_cov_trace_pc().
+//
+// TODO(kcc): consider removing :dl_path_suffix= since with lazy init
+// we can auto-detect the instrumented DSO.
+//
+// TODO(kcc): this lazy init is brittle.
+// It assumes that __sanitizer_cov_trace_pc is the only code that touches
+// state.main_object concurrently. I.e. we can not blindly reuse this lazy init
+// for other instrumentation callbacks that use state.main_object.
+// This code is also considered *temporary* because
+// a) __sanitizer_cov_trace_pc is obsolete and we hope to not need it in future.
+// b) a better option might be to do a non-lazy init by intercepting dlopen.
+//
+// We do not call MainObjectLazyInit() in
+// __sanitizer_cov_trace_pc_guard() because
+// a) there is not use case for that currently and
+// b) it will slowdown the hot function.
+static pthread_once_t main_object_lazy_init_once = PTHREAD_ONCE_INIT;
+static void MainObjectLazyInitOnceCallback() {
+  state.main_object =
+      centipede::GetDlInfo(state.GetStringFlag(":dl_path_suffix="));
+  fprintf(stderr, "MainObjectLazyInitOnceCallback %zx\n",
+          state.main_object.start_address);
+}
+
+__attribute__((noinline)) static void MainObjectLazyInit() {
+  pthread_once(&main_object_lazy_init_once, MainObjectLazyInitOnceCallback);
+}
+
 // TODO(kcc): [impl] add proper testing for this callback.
 // TODO(kcc): make sure the pc_table in the engine understands the raw PCs.
 // TODO(kcc): this implementation is temporary. In order for symbolization to
@@ -195,6 +227,7 @@ static uintptr_t ReturnAddressToCallerPc(uintptr_t return_address) {
 // this variant.
 void __sanitizer_cov_trace_pc() {
   uintptr_t pc = reinterpret_cast<uintptr_t>(__builtin_return_address(0));
+  if (!state.main_object.start_address) MainObjectLazyInit();
   pc -= state.main_object.start_address;
   pc = ReturnAddressToCallerPc(pc);
   auto idx = state.reverse_pc_table.GetPCIndex(pc);

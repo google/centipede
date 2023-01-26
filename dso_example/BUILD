@@ -15,14 +15,13 @@
 # Build file for the dso_example
 
 # Shared library that we want to fuzz, built with (some) coverage instrumentation.
-# It links the centipede runtime dynamically.
+# It has unresolved instrumentation symbol(s) which will be resolved dynamically.
 cc_binary(
     name = "fuzz_me.so",
     srcs = ["fuzz_me.cc"],
     copts = ["-fsanitize-coverage=trace-pc"],
     linkshared = True,
     linkstatic = False,
-    deps = ["@centipede//:centipede_runner_no_main"],  # build-cleaner:keep
 )
 
 # The main binary that calls into :fuzz_me, which is linked dynamically.
@@ -33,6 +32,18 @@ cc_binary(
         "main.cc",
         ":fuzz_me.so",
     ],
+    linkopts = ["-ldl"],
+    linkstatic = False,
+    deps = [
+        "@centipede//:centipede_runner_no_main",  # build-cleaner:keep
+    ],
+)
+
+# The main binary which dlopen-s fuzz_me and then calls FuzzMe.
+cc_binary(
+    name = "main_with_dlopen",
+    srcs = ["main.cc"],
+    linkopts = ["-ldl"],
     linkstatic = False,
 )
 
@@ -42,7 +53,9 @@ sh_test(
     data = [
         ":fuzz_me.so",
         ":main",
+        ":main_with_dlopen",
         "@centipede",
+        "@centipede//:centipede_runner_no_main.so",
     ],
     deps = [
         "@centipede//:test_util_sh",

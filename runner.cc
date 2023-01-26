@@ -689,10 +689,12 @@ GlobalRunnerState::GlobalRunnerState() {
 
   // Compute main_object.
   main_object = GetDlInfo(state.GetStringFlag(":dl_path_suffix="));
-  RunnerCheck(
-      main_object.IsSet(),
-      "GetDlInfo failed to find the requested object at :dl_path_suffix= "
-      "(the main binary if :dl_path_suffix= is empty)");
+  if (!main_object.IsSet()) {
+    fprintf(
+        stderr,
+        "Failed to compute main_object. This may happen"
+        " e.g. when instrumented code is in a DSO opened later by dlopen()\n");
+  }
 
   // Dump the pc table, if instructed.
   if (state.HasFlag(":dump_pc_table:")) {
