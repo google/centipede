@@ -59,7 +59,7 @@ class KnobId {
 //   E.g. whether to insert, overwrite, swap, etc, or whether to cross-over.
 //
 // Knobs is effectively a fixed-size array of bytes with named elements.
-// The engine loads this array at startup or uses a default value.
+// The engine loads this array at startup or uses a default value zero.
 // The engine may also pass Knobs to a custom mutator that supports it.
 //
 // Each knob has its own interpretation.
@@ -89,6 +89,7 @@ class Knobs {
   // Total number of knobs. Keep it small-ish for now.
   static constexpr size_t kNumKnobs = 32;
   using value_type = uint8_t;
+  using signed_value_type = int8_t;
 
   // Creates and returns a new KnobId and associates a `knob_name` with it.
   // Must be called at the process startup (assign the result to a global):
@@ -122,6 +123,9 @@ class Knobs {
     if (knob_id.id() >= kNumKnobs) __builtin_trap();
     return knobs_[knob_id.id()];
   }
+
+  // Returns the signed value associated with `knob_id`.
+  signed_value_type SignedValue(KnobId knob_id) const { return Value(knob_id); }
 
   // Calls `callback(Name, Value)` for every KnobId created by NewId().
   void ForEachKnob(
@@ -165,6 +169,22 @@ class Knobs {
       ++idx;
     }
     __builtin_unreachable();
+  }
+
+  // Chooses between two strategies, i.e. returns true or false.
+  // Treats the value of the knob associated with `knob_id` as signed integer.
+  // If knob == -128, returns false. If knob == 127 returns true.
+  // For other values, returns randomly true of false, with higher probability
+  // of true for higher values of knob.
+  // If knob == 0, returns true with a ~ 50% chance.
+  // `random` is a random number used to produce random choice.
+  bool GenerateBool(KnobId knob_id, uint64_t random) const {
+    signed_value_type signed_value = SignedValue(knob_id);  // in [-128,127]
+    signed_value_type rand = random % 255 - 127;            // in [-127,127]
+    // signed_value == 127 => always true.
+    // signed_value == -128 => always false.
+    // signed_value == 0 => true ~ half the time.
+    return signed_value >= rand;
   }
 
   // Viriant of Choose() where the choices are KnobIds themselfs.

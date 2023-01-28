@@ -14,6 +14,8 @@
 
 #include "./knobs.h"
 
+#include <cstddef>
+
 #include "googletest/include/gtest/gtest.h"
 #include "absl/container/flat_hash_map.h"
 #include "./logging.h"
@@ -70,6 +72,30 @@ TEST(Knobs, Choose) {
   }
   EXPECT_GT(str_to_freq["AAA"], 9 * str_to_freq["BBB"]);
   EXPECT_GT(str_to_freq["BBB"], kNumIter / 200);
+}
+
+TEST(Knobs, GenerateBool) {
+  Knobs knobs;
+  constexpr size_t kNumIter = 255;
+  // Checks the GenerateBool on kNumIter different (fake) random values,
+  // verifies the expected number of "true" results.
+  auto check = [&](Knobs::value_type knob_value,
+                   size_t expected_num_true_results) {
+    knobs.Set(knob_value);
+    size_t num_true = 0;
+    for (size_t fake_random = 0; fake_random < kNumIter; ++fake_random) {
+      if (knobs.GenerateBool(knob0, fake_random)) ++num_true;
+    }
+    EXPECT_EQ(num_true, expected_num_true_results);
+  };
+
+  check(0, kNumIter / 2 + 1);  // true half the time
+  check(-128, 0);              // Never true
+  check(127, kNumIter);        // Always true.
+  for (int8_t i = -127; i < 127; i++) {
+    // The greater the knob value, the more frequently we see true.
+    check(i, 128 + i);
+  }
 }
 
 TEST(KnobsDeathTest, NewId) {
