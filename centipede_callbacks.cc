@@ -230,25 +230,17 @@ bool CentipedeCallbacks::MutateViaExternalBinary(
 
   size_t num_inputs_written = execution_request::RequestMutation(
       mutants.size(), inputs, inputs_blobseq_);
-
-  // TODO(b/265181500): Revert to the `if` version once fixed.
-  //  if (num_inputs_written != inputs.size())
-  //    LOG(INFO) << VV(num_inputs_written) << VV(inputs.size());
-  LOG(INFO) << __func__ << ": " VV(num_inputs_written) << VV(inputs.size());
+  LOG_IF(INFO, num_inputs_written != inputs.size())
+      << VV(num_inputs_written) << VV(inputs.size());
 
   // Execute.
   Command &cmd = GetOrCreateCommandForBinary(binary);
   int retval = cmd.Execute();
   inputs_blobseq_.ReleaseSharedMemory();  // Inputs are already consumed.
 
-  // TODO(b/265181500): Remove once fixed.
-  LOG(INFO) << __func__ << ": " << VV(retval);
-
   // Read all mutants.
   for (size_t i = 0; i < mutants.size(); ++i) {
     auto blob = outputs_blobseq_.Read();
-    // TODO(b/265181500): Remove once fixed.
-    LOG(INFO) << __func__ << ": " << VV(i) << VV(blob.size);
     if (blob.size == 0) {
       mutants.resize(i);
       break;
