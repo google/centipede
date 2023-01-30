@@ -30,6 +30,8 @@ CentipedeDefaultCallbacks::CentipedeDefaultCallbacks(const Environment &env)
   for (const auto &dictionary_path : env_.dictionary) {
     LoadDictionary(dictionary_path);
   }
+
+  // TODO(b/267096672): This logic is unreliable: improve.
   // Check if a custom mutator is available in the target.
   LOG(INFO) << "Detecting custom mutator in target...";
   std::vector<ByteArray> mutants(1);

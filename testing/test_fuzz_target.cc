@@ -190,7 +190,10 @@ extern "C" size_t LLVMFuzzerCustomMutator(uint8_t *data, size_t size,
                                           size_t max_size, unsigned int seed) {
   if ((seed % 3) == 0) {
     return LLVMFuzzerMutate(data, size, max_size);
-  } else if ((seed % 3) == 1) {
+  }
+  // TODO(b/267096672): Remove `size > 1` once custom mutator detection is fixed
+  //  in CentipedeDefaultCallbacks ctor.
+  if ((seed % 3) == 1 && size > 1) {
     return 0;
   }
   for (size_t i = 0; i < size / 2; ++i) {
