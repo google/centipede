@@ -59,8 +59,8 @@ test_crashing_target() {
   centipede::ensure_empty_dir "${TMPCORPUS}"
 
   # Create a corpus with one crasher and one other input.
-  echo -n "AbOrT" > "${TMPCORPUS}/AbOrT"  # induces abort in the target.
-  echo -n "foo" > "${TMPCORPUS}/foo"  # just some input.
+  echo -n "AbOrT" >"${TMPCORPUS}/AbOrT" # induces abort in the target.
+  echo -n "foo" >"${TMPCORPUS}/foo"     # just some input.
   abort_test_fuzz --workdir="${WD}" --export_corpus_from_local_dir="${TMPCORPUS}"
 
   # Run fuzzing with num_runs=0, i.e. only run the inputs from the corpus.
@@ -82,8 +82,8 @@ test_debug_symbols() {
   centipede::ensure_empty_dir "${WD}"
   centipede::ensure_empty_dir "${TMPCORPUS}"
 
-  echo -n "func1" > "${TMPCORPUS}/func1"  # induces a call to SingleEdgeFunc.
-  echo -n "func2-A" > "${TMPCORPUS}/func2-A"  # induces a call to MultiEdgeFunc.
+  echo -n "func1" >"${TMPCORPUS}/func1"     # induces a call to SingleEdgeFunc.
+  echo -n "func2-A" >"${TMPCORPUS}/func2-A" # induces a call to MultiEdgeFunc.
 
   echo "============ ${FUNC}: run for the first time, with empty seed corpus, with feature logging"
   test_fuzz --log_features_shards=1 --workdir="${WD}" --seed=1 --num_runs=1000 \
@@ -130,27 +130,27 @@ test_dictionary() {
   centipede::ensure_empty_dir "${TMPCORPUS}"
 
   echo "============ ${FUNC}: testing non-existing dictionary file"
-  test_fuzz  --workdir="${WD}" --num_runs=0 --dictionary=/dev/null | tee "${LOG}"
+  test_fuzz --workdir="${WD}" --num_runs=0 --dictionary=/dev/null | tee "${LOG}"
   centipede::assert_regex_in_file "Empty or corrupt dictionary file: /dev/null" "${LOG}"
 
   echo "============ ${FUNC}: testing plain text dictionary file"
-  echo '"blah"' > "${DICT}"
-  echo '"boo"' >> "${DICT}"
-  echo '"bazz"' >> "${DICT}"
+  echo '"blah"' >"${DICT}"
+  echo '"boo"' >>"${DICT}"
+  echo '"bazz"' >>"${DICT}"
   cat "${DICT}"
-  test_fuzz  --workdir="${WD}" --num_runs=0 --dictionary="${DICT}" | tee "${LOG}"
+  test_fuzz --workdir="${WD}" --num_runs=0 --dictionary="${DICT}" | tee "${LOG}"
   centipede::assert_regex_in_file "Loaded 3 dictionary entries from AFL/libFuzzer dictionary ${DICT}" "${LOG}"
 
   echo "============ ${FUNC}: creating a binary dictionary file with 2 entries"
-  echo "foo" > "${TMPCORPUS}"/foo
-  echo "bat" > "${TMPCORPUS}"/binary
+  echo "foo" >"${TMPCORPUS}"/foo
+  echo "bat" >"${TMPCORPUS}"/binary
   centipede::ensure_empty_dir "${WD}"
-  test_fuzz  --workdir="${WD}" --export_corpus_from_local_dir "${TMPCORPUS}"
+  test_fuzz --workdir="${WD}" --export_corpus_from_local_dir "${TMPCORPUS}"
   cp "${WD}/corpus.000000" "${DICT}"
 
   echo "============ ${FUNC}: testing binary dictionary file"
   centipede::ensure_empty_dir "${WD}"
-  test_fuzz  --workdir="${WD}" --num_runs=0 --dictionary="${DICT}" | tee "${LOG}"
+  test_fuzz --workdir="${WD}" --num_runs=0 --dictionary="${DICT}" | tee "${LOG}"
   centipede::assert_regex_in_file "Loaded 2 dictionary entries from ${DICT}" "${LOG}"
 }
 
@@ -163,12 +163,12 @@ test_for_each_blob() {
   centipede::ensure_empty_dir "${WD}"
   centipede::ensure_empty_dir "${TMPCORPUS}"
 
-  echo "FoO" > "${TMPCORPUS}"/a
-  echo "bAr" > "${TMPCORPUS}"/b
+  echo "FoO" >"${TMPCORPUS}"/a
+  echo "bAr" >"${TMPCORPUS}"/b
 
-  test_fuzz  --workdir="${WD}" --export_corpus_from_local_dir "${TMPCORPUS}"
+  test_fuzz --workdir="${WD}" --export_corpus_from_local_dir "${TMPCORPUS}"
   echo "============ ${FUNC}: test for_each_blob"
-  test_fuzz --for_each_blob="cat %P"  "${WD}"/corpus.000000 | tee "${LOG}"
+  test_fuzz --for_each_blob="cat %P" "${WD}"/corpus.000000 | tee "${LOG}"
   centipede::assert_regex_in_file "Running 'cat %P' on ${WD}/corpus.000000" "${LOG}"
   centipede::assert_regex_in_file FoO "${LOG}"
   centipede::assert_regex_in_file bAr "${LOG}"
@@ -182,13 +182,13 @@ test_pcpair_features() {
   centipede::ensure_empty_dir "${WD}"
 
   echo "============ ${FUNC}: fuzz with --use_pcpair_features=1"
-  test_fuzz --workdir="${WD}" --use_pcpair_features=1  --num_runs=10000 \
+  test_fuzz --workdir="${WD}" --use_pcpair_features=1 --num_runs=10000 \
     --symbolizer_path="${LLVM_SYMBOLIZER}" | tee "${LOG}"
   centipede::assert_regex_in_file "end-fuzz.*pair: [^0]" "${LOG}"
 
   echo "============ ${FUNC}: fuzz with --use_pcpair_features=1 w/o symbolizer"
-  test_fuzz --workdir="${WD}" --use_pcpair_features=1  --num_runs=10000 \
-    --symbolizer_path=/dev/null  | tee "${LOG}"
+  test_fuzz --workdir="${WD}" --use_pcpair_features=1 --num_runs=10000 \
+    --symbolizer_path=/dev/null | tee "${LOG}"
   centipede::assert_regex_in_file "end-fuzz.*pair: [^0]" "${LOG}"
 }
 
