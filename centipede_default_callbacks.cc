@@ -39,9 +39,9 @@ CentipedeDefaultCallbacks::CentipedeDefaultCallbacks(const Environment &env)
     custom_mutator_is_usable_ = true;
     LOG(INFO) << "Custom mutator detected: will use it";
   } else {
-    LOG(INFO) << "Custom mutator undetected or misbehaving: will use built-in ["
-              << VV(external_mutator_ran) << VV(mutants.size())
-              << VV(!mutants.empty() ? mutants.front().size() : -1) << "]";
+    LOG(INFO) << "Custom mutator undetected or misbehaving: will use built-in";
+    LOG(INFO) << VV(external_mutator_ran) << VV(mutants.size());
+    LOG_IF(INFO, !mutants.empty()) << VV(mutants.front().size());
   }
 }
 
