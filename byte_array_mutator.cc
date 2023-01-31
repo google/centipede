@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "./defs.h"
+#include "./knobs.h"
 
 namespace centipede {
 
@@ -286,17 +287,27 @@ void ByteArrayMutator::CrossOver(ByteArray &data, const ByteArray &other) {
   }
 }
 
+// Controls how much crossover is used during mutations.
+// https://en.wikipedia.org/wiki/Crossover_(genetic_algorithm)
+// TODO(kcc): add tests with different values of knobs.
+static const KnobId knob_mutate_or_crossover =
+    Knobs::NewId("mutate_or_crossover");
+
 void ByteArrayMutator::MutateMany(const std::vector<ByteArray> &inputs,
-                                  size_t num_mutants, int crossover_level,
+                                  size_t num_mutants,
                                   std::vector<ByteArray> &mutants) {
   size_t num_inputs = inputs.size();
   mutants.resize(num_mutants);
   for (auto &mutant : mutants) {
     mutant = inputs[rng_() % num_inputs];
-    if ((rng_() % 100 < crossover_level) && (mutant.size() <= max_len_)) {
-      // Perform crossover `crossover_level`% of the time.
-      CrossOver(mutant, inputs[rng_() % num_inputs]);
+    if (mutant.size() <= max_len_ &&
+        knobs_.GenerateBool(knob_mutate_or_crossover, rng_())) {
+      // Do crossover only if the mutant is not over the max_len_.
+      // Perform crossover with some other input. It may be the same input.
+      const auto &other_input = inputs[rng_() % num_inputs];
+      CrossOver(mutant, other_input);
     } else {
+      // Perform mutation.
       Mutate(mutant);
     }
   }
