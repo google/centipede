@@ -245,9 +245,7 @@ bool CentipedeCallbacks::MutateViaExternalBinary(
       mutants.resize(i);
       break;
     }
-    auto &mutant = mutants[i];
-    mutant.clear();
-    mutant.insert(mutant.begin(), blob.data, blob.data + blob.size);
+    mutants[i].assign(blob.data, blob.data + blob.size);
   }
   outputs_blobseq_.ReleaseSharedMemory();  // Outputs are already consumed.
   return retval == 0;
