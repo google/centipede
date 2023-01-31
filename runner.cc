@@ -50,7 +50,11 @@
 namespace centipede {
 
 GlobalRunnerState state;
-thread_local ThreadLocalRunnerState tls;
+// We use __thread instead of thread_local so that the compiler warns if
+// the initializer for `tls` is not a constant expression.
+// `tls` thus must not have a CTOR.
+// This avoids calls to __tls_init() in hot functions that use `tls`.
+__thread ThreadLocalRunnerState tls;
 
 // Tries to write `description` to `state.failure_description_path`.
 static void WriteFailureDescription(const char *description) {

@@ -241,6 +241,8 @@ TEST(Feature, ForEachNonZeroByte) {
 TEST(Feature, HashedRingBuffer) {
   HashedRingBuffer<32> rb16;  // used with ring_buffer_size == 16
   HashedRingBuffer<32> rb32;  // used with ring_buffer_size == 32
+  rb16.clear();
+  rb32.clear();
   absl::flat_hash_set<size_t> hashes16, hashes32;
   size_t kNumIter = 1000000;
   // push a large number of different numbers into rb, ensure that most of the

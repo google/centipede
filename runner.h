@@ -66,7 +66,7 @@ struct RunTimeFlags {
 struct ThreadLocalRunnerState {
   // Intrusive doubly-linked list of TLS objects.
   // Guarded by state.tls_list_mu.
-  ThreadLocalRunnerState *next = nullptr, *prev = nullptr;
+  ThreadLocalRunnerState *next, *prev;
 
   // The pthread_create() interceptor calls OnThreadStart()/OnThreadStop()
   // before/after the thread callback.
@@ -253,7 +253,7 @@ struct GlobalRunnerState {
 };
 
 extern GlobalRunnerState state;
-extern thread_local ThreadLocalRunnerState tls;
+extern __thread ThreadLocalRunnerState tls;
 
 }  // namespace centipede
 

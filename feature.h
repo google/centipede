@@ -282,8 +282,6 @@ inline size_t ConvertContextAndArgPairToNumber(uintptr_t a, uintptr_t b,
 template <size_t kSize>
 class HashedRingBuffer {
  public:
-  HashedRingBuffer() = default;
-
   // Adds `new_item` and returns the new hash of the entire collection.
   // Evicts an old item.
   // `ring_buffer_size` must be <= kSize and must be the same for all push()
@@ -310,9 +308,9 @@ class HashedRingBuffer {
   void clear() { memset(this, 0, sizeof(*this)); }
 
  private:
-  size_t buffer_[kSize] = {};  // All elements.
-  size_t last_added_pos_ = 0;  // Position of the last added element.
-  size_t hash_ = 0;            // XOR of all elements in buffer_.
+  size_t buffer_[kSize];   // All elements.
+  size_t last_added_pos_;  // Position of the last added element.
+  size_t hash_;            // XOR of all elements in buffer_.
 };
 
 // A fixed-size bitset with a lossy concurrent set() function.
