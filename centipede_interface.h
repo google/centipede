@@ -20,6 +20,7 @@
 
 namespace centipede {
 
+// Finishes initialization of `env`, then runs all the fuzzing.
 // Usage:
 //   class MyCentipedeCallbacks: public CentipedeCallbacks { ... }
 //   int main(int argc, char **argv) {
@@ -29,7 +30,7 @@ namespace centipede {
 //     callbacks_factory; return centipede::CentipedeMain(env,
 //     callbacks_factory);
 //   }
-int CentipedeMain(const Environment &env,
+int CentipedeMain(Environment &env,
                   CentipedeCallbacksFactory &callbacks_factory);
 
 }  // namespace centipede

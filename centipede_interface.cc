@@ -157,7 +157,7 @@ void SavePCsToFile(const PCTable &pc_table, std::string_view file_path) {
 
 }  // namespace
 
-int CentipedeMain(const Environment &env,
+int CentipedeMain(Environment &env,
                   CentipedeCallbacksFactory &callbacks_factory) {
   SetSignalHandlers();
 
@@ -190,11 +190,12 @@ int CentipedeMain(const Environment &env,
   one_time_callbacks->PopulateBinaryInfo(binary_info);
   callbacks_factory.destroy(one_time_callbacks);
 
-  std::string pcs_file_path;
   if (binary_info.uses_legacy_trace_pc_instrumentation) {
-    pcs_file_path = std::filesystem::path(tmpdir).append("pcs");
-    SavePCsToFile(binary_info.pc_table, pcs_file_path);
+    env.pcs_file_path = std::filesystem::path(tmpdir).append("pcs");
+    SavePCsToFile(binary_info.pc_table, env.pcs_file_path);
   }
+
+  env.ReadKnobsFileIfSpecified();
 
   if (env.analyze)
     return Analyze(env, binary_info.pc_table, binary_info.symbols);
@@ -208,12 +209,10 @@ int CentipedeMain(const Environment &env,
   auto thread_callback = [&](Environment &my_env, Stats &stats) {
     CreateLocalDirRemovedAtExit(TemporaryLocalDirPath());  // creates temp dir.
     my_env.seed = GetRandomSeed(env.seed);  // uses TID, call in this thread.
-    my_env.pcs_file_path = pcs_file_path;   // same for all threads.
 
     if (env.dry_run) return;
 
     auto user_callbacks = callbacks_factory.create(my_env);
-    my_env.ReadKnobsFileIfSpecified();
     Centipede centipede(my_env, *user_callbacks, binary_info, coverage_logger,
                         stats);
     centipede.FuzzingLoop();
