@@ -425,6 +425,8 @@ Environment::Environment(const std::vector<std::string> &argv)
     batch_size = 1;
     // TODO(kcc): do we need to check if extra_binaries have @@?
   }
+
+  ReadKnobsFileIfSpecified();
 }
 
 namespace {

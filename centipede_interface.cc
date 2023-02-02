@@ -213,7 +213,6 @@ int CentipedeMain(const Environment &env,
     if (env.dry_run) return;
 
     auto user_callbacks = callbacks_factory.create(my_env);
-    my_env.ReadKnobsFileIfSpecified();
     Centipede centipede(my_env, *user_callbacks, binary_info, coverage_logger,
                         stats);
     centipede.FuzzingLoop();
