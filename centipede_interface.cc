@@ -245,6 +245,8 @@ int CentipedeMain(const Environment &env,
   stats_thread_continue_running = false;
   stats_thread.join();
 
+  if (!env.knobs_file.empty()) PrintRewardValues(stats_vec, std::cerr);
+
   return ExitCode();
 }
 

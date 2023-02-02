@@ -89,4 +89,22 @@ void PrintExperimentStats(absl::Span<const Stats> stats_vec,
   }
 }
 
+void PrintRewardValues(absl::Span<const Stats> stats_vec, std::ostream &os) {
+  size_t n = stats_vec.size();
+  CHECK_GT(n, 0);
+  std::vector<size_t> num_covered_pcs(n);
+  for (size_t i = 0; i < n; ++i) {
+    num_covered_pcs[i] = stats_vec[i].num_covered_pcs;
+  }
+  std::sort(num_covered_pcs.begin(), num_covered_pcs.end());
+  os << "REWARD_MAX " << num_covered_pcs.back() << "\n";
+  os << "REWARD_SECOND_MAX " << num_covered_pcs[n == 1 ? 1 : n - 2] << "\n";
+  os << "REWARD_MIN " << num_covered_pcs.front() << "\n";
+  os << "REWARD_MEDIAN " << num_covered_pcs[n / 2] << "\n";
+  os << "REWARD_AVERAGE "
+     << (std::accumulate(num_covered_pcs.begin(), num_covered_pcs.end(), 0.) /
+         n)
+     << "\n";
+}
+
 }  // namespace centipede

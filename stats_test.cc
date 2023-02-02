@@ -61,4 +61,22 @@ TEST(Stats, PrintExperimentStats) {
   EXPECT_THAT(ss.str(), testing::StrEq(expected));
 }
 
+TEST(Stats, PrintRewardValues) {
+  std::stringstream ss;
+  std::vector<Stats> stats_vec(4);
+  stats_vec[0].num_covered_pcs = 15;
+  stats_vec[1].num_covered_pcs = 10;
+  stats_vec[2].num_covered_pcs = 40;
+  stats_vec[3].num_covered_pcs = 25;
+  PrintRewardValues(stats_vec, ss);
+  LOG(INFO) << "\n" << ss.str();
+  const char *expected =
+      "REWARD_MAX 40\n"
+      "REWARD_SECOND_MAX 25\n"
+      "REWARD_MIN 10\n"
+      "REWARD_MEDIAN 25\n"
+      "REWARD_AVERAGE 22.5\n";
+  EXPECT_THAT(ss.str(), testing::StrEq(expected));
+}
+
 }  // namespace centipede

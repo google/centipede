@@ -720,7 +720,6 @@ cc_test(
     deps = [
         ":stats",
         "@centipede//:logging",
-        "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest_main",
     ],
 )

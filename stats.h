@@ -42,5 +42,10 @@ void PrintExperimentStats(absl::Span<const Stats> stats_vec,
                           absl::Span<const Environment> env_vec,
                           std::ostream& os);
 
+// Takes a span of Stats objects `stats_vec` and prints a summary of the results
+// to `os`, such that it can be ingested as a reward function by an ML system.
+// To be used with knobs.
+void PrintRewardValues(absl::Span<const Stats> stats_vec, std::ostream& os);
+
 }  // namespace centipede
 #endif  // THIRD_PARTY_CENTIPEDE_STATS_H_
