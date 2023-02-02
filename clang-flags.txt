@@ -3,3 +3,4 @@
 -fsanitize-coverage=trace-pc-guard,pc-table,trace-cmp
 -O2
 -gline-tables-only
+-lc++
