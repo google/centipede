@@ -81,6 +81,7 @@ class KnobId {
 //
 // A KnobId can be used to access a knob value: Knobs::Value().
 // A set of KnobIds can be used to choose from several choices: Knobs::Choose().
+// One KnobID can be used to choose from two choices: Knobs::GenerateBool().
 //
 // TODO(kcc): figure out how to share knobs with other processes/binaries,
 // such as custom mutators.
@@ -144,12 +145,11 @@ class Knobs {
   // Choose<...>({knobA, knobB}, {A, B}, rng()) is approximately 10x more likely
   // to return A than B.
   //
-  // If all knob values are zero, behaves as if there were all 1.
+  // If all knob values are zero, behaves as if they were all 1.
   //
   // `random` is a random number derived from an RNG.
-  //
-  // TODO(kcc): a slightly more convenient interface would be to have
-  // Choose<...>({{A, knobA}, {B, knobB}}), but absl::Span doesn't allow this.
+  // TODO(kcc): consider making this more similar to GenerateBool() and
+  // requiring 1 knob fewer than choices.size().
   template <typename T>
   T Choose(absl::Span<const KnobId> knob_ids, absl::Span<const T> choices,
            uint64_t random) const {

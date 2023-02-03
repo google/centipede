@@ -119,13 +119,21 @@ bool ByteArrayMutator::Mutate(ByteArray &data) {
       data);
 }
 
+static const KnobId knob_mutate_same_size[5] = {
+    Knobs::NewId("mutate_same_size_0"), Knobs::NewId("mutate_same_size_1"),
+    Knobs::NewId("mutate_same_size_2"), Knobs::NewId("mutate_same_size_3"),
+    Knobs::NewId("mutate_same_size_4"),
+};
+
 bool ByteArrayMutator::MutateSameSize(ByteArray &data) {
-  return ApplyOneOf<5>(
+  auto mutator = knobs_.Choose<Fn>(
+      knob_mutate_same_size,
       {&ByteArrayMutator::FlipBit, &ByteArrayMutator::SwapBytes,
        &ByteArrayMutator::ChangeByte,
        &ByteArrayMutator::OverwriteFromDictionary,
        &ByteArrayMutator::OverwriteFromCmpDictionary},
-      data);
+      rng_());
+  return (this->*mutator)(data);
 }
 
 bool ByteArrayMutator::MutateIncreaseSize(ByteArray &data) {
