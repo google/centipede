@@ -30,7 +30,6 @@
 #include "./environment.h"
 #include "./execution_result.h"
 #include "./knobs.h"
-#include "./logging.h"
 #include "./shared_memory_blob_sequence.h"
 #include "./symbol_table.h"
 #include "./util.h"
@@ -45,13 +44,7 @@ namespace centipede {
 class CentipedeCallbacks {
  public:
   // `env` is used to pass flags to `this`, it must outlive `this`.
-  CentipedeCallbacks(const Environment &env)
-      : env_(env),
-        byte_array_mutator_(env.knobs, GetRandomSeed(env.seed)),
-        inputs_blobseq_(shmem_name1_.c_str(), env.shmem_size_mb << 20),
-        outputs_blobseq_(shmem_name2_.c_str(), env.shmem_size_mb << 20) {
-    CHECK(byte_array_mutator_.set_max_len(env.max_len));
-  }
+  CentipedeCallbacks(const Environment &env);
   virtual ~CentipedeCallbacks() {}
 
   // Feeds `inputs` into the `binary`, for every input populates `batch_result`.

@@ -181,6 +181,27 @@ const std::vector<uintptr_t> &ControlFlowGraph::GetSuccessors(
   return it->second;
 }
 
+uint32_t ControlFlowGraph::GetCyclomaticComplexity(uintptr_t pc) const {
+  auto it = function_complexities_.find(pc);
+  CHECK(it != function_complexities_.end());
+  return it->second;
+}
+
+PCIndex ControlFlowGraph::GetPcIndex(uintptr_t pc) const {
+  auto it = pc_index_map_.find(pc);
+  CHECK(it != pc_index_map_.end()) << VV(pc) << " is not in pc_table.";
+  return it->second;
+}
+
+const std::vector<uintptr_t> &ControlFlowGraph::LazyGetReachabilityForPc(uintptr_t pc) const {
+  CHECK_EQ(reachability_.size(), pc_index_map_.size());
+  auto pc_index = GetPcIndex(pc);
+  std::call_once(*(reachability_[pc_index].once), [this, &pc, &pc_index]() {
+    reachability_[pc_index].reach = ComputeReachabilityForPc(pc);
+  });
+  return reachability_[pc_index].reach;
+}
+
 std::vector<uintptr_t> ControlFlowGraph::ComputeReachabilityForPc(
     uintptr_t pc) const {
   absl::flat_hash_set<uintptr_t> visited_pcs;

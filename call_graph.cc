@@ -63,4 +63,17 @@ void CallGraph::InitializeCallGraph(const CFTable &cf_table,
   CHECK(empty_.empty());
 }
 
+const std::vector<uintptr_t>& CallGraph::GetFunctionCallees(uintptr_t pc) const {
+  CHECK(IsFunctionEntry(pc)) << VV(pc) << " is not a function entry.";
+  const auto it = call_graph_.find(pc);
+  if (it == call_graph_.cend()) return empty_;
+  return it->second;
+}
+const std::vector<uintptr_t>& CallGraph::GetBasicBlockCallees(uintptr_t pc) const {
+  CHECK(basic_blocks_.contains(pc)) << VV(pc) << " is not a basic block.";
+  const auto it = basic_block_callees_.find(pc);
+  if (it == basic_block_callees_.cend()) return empty_;
+  return it->second;
+}
+
 }  // namespace centipede

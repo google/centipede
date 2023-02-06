@@ -23,7 +23,6 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "./defs.h"
-#include "./logging.h"
 
 namespace centipede {
 
@@ -116,11 +115,7 @@ class ControlFlowGraph {
 
   // Returns cyclomatic complexity of function PC. CHECK-fails if it is not a
   // valid function PC.
-  uint32_t GetCyclomaticComplexity(uintptr_t pc) const {
-    auto it = function_complexities_.find(pc);
-    CHECK(it != function_complexities_.end());
-    return it->second;
-  }
+  uint32_t GetCyclomaticComplexity(uintptr_t pc) const;
 
   // Returns true if the given basic block is function entry.
   bool BlockIsFunctionEntry(PCIndex pc_index) const {
@@ -131,11 +126,7 @@ class ControlFlowGraph {
 
   // Returns the idx in pc_table associated with the PC, CHECK-fails if the PC
   // is not in the pc_table.
-  PCIndex GetPcIndex(uintptr_t pc) const {
-    auto it = pc_index_map_.find(pc);
-    CHECK(it != pc_index_map_.end()) << VV(pc) << " is not in pc_table.";
-    return it->second;
-  }
+  PCIndex GetPcIndex(uintptr_t pc) const;
 
   // Returns true if the PC is in PCTable.
   bool IsInPcTable(uintptr_t pc) const { return pc_index_map_.contains(pc); }
@@ -144,14 +135,7 @@ class ControlFlowGraph {
   // reachable from `pc`. The reachability is computed once, lazily.
   // The method is const, under the hood it uses a mutable data member.
   // Thread-safe: can be called concurrently from multiple threads
-  const std::vector<uintptr_t> &LazyGetReachabilityForPc(uintptr_t pc) const {
-    CHECK_EQ(reachability_.size(), pc_index_map_.size());
-    auto pc_index = GetPcIndex(pc);
-    std::call_once(*(reachability_[pc_index].once), [this, &pc, &pc_index]() {
-      reachability_[pc_index].reach = ComputeReachabilityForPc(pc);
-    });
-    return reachability_[pc_index].reach;
-  }
+  const std::vector<uintptr_t> &LazyGetReachabilityForPc(uintptr_t pc) const;
 
  private:
   // Map from PC to the idx in pc_table.

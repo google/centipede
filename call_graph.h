@@ -21,9 +21,7 @@
 #include <vector>
 
 #include "absl/container/flat_hash_map.h"
-#include "absl/log/check.h"
 #include "./control_flow.h"
-#include "./logging.h"
 
 namespace centipede {
 
@@ -33,18 +31,10 @@ class CallGraph {
   // section is not available, the hash maps will be empty.
   void InitializeCallGraph(const CFTable& cf_table, const PCTable& pc_table);
 
-  const std::vector<uintptr_t>& GetFunctionCallees(uintptr_t pc) const {
-    CHECK(IsFunctionEntry(pc)) << VV(pc) << " is not a function entry.";
-    const auto it = call_graph_.find(pc);
-    if (it == call_graph_.cend()) return empty_;
-    return it->second;
-  }
-  const std::vector<uintptr_t>& GetBasicBlockCallees(uintptr_t pc) const {
-    CHECK(basic_blocks_.contains(pc)) << VV(pc) << " is not a basic block.";
-    const auto it = basic_block_callees_.find(pc);
-    if (it == basic_block_callees_.cend()) return empty_;
-    return it->second;
-  }
+  const std::vector<uintptr_t>& GetFunctionCallees(uintptr_t pc) const;
+
+  const std::vector<uintptr_t>& GetBasicBlockCallees(uintptr_t pc) const;
+
   const absl::flat_hash_set<uintptr_t>& GetFunctionEntries() const {
     return function_entries_;
   }
