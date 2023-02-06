@@ -60,11 +60,7 @@ std::string Command::ToString() const {
     ss.emplace_back(env);
   }
   // path.
-  std::string path = path_;
-  // Strip the % prefixes, if any.
-  if (absl::StartsWith(path, kNoForkServerRequestPrefix)) {
-    path = path.substr(kNoForkServerRequestPrefix.size());
-  }
+  std::string path = RemovePrefixes(path_);
   // Replace @@ with temp_file_path_.
   constexpr std::string_view kTempFileWildCard = "@@";
   if (absl::StrContains(path, kTempFileWildCard)) {
@@ -189,6 +185,14 @@ int Command::Execute() {
     RequestEarlyExit(EXIT_FAILURE);
   if (WIFEXITED(exit_code)) return WEXITSTATUS(exit_code);
   return exit_code;
+}
+
+std::string Command::RemovePrefixes(std::string_view path) {
+  std::string res{path};
+  if (absl::StartsWith(path, kNoForkServerRequestPrefix)) {
+    res = res.substr(kNoForkServerRequestPrefix.size());
+  }
+  return res;
 }
 
 }  // namespace centipede

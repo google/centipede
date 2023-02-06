@@ -34,8 +34,8 @@ PCTable GetPcTableFromBinaryWithTracePC(std::string_view binary_path,
                                         std::string_view tmp_path) {
   // Assumes objdump in PATH.
   // Run objdump -d on the binary.
-  Command cmd("objdump", {"-d", std::string(binary_path)}, {}, tmp_path,
-              "/dev/null");
+  Command cmd("objdump", {"-d", Command::RemovePrefixes(binary_path)}, {},
+              tmp_path, "/dev/null");
   int system_exit_code = cmd.Execute();
   if (system_exit_code) {
     LOG(INFO) << __func__ << " objdump failed: " << VV(system_exit_code)
@@ -61,7 +61,9 @@ PCTable GetPcTableFromBinaryWithTracePC(std::string_view binary_path,
       continue;
     }
     if (!ends_with(line, "<__sanitizer_cov_trace_pc>") &&
-        !ends_with(line, "<__sanitizer_cov_trace_pc@plt>"))
+        !ends_with(line, "<__sanitizer_cov_trace_pc@plt>") &&
+        !ends_with(line, "<__sanitizer_cov_trace_pc_guard>") &&
+        !ends_with(line, "<__sanitizer_cov_trace_pc_guard@plt>"))
       continue;
     uintptr_t pc = std::stoul(line, nullptr, 16);
     uintptr_t flags = saw_new_function ? PCInfo::kFuncEntry : 0;

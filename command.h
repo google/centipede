@@ -84,6 +84,9 @@ class Command final {
   // See runner_fork_server.cc for details.
   bool StartForkServer(std::string_view temp_dir_path, std::string_view prefix);
 
+  // Strip the % prefixes, if any.
+  static std::string RemovePrefixes(std::string_view path);
+
   // Accessors.
   const std::string& path() const { return path_; }
 
