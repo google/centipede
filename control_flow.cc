@@ -61,7 +61,9 @@ PCTable GetPcTableFromBinaryWithTracePC(std::string_view binary_path,
       continue;
     }
     if (!ends_with(line, "<__sanitizer_cov_trace_pc>") &&
-        !ends_with(line, "<__sanitizer_cov_trace_pc@plt>"))
+        !ends_with(line, "<__sanitizer_cov_trace_pc@plt>") &&
+        !ends_with(line, "<__sanitizer_cov_trace_pc_guard>") &&
+        !ends_with(line, "<__sanitizer_cov_trace_pc_guard@plt>"))
       continue;
     uintptr_t pc = std::stoul(line, nullptr, 16);
     uintptr_t flags = saw_new_function ? PCInfo::kFuncEntry : 0;
