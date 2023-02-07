@@ -67,4 +67,10 @@ extern "C" int LLVMFuzzerRunDriver(
 extern "C" __attribute__((weak)) void CentipedeIsPresent();
 extern "C" __attribute__((weak)) void __libfuzzer_is_present();
 
+// Experimental interface that allows to collect coverage from subprocesses.
+// To use it a runner needs to define CentipedeManualCoverage function that
+// returns 1 and call CentipedeCollectCoverage from the target subprocesses.
+extern "C" __attribute__((weak)) int CentipedeManualCoverage();
+extern "C" void CentipedeCollectCoverage(int exit_status);
+
 #endif  // THIRD_PARTY_CENTIPEDE_RUNNER_INTERFACE_H_

@@ -39,4 +39,5 @@ package(default_visibility = ["//visibility:public"])
     "independent_compares",
     "autodictionary_stress",
     "paths",
+    "subprocess",
 ]]

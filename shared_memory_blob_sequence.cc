@@ -32,6 +32,10 @@ static void ErrorOnFailure(bool condition, const char *text) {
   abort();
 }
 
+constexpr size_t kInvalidBlobSize =
+    sizeof(SharedMemoryBlobSequence::Blob::size) +
+    sizeof(SharedMemoryBlobSequence::Blob::tag);
+
 SharedMemoryBlobSequence::SharedMemoryBlobSequence(const char *name,
                                                    size_t size)
     : size_(size) {
@@ -74,6 +78,13 @@ void SharedMemoryBlobSequence::Reset() {
   had_writes_after_reset_ = false;
 }
 
+void SharedMemoryBlobSequence::RewindToEnd() {
+  while (Read().IsValid()) {
+  }
+  if (offset_ >= kInvalidBlobSize) offset_ -= kInvalidBlobSize;
+  had_reads_after_reset_ = false;
+}
+
 void SharedMemoryBlobSequence::ReleaseSharedMemory() {
   // Setting size to 0 releases the memory to OS.
   ErrorOnFailure(ftruncate(fd_, 0) != 0, "ftruncate(0) failed)");
@@ -103,7 +114,7 @@ bool SharedMemoryBlobSequence::Write(Blob blob) {
   // Write data.
   memcpy(data_ + offset_, blob.data, blob.size);
   offset_ += blob.size;
-  if (offset_ + sizeof(blob.size) + sizeof(blob.tag) <= size_) {
+  if (offset_ + kInvalidBlobSize <= size_) {
     // Write zero tag/size to data_+offset_ but don't change the offset.
     // This is required to overwrite any stale bits in data_.
     Blob invalid_blob;  // invalid.

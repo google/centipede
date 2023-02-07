@@ -126,6 +126,9 @@ class SharedMemoryBlobSequence {
   // Does not affect the contents of the shared memory.
   void Reset();
 
+  // Rewinds the current position to skip all already written blobs.
+  void RewindToEnd();
+
   // Releases shared memory used by `this`.
   void ReleaseSharedMemory();
 
