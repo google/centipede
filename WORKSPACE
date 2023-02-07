@@ -46,9 +46,9 @@ http_archive(
 # Abseil
 ###############################################################################
 
-abseil_ref = ""
+abseil_ref = "refs/tags"
 
-abseil_ver = "92fdbfb301f8b301b28ab5c99e7361e775c2fb8a"
+abseil_ver = "20230125.0"
 
 # Use these values to get the tip of the master branch:
 # abseil_ref = "refs/heads"
@@ -56,7 +56,7 @@ abseil_ver = "92fdbfb301f8b301b28ab5c99e7361e775c2fb8a"
 
 http_archive(
     name = "com_google_absl",
-    sha256 = "71d38c5f44997a5ccbc338f904c8682b40c25cad60b9cbaf27087a917228d5fa",
+    sha256 = "3ea49a7d97421b88a8c48a0de16c16048e17725c7ec0f1d3ea2683a2a75adc21",
     strip_prefix = "abseil-cpp-%s" % abseil_ver,
     url = "https://github.com/abseil/abseil-cpp/archive/%s/%s.tar.gz" % (abseil_ref, abseil_ver),
 )
