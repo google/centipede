@@ -203,18 +203,6 @@ class ByteArrayMutator {
   FRIEND_TEST(ByteArrayMutator, RoundUpToAddCorrectly);
   FRIEND_TEST(ByteArrayMutator, RoundDownToRemoveCorrectly);
 
-  // Applies fn[random_index] to data, returns true if a mutation happened.
-  template <size_t kArraySize>
-  bool ApplyOneOf(const std::array<Fn, kArraySize> &fn, ByteArray &data) {
-    // Individual mutator may fail to mutate and return false.
-    // So we iterate a few times and expect one of the mutations will succeed.
-    for (int iter = 0; iter < 10; iter++) {
-      size_t mut_idx = rng_() % kArraySize;
-      if ((this->*fn[mut_idx])(data)) return true;
-    }
-    return false;  // May still happen periodically.
-  }
-
   // Given a current size and a number of bytes to add, returns the number of
   // bytes that should be added for the resulting size to be properly aligned.
   //

@@ -104,19 +104,32 @@ size_t ByteArrayMutator::RoundDownToRemove(size_t curr_size, size_t to_remove) {
   return to_remove;
 }
 
+static const KnobId knob_mutate[3] = {Knobs::NewId("mutate_same_size"),
+                                      Knobs::NewId("mutate_decrease_size"),
+                                      Knobs::NewId("mutate_increase_size")};
+
 bool ByteArrayMutator::Mutate(ByteArray &data) {
-  if (data.size() > max_len_) {
-    return MutateDecreaseSize(data);
+  // Individual mutator may fail to mutate and return false.
+  // So we iterate a few times and expect one of the mutations will succeed.
+  for (int iter = 0; iter < 15; iter++) {
+    Fn mutator = nullptr;
+    if (data.size() > max_len_) {
+      mutator = &ByteArrayMutator::MutateDecreaseSize;
+    } else if (data.size() == max_len_) {
+      mutator = knobs_.Choose<Fn>({knob_mutate[0], knob_mutate[1]},
+                                  {&ByteArrayMutator::MutateSameSize,
+                                   &ByteArrayMutator::MutateDecreaseSize},
+                                  rng_());
+    } else {
+      mutator = knobs_.Choose<Fn>(knob_mutate,
+                                  {&ByteArrayMutator::MutateSameSize,
+                                   &ByteArrayMutator::MutateIncreaseSize,
+                                   &ByteArrayMutator::MutateDecreaseSize},
+                                  rng_());
+    }
+    if ((this->*mutator)(data)) return true;
   }
-  if (data.size() == max_len_) {
-    return ApplyOneOf<2>({&ByteArrayMutator::MutateSameSize,
-                          &ByteArrayMutator::MutateDecreaseSize},
-                         data);
-  }
-  return ApplyOneOf<3>(
-      {&ByteArrayMutator::MutateSameSize, &ByteArrayMutator::MutateIncreaseSize,
-       &ByteArrayMutator::MutateDecreaseSize},
-      data);
+  return false;
 }
 
 static const KnobId knob_mutate_same_size[5] = {
@@ -136,14 +149,22 @@ bool ByteArrayMutator::MutateSameSize(ByteArray &data) {
   return (this->*mutator)(data);
 }
 
+static const KnobId knob_mutate_increase_size[2] = {
+    Knobs::NewId("mutate_increase_size_0"),
+    Knobs::NewId("mutate_increase_size_1"),
+};
+
 bool ByteArrayMutator::MutateIncreaseSize(ByteArray &data) {
-  return ApplyOneOf<2>(
+  auto mutator = knobs_.Choose<Fn>(
+      knob_mutate_increase_size,
       {&ByteArrayMutator::InsertBytes, &ByteArrayMutator::InsertFromDictionary},
-      data);
+      rng_());
+  return (this->*mutator)(data);
 }
 
 bool ByteArrayMutator::MutateDecreaseSize(ByteArray &data) {
-  return ApplyOneOf<1>({&ByteArrayMutator::EraseBytes}, data);
+  auto mutator = &ByteArrayMutator::EraseBytes;
+  return (this->*mutator)(data);
 }
 
 bool ByteArrayMutator::FlipBit(ByteArray &data) {
