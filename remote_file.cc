@@ -18,7 +18,7 @@
 #include "./remote_file.h"
 
 #include <cstdio>
-#include <filesystem>
+#include <filesystem>  // NOLINT
 #include <string_view>
 
 #include "absl/base/attributes.h"
@@ -27,7 +27,7 @@
 
 namespace centipede {
 
-// NOTE: We use weak symbols for all the API definitions in this source so that
+// NOTE: We use weak symbols for the main API definitions in this source so that
 // alternative implementations could easily override them with their own
 // versions at link time.
 
@@ -60,6 +60,14 @@ ABSL_ATTRIBUTE_WEAK void RemoteFileAppend(RemoteFile *f, const ByteArray &ba) {
   CHECK_EQ(elts_written, elts_to_write);
 }
 
+// Does not need weak attribute as the implementation depends on
+// RemoteFileAppend(RemoteFile *, ByteArray).
+void RemoteFileAppend(RemoteFile *f, const std::string &contents) {
+  CHECK(f != nullptr);
+  ByteArray contents_ba{contents.cbegin(), contents.cend()};
+  RemoteFileAppend(f, contents_ba);
+}
+
 ABSL_ATTRIBUTE_WEAK void RemoteFileRead(RemoteFile *f, ByteArray &ba) {
   CHECK(f != nullptr);
   auto *file = reinterpret_cast<FILE *>(f);
@@ -72,6 +80,35 @@ ABSL_ATTRIBUTE_WEAK void RemoteFileRead(RemoteFile *f, ByteArray &ba) {
   ba.resize(elts_to_read);
   const auto elts_read = std::fread(ba.data(), elt_size, elts_to_read, file);
   CHECK_EQ(elts_read, elts_to_read);
+}
+
+// Does not need weak attribute as the implementation depends on
+// RemoteFileRead(RemoteFile *, ByteArray).
+void RemoteFileRead(RemoteFile *f, std::string &contents) {
+  CHECK(f != nullptr);
+  ByteArray contents_ba;
+  RemoteFileRead(f, contents_ba);
+  contents.assign(contents_ba.cbegin(), contents_ba.cend());
+}
+
+// Does not need weak attribute as the implementation depends on
+// RemoteFileAppend(RemoteFile *, std::string).
+void RemoteFileSetContents(const std::filesystem::path &path,
+                           const std::string &contents) {
+  auto *file = RemoteFileOpen(path.c_str(), "w");
+  CHECK(file != nullptr) << VV(path);
+  RemoteFileAppend(file, contents);
+  RemoteFileClose(file);
+}
+
+// Does not need weak attribute as the implementation depends on
+// RemoteFileRead(RemoteFile *, std::string).
+void RemoteFileGetContents(const std::filesystem::path &path,
+                           std::string &contents) {
+  auto *file = RemoteFileOpen(path.c_str(), "r");
+  CHECK(file != nullptr) << VV(path);
+  RemoteFileRead(file, contents);
+  RemoteFileClose(file);
 }
 
 }  // namespace centipede

@@ -20,6 +20,7 @@
 #ifndef THIRD_PARTY_CENTIPEDE_REMOTE_FILE_H_
 #define THIRD_PARTY_CENTIPEDE_REMOTE_FILE_H_
 
+#include <filesystem>  // NOLINT
 #include <string_view>
 
 #include "./defs.h"
@@ -40,12 +41,26 @@ void RemoteFileClose(RemoteFile *f);
 // Appends bytes from 'ba' to 'f'.
 void RemoteFileAppend(RemoteFile *f, const ByteArray &ba);
 
+// Appends characters from 'contents' to 'f'.
+void RemoteFileAppend(RemoteFile *f, const std::string &contents);
+
 // Reads all current contents of 'f' into 'ba'.
 void RemoteFileRead(RemoteFile *f, ByteArray &ba);
+
+// Reads all current contents of 'f' into 'contents'.
+void RemoteFileRead(RemoteFile *f, std::string &contents);
 
 // Creates a (potentially remote) directory 'dir_path'.
 // No-op if the directory already exists.
 void RemoteMkdir(std::string_view dir_path);
+
+// Sets the contents of the file at 'path' to 'contents'.
+void RemoteFileSetContents(const std::filesystem::path &path,
+                           const std::string &contents);
+
+// Reads the contents of the file at 'path' into 'contents'.
+void RemoteFileGetContents(const std::filesystem::path &path,
+                           std::string &contents);
 
 }  // namespace centipede
 
