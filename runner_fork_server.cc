@@ -108,7 +108,17 @@ const char *GetOneEnv(const char *key) {
 // Starts the fork server if the pipes are given.
 // This function is called from .preinit_array when linked statically,
 // or from the DSO constructor when injected via LD_PRELOAD.
-__attribute__((constructor)) void ForkServerCallMeVeryEarly() {
+// Note: it must run before the GlobalRunnerState constructor because
+// GlobalRunnerState may terminate the process early due to an error,
+// then we never open the fifos and the corresponding opens in centipede
+// hang forever.
+// The priority 150 is chosen on the lower end (higher priority)
+// of the user-available range (101-999) to allow ordering with other
+// constructors and C++ constructors (init_priority). Note: constructors
+// without explicitly specified priority run after all constructors with
+// explicitly specified priority, thus we still run before most
+// "normal" constructors.
+__attribute__((constructor(150))) void ForkServerCallMeVeryEarly() {
   // Guard from calling twice.
   static bool called_already = false;
   if (called_already) return;
