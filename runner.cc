@@ -50,7 +50,11 @@
 
 namespace centipede {
 
-GlobalRunnerState state;
+// Use of the fixed init priority allows to call CentipedeRunnerMain
+// from constructor functions (CentipedeRunnerMain needs to run after
+// state constructor).
+// Note: it must run after ForkServerCallMeVeryEarly, see comment there.
+GlobalRunnerState state __attribute__((init_priority(200)));
 // We use __thread instead of thread_local so that the compiler warns if
 // the initializer for `tls` is not a constant expression.
 // `tls` thus must not have a CTOR.
