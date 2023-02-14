@@ -59,4 +59,12 @@ extern "C" int CentipedeRunnerMain(
 extern "C" int LLVMFuzzerRunDriver(
     int *argc, char ***argv, FuzzerTestOneInputCallback test_one_input_cb);
 
+// This interface can be used to detect presence of Centipede in the binary.
+// Also pretend we are LibFuzzer for compatibility.
+// This API can be used by other pieces of fuzzing infrastructure,
+// but should not be used by end-users of fuzz targets
+// (consider using FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION macro).
+extern "C" __attribute__((weak)) void CentipedeIsPresent();
+extern "C" __attribute__((weak)) void __libfuzzer_is_present();
+
 #endif  // THIRD_PARTY_CENTIPEDE_RUNNER_INTERFACE_H_

@@ -804,3 +804,6 @@ extern "C" int LLVMFuzzerRunDriver(
                              LLVMFuzzerInitialize, LLVMFuzzerCustomMutator,
                              LLVMFuzzerCustomCrossOver);
 }
+
+extern "C" __attribute__((used)) void CentipedeIsPresent() {}
+extern "C" __attribute__((used)) void __libfuzzer_is_present() {}
