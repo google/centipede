@@ -45,17 +45,17 @@ std::vector<char*> CastArgv(const std::vector<std::string>& argv);
 // TODO(ussuri): Remove and just use the required bits of logic in .cc.
 class AugmentedArgvWithCleanup final {
  public:
-  using Replacements = std::vector<std::pair<std::string, std::string>>;
+  using PrefixReplacements = std::vector<std::pair<std::string, std::string>>;
   using BackingResourcesCleanup = std::function<void()>;
 
   // Ctor. The `orig_argc` and `orig_argv` are compatible with those passed to a
-  // main(). The `replacements` map should map an old substring to a new one.
-  // Only simple, one-stage string replacement is performed: no regexes,
+  // main(). The `prefix_replacements` map should map an old prefix to a new
+  // one. Only simple, one-stage string replacement is performed: no regexes,
   // placeholders, envvars or recursion. The `cleanup` callback should clean up
   // any temporary resources backing the modified flags, such as temporary
   // files.
   AugmentedArgvWithCleanup(const std::vector<std::string>& orig_argv,
-                           const Replacements& replacements,
+                           const PrefixReplacements& prefix_replacements,
                            BackingResourcesCleanup&& cleanup);
   // Dtor. Invokes `cleanup_`.
   ~AugmentedArgvWithCleanup();

@@ -101,16 +101,22 @@ std::vector<std::string> CastArgv(int argc, char** argv) {
 }
 
 AugmentedArgvWithCleanup::AugmentedArgvWithCleanup(
-    const std::vector<std::string>& orig_argv, const Replacements& replacements,
+    const std::vector<std::string>& orig_argv,
+    const PrefixReplacements& prefix_replacements,
     BackingResourcesCleanup&& cleanup)
     : was_augmented_{false}, cleanup_{cleanup} {
   argv_.reserve(orig_argv.size());
   for (const auto& old_arg : orig_argv) {
-    const std::string& new_arg =
-        argv_.emplace_back(absl::StrReplaceAll(old_arg, replacements));
-    if (new_arg != old_arg) {
-      VLOG(1) << "Augmented argv arg:\n" << VV(old_arg) << "\n" << VV(new_arg);
-      was_augmented_ = true;
+    std::string& new_arg = argv_.emplace_back(old_arg);
+    for (const auto& [old_prefix, new_prefix] : prefix_replacements) {
+      new_arg = absl::StripPrefix(new_arg, old_prefix);
+      if (new_arg != old_arg) {
+        new_arg = absl::StrCat(new_prefix, new_arg);
+        VLOG(1) << "Augmented argv arg:\n"
+                << VV(old_arg) << "\n"
+                << VV(new_arg);
+        was_augmented_ = true;
+      }
     }
   }
 }
@@ -145,10 +151,11 @@ AugmentedArgvWithCleanup LocalizeConfigFilesInArgv(
   }
 
   // Always need these (--config=<path> can be passed with a local <path>).
-  AugmentedArgvWithCleanup::Replacements replacements = {
-      // "-". not "--" to support the shortened "-flag" form as well.
+  AugmentedArgvWithCleanup::PrefixReplacements replacements = {
       {absl::StrCat("-", FLAGS_config.Name()),
        absl::StrCat("-", FLAGS_flagfile.Name())},
+      {absl::StrCat("--", FLAGS_config.Name()),
+       absl::StrCat("--", FLAGS_flagfile.Name())},
   };
   AugmentedArgvWithCleanup::BackingResourcesCleanup cleanup;
 
