@@ -147,8 +147,9 @@ AugmentedArgvWithCleanup LocalizeConfigFilesInArgv(
   // Always need these (--config=<path> can be passed with a local <path>).
   AugmentedArgvWithCleanup::Replacements replacements = {
       // "-". not "--" to support the shortened "-flag" form as well.
-      {absl::StrCat("-", FLAGS_config.Name()),
-       absl::StrCat("-", FLAGS_flagfile.Name())},
+      // TODO(ussuri): Fix for  usage without =, i.e. `--config <file>`.
+      {absl::StrCat("-", FLAGS_config.Name(), "="),
+       absl::StrCat("-", FLAGS_flagfile.Name(), "=")},
   };
   AugmentedArgvWithCleanup::BackingResourcesCleanup cleanup;
 
@@ -167,7 +168,8 @@ AugmentedArgvWithCleanup LocalizeConfigFilesInArgv(
     RemoteFileSetContents(local_path, contents);
 
     // Augment the argv to point at the local copy and ensure it is cleaned up.
-    replacements.emplace_back(path, local_path);
+    replacements.emplace_back(  //
+        absl::StrCat("=", path.c_str()), absl::StrCat("=", local_path.c_str()));
     cleanup = [local_path]() { std::filesystem::remove(local_path); };
   }
 

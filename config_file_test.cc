@@ -42,6 +42,7 @@ TEST(ConfigFileTest, AugmentedArgv) {
     EXPECT_EQ(augmented_argv.argv()[2], kOrigArgv[2]);
   }
 
+  // The replacements match and the cleanup runs as a result.
   {
     bool cleanup_worked = false;
     {
