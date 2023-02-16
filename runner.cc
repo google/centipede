@@ -734,8 +734,6 @@ GlobalRunnerState::~GlobalRunnerState() {
   }
 }
 
-}  // namespace centipede
-
 // If HasFlag(:dump_pc_table:), dump the pc table to state.arg1.
 //   Used to import the pc table into the caller process.
 //
@@ -753,9 +751,6 @@ extern "C" int CentipedeRunnerMain(
     FuzzerInitializeCallback initialize_cb,
     FuzzerCustomMutatorCallback custom_mutator_cb,
     FuzzerCustomCrossOverCallback custom_crossover_cb) {
-  using centipede::state;
-  using centipede::tls;
-
   state.centipede_runner_main_executed = true;
 
   fprintf(stderr, "Centipede fuzz target runner; argv[0]: %s flags: %s\n",
@@ -770,19 +765,19 @@ extern "C" int CentipedeRunnerMain(
   // Inputs / outputs from shmem.
   if (state.HasFlag(":shmem:")) {
     if (!state.arg1 || !state.arg2) return EXIT_FAILURE;
-    centipede::SharedMemoryBlobSequence inputs_blobseq(state.arg1);
-    centipede::SharedMemoryBlobSequence outputs_blobseq(state.arg2);
+    SharedMemoryBlobSequence inputs_blobseq(state.arg1);
+    SharedMemoryBlobSequence outputs_blobseq(state.arg2);
     // Read the first blob. It indicates what further actions to take.
     auto request_type_blob = inputs_blobseq.Read();
-    if (centipede::execution_request::IsMutationRequest(request_type_blob)) {
+    if (execution_request::IsMutationRequest(request_type_blob)) {
       // Mutation request.
       inputs_blobseq.Reset();
-      state.byte_array_mutator = new centipede::ByteArrayMutator(
-          state.knobs, centipede::GetRandomSeed());
+      state.byte_array_mutator =
+          new ByteArrayMutator(state.knobs, GetRandomSeed());
       return MutateInputsFromShmem(inputs_blobseq, outputs_blobseq,
                                    custom_mutator_cb, custom_crossover_cb);
     }
-    if (centipede::execution_request::IsExecutionRequest(request_type_blob)) {
+    if (execution_request::IsExecutionRequest(request_type_blob)) {
       // Execution request.
       inputs_blobseq.Reset();
       return ExecuteInputsFromShmem(inputs_blobseq, outputs_blobseq,
@@ -793,10 +788,12 @@ extern "C" int CentipedeRunnerMain(
 
   // By default, run every input file one-by-one.
   for (int i = 1; i < argc; i++) {
-    centipede::ReadOneInputExecuteItAndDumpCoverage(argv[i], test_one_input_cb);
+    ReadOneInputExecuteItAndDumpCoverage(argv[i], test_one_input_cb);
   }
   return EXIT_SUCCESS;
 }
+
+}  // namespace centipede
 
 extern "C" int LLVMFuzzerRunDriver(
     int *argc, char ***argv, FuzzerTestOneInputCallback test_one_input_cb) {
