@@ -35,6 +35,10 @@ centipede_fuzz_target(
     name = "empty_fuzz_target",
 )
 
+centipede_fuzz_target(
+    name = "minimize_me_fuzz_target",
+)
+
 # Simple fuzz target used for testing.
 centipede_fuzz_target(
     name = "test_fuzz_target",
