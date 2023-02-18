@@ -18,7 +18,7 @@ Centipede reasons about execution feedback in terms of *features*. A feature is
 some unique behavior of the target on a given input. So, executing an input is a
 way to compute the input's features.
 
-The currently supported features (see [feature.h](feature.h) for details) are:
+The currently supported features (see [feature.h](../feature.h) for details) are:
 
 *   Control flow edges with
     [8-bit counters](https://clang.llvm.org/docs/SanitizerCoverage.html#inline-8bit-counters)
