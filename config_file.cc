@@ -168,8 +168,7 @@ AugmentedArgvWithCleanup LocalizeConfigFilesInArgv(
     RemoteFileSetContents(local_path, contents);
 
     // Augment the argv to point at the local copy and ensure it is cleaned up.
-    replacements.emplace_back(  //
-        absl::StrCat("=", path.c_str()), absl::StrCat("=", local_path.c_str()));
+    replacements.emplace_back(path.c_str(), local_path.c_str());
     cleanup = [local_path]() { std::filesystem::remove(local_path); };
   }
 
