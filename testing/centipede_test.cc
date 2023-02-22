@@ -126,41 +126,6 @@ class MockFactory : public CentipedeCallbacksFactory {
   CentipedeCallbacks &cb_;
 };
 
-// Creates a tmp dir in CTOR, removes it in DTOR.
-// The dir name will contain `name`.
-struct ScopedTempDir {
-  explicit ScopedTempDir(std::string_view name = "")
-      : path(std::filesystem::path(GetTestTempDir())
-                 .append(absl::StrCat("centipede_test_", name, getpid()))) {
-    std::filesystem::remove_all(path);
-    std::filesystem::create_directories(path);
-  }
-  ~ScopedTempDir() { std::filesystem::remove_all(path); }
-  std::string GetFilePath(std::string_view file_name) {
-    return std::filesystem::path(path).append(file_name);
-  }
-  // Loads the corpus from the file `name_prefix``shard_index`
-  // and returns it as a vector<ByteArray>.
-  std::vector<ByteArray> GetCorpus(size_t shard_index,
-                                   std::string_view name_prefix = "corpus.") {
-    ByteArray corpus_data;
-    // NOTE: The "6" in the "%06d" comes from kDigitsInShardIndex in
-    // environment.cc.
-    ReadFromLocalFile(
-        GetFilePath(absl::StrFormat("%s%06d", name_prefix, shard_index)),
-        corpus_data);
-    std::vector<ByteArray> corpus;
-    UnpackBytesFromAppendFile(corpus_data, &corpus);
-    return corpus;
-  }
-  // Returns the count of elements in the corpus file `path`/`file_name`.
-  size_t CountElementsInCorpusFile(size_t shard_index,
-                                   std::string_view name_prefix = "corpus.") {
-    return GetCorpus(shard_index, name_prefix).size();
-  }
-  std::string path;
-};
-
 TEST(Centipede, MockTest) {
   ScopedTempDir tmp_dir;
   Environment env;    // Reads the flags. We override some members below.

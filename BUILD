@@ -622,7 +622,9 @@ cc_library(
     srcs = ["test_util.cc"],
     hdrs = ["test_util.h"],
     deps = [
+        ":defs",
         ":logging",
+        ":util",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -839,6 +841,7 @@ cc_test(
         ":test_util",
         ":util",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
         "@com_google_googletest//:gtest_main",
     ],
 )
