@@ -14,18 +14,18 @@
 
 #include "./analyze_corpora.h"
 
+#include <algorithm>
+
 #include "absl/container/flat_hash_set.h"
+#include "./control_flow.h"
+#include "./corpus.h"
 #include "./feature.h"
 #include "./logging.h"
 
 namespace centipede {
-void AnalyzeCorpora(const PCTable &pc_table,
-                    const SymbolTable &symbols,
+void AnalyzeCorpora(const BinaryInfo &binary_info,
                     const std::vector<CorpusRecord> &a,
                     const std::vector<CorpusRecord> &b) {
-  // TODO(kcc): compute the CoverageFrontier of `a`. We are only interested in
-  // elements of `b` that break though that CoverageFrontier.
-
   // `a_pcs` will contain all PCs covered by `a`.
   absl::flat_hash_set<size_t> a_pcs;
   for (const auto &record : a) {
@@ -55,15 +55,40 @@ void AnalyzeCorpora(const PCTable &pc_table,
       b_unique_indices.push_back(i);
     else
       b_shared_indices.push_back(i);
-    }
-    LOG(INFO) << VV(a.size()) << VV(b.size()) << VV(a_pcs.size())
-              << VV(b_only_pcs.size()) << VV(b_shared_indices.size())
-              << VV(b_unique_indices.size());
-    CoverageLogger coverage_logger(pc_table, symbols);
-    LOG(INFO) << "symbolized b-only PCs:";
-    for (const auto pc : b_only_pcs) {
+  }
+  LOG(INFO) << VV(a.size()) << VV(b.size()) << VV(a_pcs.size())
+            << VV(b_only_pcs.size()) << VV(b_shared_indices.size())
+            << VV(b_unique_indices.size());
+
+  const auto &pc_table = binary_info.pc_table;
+  const auto &symbols = binary_info.symbols;
+  CoverageLogger coverage_logger(pc_table, symbols);
+
+  CoverageFrontier frontier_a(binary_info);
+  frontier_a.Compute(a);
+
+  // TODO(kcc): use frontier_a to show the most interesting b-only PCs.
+
+  // Sort b-only PCs to print them in the canonical order, as in pc_table.
+  std::vector<size_t> b_only_pcs_vec{b_only_pcs.begin(), b_only_pcs.end()};
+  std::sort(b_only_pcs_vec.begin(), b_only_pcs_vec.end());
+
+  // First, print the newly covered functions (including partially covered).
+  LOG(INFO) << "B-only new functions:";
+  absl::flat_hash_set<std::string_view> b_only_new_functions;
+  for (const auto pc : b_only_pcs_vec) {
+    if (!pc_table[pc].has_flag(PCInfo::kFuncEntry)) continue;
     auto str = coverage_logger.ObserveAndDescribeIfNew(pc);
-    if (!str.empty()) LOG(INFO) << str;
+    if (!str.empty()) LOG(INFO).NoPrefix() << str;
+    b_only_new_functions.insert(symbols.func(pc));
+  }
+
+  // Now, print newly covered edges in functions that were covered in `a`.
+  LOG(INFO) << "B-only new edges:";
+  for (const auto pc : b_only_pcs_vec) {
+    if (b_only_new_functions.contains(symbols.func(pc))) continue;
+    auto str = coverage_logger.ObserveAndDescribeIfNew(pc);
+    if (!str.empty()) LOG(INFO).NoPrefix() << str;
   }
 }
 

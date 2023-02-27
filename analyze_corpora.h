@@ -15,16 +15,14 @@
 #ifndef THIRD_PARTY_CENTIPEDE_ANALYZE_CORPORA_H
 #define THIRD_PARTY_CENTIPEDE_ANALYZE_CORPORA_H
 
+#include "./binary_info.h"
 #include "./corpus.h"
-#include "./coverage.h"
-#include "./symbol_table.h"
 
 namespace centipede {
 
 // Analyzes two corpora, `a` and `b`, reports the differences.
 // TODO(kcc): unimplemented.
-void AnalyzeCorpora(const PCTable &pc_table,
-                    const SymbolTable &symbols,
+void AnalyzeCorpora(const BinaryInfo &binary_info,
                     const std::vector<CorpusRecord> &a,
                     const std::vector<CorpusRecord> &b);
 

@@ -234,6 +234,9 @@ class CoverageFrontier {
   // Returns the number of functions in the frontier.
   size_t Compute(const Corpus &corpus);
 
+  // Same as above.
+  size_t Compute(const std::vector<CorpusRecord> &corpus_records);
+
   // Returns the number of functions in the frontier.
   size_t NumFunctionsInFrontier() const { return num_functions_in_frontier_; }
 

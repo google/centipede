@@ -31,6 +31,7 @@
 #include "absl/strings/str_replace.h"
 #include "absl/types/span.h"
 #include "./analyze_corpora.h"
+#include "./binary_info.h"
 #include "./blob_file.h"
 #include "./centipede.h"
 #include "./command.h"
@@ -116,8 +117,7 @@ void PrintExperimentStatsThread(const std::atomic<bool> &continue_running,
 
 // Loads corpora from work dirs provided in `env.args`, analyzes differences.
 // Returns EXIT_SUCCESS on success, EXIT_FAILURE otherwise.
-int Analyze(const Environment &env, const PCTable &pc_table,
-            const SymbolTable &symbols) {
+int Analyze(const Environment &env, const BinaryInfo &binary_info) {
   LOG(INFO) << "Analyze " << absl::StrJoin(env.args, ",");
   CHECK_EQ(env.args.size(), 2) << "for now, Analyze supports only 2 work dirs";
   CHECK(!env.binary.empty()) << "--binary must be used";
@@ -143,7 +143,7 @@ int Analyze(const Environment &env, const PCTable &pc_table,
     LOG(INFO) << "corpus size " << corpus.size();
   }
   CHECK_EQ(corpora.size(), 2);
-  AnalyzeCorpora(pc_table, symbols, corpora[0], corpora[1]);
+  AnalyzeCorpora(binary_info, corpora[0], corpora[1]);
   return EXIT_SUCCESS;
 }
 
@@ -196,8 +196,7 @@ int CentipedeMain(const Environment &env,
     SavePCsToFile(binary_info.pc_table, pcs_file_path);
   }
 
-  if (env.analyze)
-    return Analyze(env, binary_info.pc_table, binary_info.symbols);
+  if (env.analyze) return Analyze(env, binary_info);
 
   if (env.use_pcpair_features) {
     CHECK(!binary_info.pc_table.empty())

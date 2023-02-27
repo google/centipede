@@ -185,6 +185,8 @@ cc_library(
     srcs = ["analyze_corpora.cc"],
     hdrs = ["analyze_corpora.h"],
     deps = [
+        ":binary_info",
+        ":control_flow",
         ":corpus",
         ":coverage",
         ":feature",
@@ -458,6 +460,7 @@ cc_library(
     ],
     deps = [
         ":analyze_corpora",
+        ":binary_info",
         ":blob_file",
         ":centipede_callbacks",
         ":centipede_lib",

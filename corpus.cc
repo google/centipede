@@ -257,13 +257,18 @@ uint32_t WeightedDistribution::PopBack() {
 
 //================= CoverageFrontier
 size_t CoverageFrontier::Compute(const Corpus &corpus) {
+  return Compute(corpus.records_);
+}
+
+size_t CoverageFrontier::Compute(
+    const std::vector<CorpusRecord> &corpus_records) {
   // Initialize the vectors.
   std::fill(frontier_.begin(), frontier_.end(), false);
   std::fill(frontier_weight_.begin(), frontier_weight_.end(), 0);
 
   // A vector of covered indices in pc_table. Needed for Coverage object.
   PCIndexVec covered_pcs;
-  for (const auto &record : corpus.records_) {
+  for (const auto &record : corpus_records) {
     for (auto feature : record.features) {
       if (!feature_domains::k8bitCounters.Contains(feature)) continue;
       size_t idx = Convert8bitCounterFeatureToPcIndex(feature);
