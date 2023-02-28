@@ -13,7 +13,11 @@ that the existing fuzzing engines don't try to do.
 
 Notable features:
 
-* Early **work-in-progress**. We test centipede within a small team on a couple
+* Out-of-the-box support for libFuzzer-based fuzz targets. In order to use your
+  favourite `LLVMFuzzerTestOneInput()` you only need to build your target with
+  Centipede's compiler and linker options.
+
+* **Work-in-progress**. We test centipede within a small team on a couple
   of targets. Unless you are part of the Centipede project, or want to help us,
   **you probably don't want to read further just yet**.
 
@@ -35,7 +39,7 @@ Notable features:
   binary for Centipede itself. The main binary should not use any of the
   sanitizers.
 
-* No part of interface is stable. Anything may change at this stage.
+* No part of the internal interface is stable. Anything may change at this stage.
 
 ## Terminology
 
