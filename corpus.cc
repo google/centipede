@@ -67,8 +67,8 @@ void FeatureSet::IncrementFrequencies(const FeatureVec &features) {
     if (freq == 0) {
       ++num_features_;
       ++features_per_domain_[feature_domains::Domain::FeatureToDomainId(f)];
-      if (feature_domains::k8bitCounters.Contains(f))
-        pc_index_set_.insert(Convert8bitCounterFeatureToPcIndex(f));
+      if (feature_domains::kPCs.Contains(f))
+        pc_index_set_.insert(ConvertPCFeatureToPcIndex(f));
     }
     if (freq < FrequencyThreshold(f)) ++freq;
   }
@@ -107,8 +107,8 @@ static size_t ComputeWeight(const FeatureVec &fv, const FeatureSet &fs,
   if (coverage_frontier.MaxPcIndex() == 0) return weight;
   size_t frontier_weights_sum = 0;
   for (const auto feature : fv) {
-    if (!feature_domains::k8bitCounters.Contains(feature)) continue;
-    const auto pc_index = Convert8bitCounterFeatureToPcIndex(feature);
+    if (!feature_domains::kPCs.Contains(feature)) continue;
+    const auto pc_index = ConvertPCFeatureToPcIndex(feature);
     if (coverage_frontier.PcIndexIsFrontier(pc_index)) {
       frontier_weights_sum += coverage_frontier.FrontierWeight(pc_index);
     }
@@ -270,8 +270,8 @@ size_t CoverageFrontier::Compute(
   PCIndexVec covered_pcs;
   for (const auto &record : corpus_records) {
     for (auto feature : record.features) {
-      if (!feature_domains::k8bitCounters.Contains(feature)) continue;
-      size_t idx = Convert8bitCounterFeatureToPcIndex(feature);
+      if (!feature_domains::kPCs.Contains(feature)) continue;
+      size_t idx = ConvertPCFeatureToPcIndex(feature);
       if (idx >= binary_info_.pc_table.size()) continue;
       covered_pcs.push_back(idx);
       frontier_[idx] = true;

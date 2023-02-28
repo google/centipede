@@ -30,8 +30,8 @@ void AnalyzeCorpora(const BinaryInfo &binary_info,
   absl::flat_hash_set<size_t> a_pcs;
   for (const auto &record : a) {
     for (const auto &feature : record.features) {
-      if (!feature_domains::k8bitCounters.Contains(feature)) continue;
-      auto pc = Convert8bitCounterFeatureToPcIndex(feature);
+      if (!feature_domains::kPCs.Contains(feature)) continue;
+      auto pc = ConvertPCFeatureToPcIndex(feature);
       a_pcs.insert(pc);
     }
   }
@@ -45,8 +45,8 @@ void AnalyzeCorpora(const BinaryInfo &binary_info,
     const auto &record = b[i];
     bool has_b_only = false;
     for (const auto &feature : record.features) {
-      if (!feature_domains::k8bitCounters.Contains(feature)) continue;
-      auto pc = Convert8bitCounterFeatureToPcIndex(feature);
+      if (!feature_domains::kPCs.Contains(feature)) continue;
+      auto pc = ConvertPCFeatureToPcIndex(feature);
       if (a_pcs.contains(pc)) continue;
       b_only_pcs.insert(pc);
       has_b_only = true;

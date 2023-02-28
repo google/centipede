@@ -30,37 +30,6 @@
 namespace centipede {
 namespace {
 
-TEST(Feature, Convert8bitCounterToFeature) {
-  EXPECT_EQ(Convert8bitCounterToNumber(0, 1), 0);
-  EXPECT_EQ(Convert8bitCounterToNumber(0, 2), 1);
-  EXPECT_EQ(Convert8bitCounterToNumber(0, 3), 1);
-  EXPECT_EQ(Convert8bitCounterToNumber(0, 4), 2);
-  EXPECT_EQ(Convert8bitCounterToNumber(0, 5), 2);
-  EXPECT_EQ(Convert8bitCounterToNumber(0, 6), 2);
-  EXPECT_EQ(Convert8bitCounterToNumber(0, 7), 2);
-  EXPECT_EQ(Convert8bitCounterToNumber(0, 8), 3);
-  EXPECT_EQ(Convert8bitCounterToNumber(0, 16), 4);
-  EXPECT_EQ(Convert8bitCounterToNumber(0, 32), 5);
-  EXPECT_EQ(Convert8bitCounterToNumber(0, 64), 6);
-  EXPECT_EQ(Convert8bitCounterToNumber(0, 128), 7);
-  EXPECT_EQ(Convert8bitCounterToNumber(0, 255), 7);
-
-  EXPECT_EQ(Convert8bitCounterToNumber(1, 1), 1 * 8 + 0);
-  EXPECT_EQ(Convert8bitCounterToNumber(10, 2), 10 * 8 + 1);
-  EXPECT_EQ(Convert8bitCounterToNumber(100, 4), 100 * 8 + 2);
-
-  // counter == 0.
-  EXPECT_DEATH(Convert8bitCounterToNumber(0, 0), "");
-
-  for (size_t pc_index = 0; pc_index < 10; pc_index++) {
-    for (int counter = 1; counter < 256; counter++) {
-      auto feature = feature_domains::k8bitCounters.ConvertToMe(
-          Convert8bitCounterToNumber(pc_index, counter));
-      EXPECT_EQ(Convert8bitCounterFeatureToPcIndex(feature), pc_index);
-    }
-  }
-}
-
 // Computes CMP features for all {a,b} pairs in `ab_vec`,
 // verifies that all features are different.
 static void TestCmpPairs(

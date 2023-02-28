@@ -320,13 +320,10 @@ PostProcessCoverage(int target_return_value) {
     });
   }
 
-  // Convert pc bit set to features, only if not use_counter_features.
-  if (state.run_time_flags.use_pc_features &&
-      !state.run_time_flags.use_counter_features) {
+  // Convert pc bit set to features.
+  if (state.run_time_flags.use_pc_features) {
     state.pc_feature_set.ForEachNonZeroBit([](size_t idx) {
-      g_features.push_back(
-          centipede::feature_domains::k8bitCounters.ConvertToMe(
-              centipede::Convert8bitCounterToNumber(idx, 1)));
+      g_features.push_back(centipede::feature_domains::kPCs.ConvertToMe(idx));
     });
   }
 }

@@ -79,6 +79,7 @@ namespace feature_domains {
 struct Domain {
   enum DomainId {
     kUnknown = 0,
+    kPCs,
     k8bitCounters,
     kDataFlow,
     kCMP,
@@ -88,7 +89,7 @@ struct Domain {
   };
 
   // kSize is the largest power of two such that all domains fit.
-  static constexpr size_t kSize = 1ULL << 61;
+  static constexpr size_t kSize = 1ULL << 60;
   static_assert(std::numeric_limits<size_t>::max() / kSize > kLastDomain,
                 "domains must fit into 64 bits");
 
@@ -122,6 +123,10 @@ constexpr Domain kUnknown = {Domain::kUnknown};
 // Special feature used to indicate an absence of features. Typically used where
 // a feature array must not be empty, but doesn't have any other features.
 constexpr feature_t kNoFeature = kUnknown.begin();
+
+// Represents PCs, i.e. control flow edges.
+// Use ConvertPCFeatureToPcIndex() to convert back to a PC index.
+constexpr Domain kPCs = {Domain::kPCs};
 
 // Features derived from
 // https://clang.llvm.org/docs/SanitizerCoverage.html#inline-8bit-counters.
@@ -201,12 +206,13 @@ inline void ForEachNonZeroByte(const uint8_t *bytes, size_t num_bytes,
   }
 }
 
-// Given the `feature` from the k8bitCounters domain, returns the feature's
-// pc_index. I.e. reverse of Convert8bitCounterToFeature.
-inline size_t Convert8bitCounterFeatureToPcIndex(feature_t feature) {
-  auto domain = feature_domains::k8bitCounters;
+// Given the `feature` from the PC domain, returns the feature's
+// pc_index. I.e. reverse of kPC.ConvertToMe(), assuming all PCs originally
+// converted to features were less than Domain::kSize.
+inline size_t ConvertPCFeatureToPcIndex(feature_t feature) {
+  auto domain = feature_domains::kPCs;
   if (!domain.Contains(feature)) __builtin_trap();
-  return (feature - domain.begin()) / 8;
+  return feature - domain.begin();
 }
 
 // Encodes {`pc1`, `pc2`} into a number.

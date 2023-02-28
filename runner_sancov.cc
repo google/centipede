@@ -162,7 +162,10 @@ static inline void HandleOnePc(uintptr_t normalized_pc) {
   // counter or pc features.
   if (state.run_time_flags.use_counter_features) {
     state.counter_array.Increment(normalized_pc);
-  } else if (state.run_time_flags.use_pc_features) {
+  }
+
+  // TODO(kcc): remove use_pc_features flags since we always set it.
+  if (state.run_time_flags.use_pc_features) {
     state.pc_feature_set.set(normalized_pc);
   }
 

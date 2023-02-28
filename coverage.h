@@ -142,7 +142,7 @@ class FunctionFilter {
                  const SymbolTable &symbols);
 
   // Returns true if
-  // * some of the `features` is from feature_domains::k8bitCounters
+  // * some of the `features` are from feature_domains::kPC
   //   and belong to a filtered function.
   // * either `functions_to_filter` or `symbols` passed to CTOR was empty.
   bool filter(const FeatureVec &features) const;

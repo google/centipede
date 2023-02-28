@@ -425,8 +425,7 @@ TEST(CoverageFrontier, Compute) {
 
   FeatureVec pcs(pc_table.size());
   for (size_t i = 0; i < pc_table.size(); i++) {
-    pcs[i] = feature_domains::k8bitCounters.ConvertToMe(
-        Convert8bitCounterToNumber(i, /*counter_value*/ 1));
+    pcs[i] = feature_domains::kPCs.ConvertToMe(i);
   }
 
   FeatureSet fs(100);

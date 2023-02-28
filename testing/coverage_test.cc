@@ -264,8 +264,8 @@ TEST(Coverage, CoverageFeatures) {
     size_t single_edge_func_num_edges = 0;
     size_t multi_edge_func_num_edges = 0;
     for (auto feature : features[input_idx]) {
-      if (!feature_domains::k8bitCounters.Contains(feature)) continue;
-      auto pc_index = Convert8bitCounterFeatureToPcIndex(feature);
+      if (!feature_domains::kPCs.Contains(feature)) continue;
+      auto pc_index = ConvertPCFeatureToPcIndex(feature);
       single_edge_func_num_edges += symbols.func(pc_index) == "SingleEdgeFunc";
       multi_edge_func_num_edges += symbols.func(pc_index) == "MultiEdgeFunc";
       llvm_fuzzer_test_one_input_num_edges +=
@@ -423,13 +423,12 @@ TEST(Coverage, ThreadedTest) {
       RunInputsAndCollectCoverage(env, {"f", "fu", "fuz", "fuzz"});
   EXPECT_EQ(features.size(), 4);
   // For several pairs of inputs, check that their features in
-  // k8bitCounters and kBoundedPath are different.
+  // kPC and kBoundedPath are different.
   for (size_t idx0 = 0; idx0 < 3; ++idx0) {
     for (size_t idx1 = idx0 + 1; idx1 < 4; ++idx1) {
-      EXPECT_NE(
-          ExtractDomainFeatures(features[idx0], feature_domains::k8bitCounters),
-          ExtractDomainFeatures(features[idx1],
-                                feature_domains::k8bitCounters));
+      EXPECT_NE(ExtractDomainFeatures(features[idx0], feature_domains::kPCs),
+                ExtractDomainFeatures(features[idx1],
+                                      feature_domains::k8bitCounters));
       EXPECT_NE(
           ExtractDomainFeatures(features[idx0], feature_domains::kBoundedPath),
           ExtractDomainFeatures(features[idx1], feature_domains::kBoundedPath));

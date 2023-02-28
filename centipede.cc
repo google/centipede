@@ -215,10 +215,9 @@ void Centipede::UpdateAndMaybeLogStats(std::string_view log_type,
 
 void Centipede::LogFeaturesAsSymbols(const FeatureVec &fv) {
   if (!env_.LogFeaturesInThisShard()) return;
-  auto feature_domain = feature_domains::k8bitCounters;
   for (auto feature : fv) {
-    if (!feature_domain.Contains(feature)) continue;
-    PCIndex pc_index = Convert8bitCounterFeatureToPcIndex(feature);
+    if (!feature_domains::kPCs.Contains(feature)) continue;
+    PCIndex pc_index = ConvertPCFeatureToPcIndex(feature);
     auto description = coverage_logger_.ObserveAndDescribeIfNew(pc_index);
     if (description.empty()) continue;
     LOG(INFO) << description;
@@ -262,8 +261,8 @@ size_t Centipede::AddPcPairFeatures(FeatureVec &fv) {
 
   // Collect PCs from fv.
   for (auto feature : fv) {
-    if (feature_domains::k8bitCounters.Contains(feature))
-      pcs.push_back(Convert8bitCounterFeatureToPcIndex(feature));
+    if (feature_domains::kPCs.Contains(feature))
+      pcs.push_back(ConvertPCFeatureToPcIndex(feature));
   }
 
   // The quadratic loop: iterate all PC pairs (!!).
