@@ -578,6 +578,7 @@ RUNNER_COPTS = ["-fsanitize-coverage=0"]
 RUNNER_LINKOPTS = [
     "-ldl",  # for dlsym
     "-lrt",  # for shm_open
+    "-lpthread",  # for pthread_once
 ]
 
 RUNNER_DEPS = ["@com_google_absl//absl/types:span"]  # WARNING: be careful with more deps.
