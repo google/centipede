@@ -241,6 +241,12 @@ ABSL_FLAG(size_t, log_features_shards, 0,
 ABSL_FLAG(bool, exit_on_crash, false,
           "If true, Centipede will exit on the first crash of the target.");
 ABSL_FLAG(size_t, num_crash_reports, 5, "report this many crashes per shard.");
+ABSL_FLAG(std::string, minimize_crash, "",
+          "If non-empty, a path to an input file that triggers a crash."
+          " Centipede will run the minimization loop and store smaller crash-y"
+          " inputs in workdir/crashes/."
+          " --num_runs and --num_threads apply. "
+          " Assumes local workdir.");
 ABSL_FLAG(std::string, input_filter, "",
           "Path to a tool that filters bad inputs. The tool is invoked as "
           "`input_filter INPUT_FILE` and should return 0 if the input is good "
@@ -393,6 +399,7 @@ Environment::Environment(const std::vector<std::string> &argv)
       analyze(absl::GetFlag(FLAGS_analyze)),
       exit_on_crash(absl::GetFlag(FLAGS_exit_on_crash)),
       max_num_crash_reports(absl::GetFlag(FLAGS_num_crash_reports)),
+      minimize_crash_file_path(absl::GetFlag(FLAGS_minimize_crash)),
       shmem_size_mb(absl::GetFlag(FLAGS_shmem_size_mb)),
       cmd(binary),
       binary_name(std::filesystem::path(coverage_binary).filename().string()),

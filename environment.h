@@ -88,6 +88,7 @@ struct Environment {
   bool analyze;
   bool exit_on_crash;
   size_t max_num_crash_reports;
+  std::string minimize_crash_file_path;
   size_t shmem_size_mb;
 
   std::string experiment_name;   // Set by UpdateForExperiment.

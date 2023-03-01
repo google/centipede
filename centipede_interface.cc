@@ -39,6 +39,7 @@
 #include "./defs.h"
 #include "./environment.h"
 #include "./logging.h"
+#include "./minimize_crash.h"
 #include "./remote_file.h"
 #include "./shard_reader.h"
 #include "./stats.h"
@@ -165,6 +166,12 @@ int CentipedeMain(const Environment &env,
     return Centipede::SaveCorpusToLocalDir(env, env.save_corpus_to_local_dir);
 
   if (!env.for_each_blob.empty()) return ForEachBlob(env);
+
+  if (!env.minimize_crash_file_path.empty()) {
+    ByteArray crashy_input;
+    ReadFromLocalFile(env.minimize_crash_file_path, crashy_input);
+    return MinimizeCrash(crashy_input, env, callbacks_factory);
+  }
 
   // Just export the corpus from a local dir and exit.
   if (!env.export_corpus_from_local_dir.empty())

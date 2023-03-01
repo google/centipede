@@ -181,6 +181,19 @@ cc_library(
 )
 
 cc_library(
+    name = "minimize_crash",
+    srcs = ["minimize_crash.cc"],
+    hdrs = ["minimize_crash.h"],
+    deps = [
+        ":centipede_callbacks",
+        ":defs",
+        ":environment",
+        ":logging",
+        ":util",
+    ],
+)
+
+cc_library(
     name = "analyze_corpora",
     srcs = ["analyze_corpora.cc"],
     hdrs = ["analyze_corpora.h"],
@@ -469,6 +482,7 @@ cc_library(
         ":defs",
         ":environment",
         ":logging",
+        ":minimize_crash",
         ":remote_file",
         ":shard_reader",
         ":stats",
@@ -725,6 +739,19 @@ cc_test(
     srcs = ["stats_test.cc"],
     deps = [
         ":stats",
+        "@centipede//:logging",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "minimize_crash_test",
+    srcs = ["minimize_crash_test.cc"],
+    deps = [
+        ":defs",
+        ":minimize_crash",
+        ":test_util",
+        ":util",
         "@centipede//:logging",
         "@com_google_googletest//:gtest_main",
     ],

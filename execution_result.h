@@ -148,6 +148,7 @@ class BatchResult {
   int& exit_code() { return exit_code_; }
   int exit_code() const { return exit_code_; }
   size_t num_outputs_read() const { return num_outputs_read_; }
+  size_t& num_outputs_read() { return num_outputs_read_; }
   std::string& failure_description() { return failure_description_; }
   const std::string& failure_description() const {
     return failure_description_;
