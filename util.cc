@@ -385,7 +385,7 @@ bool ParseAFLDictionary(std::string_view dictionary_text,
   return true;
 }
 
-std::vector<size_t> RandomWeightedSubset(absl::Span<const uint32_t> set,
+std::vector<size_t> RandomWeightedSubset(absl::Span<const uint64_t> set,
                                          size_t target_size, Rng &rng) {
   std::vector<size_t> res;
 

@@ -68,7 +68,7 @@ class FeatureSet {
   // Computes combined weight of `features`.
   // The less frequent the feature is, the bigger its weight.
   // The weight of a FeatureVec is a sum of individual feature weights.
-  uint32_t ComputeWeight(const FeatureVec &features) const;
+  uint64_t ComputeWeight(const FeatureVec &features) const;
 
  private:
   // Computes the frequency threshold based on the domain of `feature`.
@@ -111,12 +111,12 @@ class FeatureSet {
 class WeightedDistribution {
  public:
   // Adds one more weight.
-  void AddWeight(uint32_t weight);
+  void AddWeight(uint64_t weight);
   // Removes the last weight and returns it.
   // Precondition: size() > 0.
-  uint32_t PopBack();
+  uint64_t PopBack();
   // Changes the existing idx-th weight to new_weight.
-  void ChangeWeight(size_t idx, uint32_t new_weight);
+  void ChangeWeight(size_t idx, uint64_t new_weight);
   // Returns a random number in [0,size()), using a random number `random`.
   // For proper randomness, `random` should come from a 64-bit RNG.
   // RandomIndex() must not be called after ChangeWeight() without first
@@ -146,9 +146,9 @@ class WeightedDistribution {
  private:
   // The array of weights. The probability of choosing the index Idx
   // is weights_[Idx] / SumOfAllWeights.
-  std::vector<uint32_t> weights_;
+  std::vector<uint64_t> weights_;
   // i-th element is the sum of the first i elements of weights_.
-  std::vector<uint32_t> cumulative_weights_;
+  std::vector<uint64_t> cumulative_weights_;
   // If false, cumulative_weights_ needs to be recomputed.
   bool cumulative_weights_valid_ = true;
 };
@@ -250,7 +250,7 @@ class CoverageFrontier {
   size_t MaxPcIndex() const { return binary_info_.pc_table.size(); }
 
   // Returns the frontier weight of pc at `idx`, weight of a non-frontier is 0.
-  uint32_t FrontierWeight(size_t idx) const {
+  uint64_t FrontierWeight(size_t idx) const {
     CHECK_LT(idx, MaxPcIndex());
     return frontier_weight_[idx];
   }
@@ -261,7 +261,7 @@ class CoverageFrontier {
   // frontier_[idx] is true iff pc_table_[i] is part of the coverage frontier.
   std::vector<bool> frontier_;
   // Stores the weight associated with frontier_[idx].
-  std::vector<uint32_t> frontier_weight_;
+  std::vector<uint64_t> frontier_weight_;
 
   // The number of functions in the frontier.
   size_t num_functions_in_frontier_ = 0;

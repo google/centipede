@@ -239,7 +239,7 @@ TEST(UtilTest, ParseAFLDictionary) {
 
 TEST(UtilTest, RandomWeightedSubset) {
   using v = std::vector<size_t>;  // to make test code more compact.
-  std::vector<uint32_t> set{20, 10, 0, 40, 50};
+  std::vector<uint64_t> set{20, 10, 0, 40, 50};
   Rng rng(0);
 
   // target_size >= 4, expect only the index of 0s.

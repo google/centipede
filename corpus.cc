@@ -75,9 +75,9 @@ void FeatureSet::IncrementFrequencies(const FeatureVec &features) {
 }
 
 __attribute__((noinline))  // to see it in profile.
-uint32_t
+uint64_t
 FeatureSet::ComputeWeight(const FeatureVec &features) const {
-  uint32_t weight = 0;
+  uint64_t weight = 0;
   for (auto feature : features) {
     // The less frequent is the feature, the more valuable it is.
     // (frequency == 1) => (weight == 256)
@@ -207,7 +207,7 @@ std::string Corpus::MemoryUsageString() const {
 }
 
 //================= WeightedDistribution
-void WeightedDistribution::AddWeight(uint32_t weight) {
+void WeightedDistribution::AddWeight(uint64_t weight) {
   CHECK_EQ(weights_.size(), cumulative_weights_.size());
   weights_.push_back(weight);
   if (cumulative_weights_.empty()) {
@@ -217,7 +217,7 @@ void WeightedDistribution::AddWeight(uint32_t weight) {
   }
 }
 
-void WeightedDistribution::ChangeWeight(size_t idx, uint32_t new_weight) {
+void WeightedDistribution::ChangeWeight(size_t idx, uint64_t new_weight) {
   CHECK_LT(idx, size());
   weights_[idx] = new_weight;
   cumulative_weights_valid_ = false;
@@ -225,7 +225,7 @@ void WeightedDistribution::ChangeWeight(size_t idx, uint32_t new_weight) {
 
 __attribute__((noinline))  // to see it in profile.
 void WeightedDistribution::RecomputeInternalState() {
-  uint32_t partial_sum = 0;
+  uint64_t partial_sum = 0;
   for (size_t i = 0, n = size(); i < n; i++) {
     partial_sum += weights_[i];
     cumulative_weights_[i] = partial_sum;
@@ -238,7 +238,7 @@ size_t
 WeightedDistribution::RandomIndex(size_t random) const {
   CHECK(!weights_.empty());
   CHECK(cumulative_weights_valid_);
-  uint32_t sum_of_all_weights = cumulative_weights_.back();
+  uint64_t sum_of_all_weights = cumulative_weights_.back();
   if (sum_of_all_weights == 0)
     return random % size();  // can't do much else here.
   random = random % sum_of_all_weights;
@@ -248,8 +248,8 @@ WeightedDistribution::RandomIndex(size_t random) const {
   return it - cumulative_weights_.begin();
 }
 
-uint32_t WeightedDistribution::PopBack() {
-  uint32_t result = weights_.back();
+uint64_t WeightedDistribution::PopBack() {
+  uint64_t result = weights_.back();
   weights_.pop_back();
   cumulative_weights_.pop_back();
   return result;

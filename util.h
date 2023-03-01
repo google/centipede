@@ -129,7 +129,7 @@ std::string ProcessAndThreadUniqueID(std::string_view prefix);
 //   * We choose which elements to remove instead of which elements to pick.
 //     We use this inverted algorithm because in a typical use case
 //     `target_size` is just slightly smaller than set.size().
-std::vector<size_t> RandomWeightedSubset(absl::Span<const uint32_t> set,
+std::vector<size_t> RandomWeightedSubset(absl::Span<const uint64_t> set,
                                          size_t target_size, Rng &rng);
 
 // Removes all elements from `set` whose indices are found in `subset_indices`.
