@@ -377,6 +377,7 @@ class ConcurrentBitSet {
 // Each element is an 8-bit counter that can be incremented concurrently.
 // The counters are allowed to overflow (i.e. are not saturating).
 // Thread-compatible.
+// The main use case is to increment an execution counter of a given PC.
 template <size_t kSize>
 class CounterArray {
  public:
@@ -390,8 +391,19 @@ class CounterArray {
   // Idx is taken modulo kSize.
   void Increment(size_t idx) {
     // An atomic increment is quite expensive, even if relaxed.
-    // We may want to do a racy non-atomic increment instead.
-    __atomic_add_fetch(&data_[idx % kSize], 1, __ATOMIC_RELAXED);
+    // We do a non-atomic increment instead, with the full understanding
+    // that if the increment of the same `idx` happens concurrently the result
+    // will be unreliable. This is a trade-off between correctness and speed.
+    // This behavior is similar to that of Clang Coverage and inline counters:
+    // https://clang.llvm.org/docs/SourceBasedCodeCoverage.html
+    // https://clang.llvm.org/docs/SanitizerCoverage.html#inline-8bit-counters
+    // There is also a risk of contention if the same hot code is executed
+    // concurrently. Both atomic and non-atomic increment will be bad.
+    uint8_t *ptr = &data_[idx % kSize];
+    uint8_t value{};
+    __atomic_load(ptr, &value, __ATOMIC_RELAXED);
+    ++value;
+    __atomic_store(ptr, &value, __ATOMIC_RELAXED);
   }
 
   // Accessors.
