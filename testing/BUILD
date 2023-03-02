@@ -194,3 +194,13 @@ sh_test(
         "@centipede//:test_util_sh",
     ],
 )
+
+sh_test(
+    name = "minimize_crash_test",
+    srcs = ["minimize_crash_test.sh"],
+    data = [
+        ":minimize_me_fuzz_target",
+        "@centipede",
+        "@centipede//:test_util_sh",
+    ],
+)
