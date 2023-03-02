@@ -203,7 +203,7 @@ cc_library(
         ":corpus",
         ":coverage",
         ":feature",
-        "@centipede//:logging",
+        ":logging",
         "@com_google_absl//absl/container:flat_hash_set",
     ],
 )
@@ -738,8 +738,8 @@ cc_test(
     name = "stats_test",
     srcs = ["stats_test.cc"],
     deps = [
+        ":logging",
         ":stats",
-        "@centipede//:logging",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -749,10 +749,10 @@ cc_test(
     srcs = ["minimize_crash_test.cc"],
     deps = [
         ":defs",
+        ":logging",
         ":minimize_crash",
         ":test_util",
         ":util",
-        "@centipede//:logging",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -762,7 +762,7 @@ cc_test(
     srcs = ["analyze_corpora_test.cc"],
     deps = [
         ":analyze_corpora",
-        "@centipede//:logging",
+        ":logging",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -896,10 +896,10 @@ cc_test(
     ],
     deps = [
         ":control_flow",
+        ":logging",
         "@centipede//:defs",
         "@centipede//:environment",
         "@centipede//:execution_result",
-        "@centipede//:logging",
         "@centipede//:test_util",
         "@centipede//:util",
         "@com_google_googletest//:gtest_main",
@@ -910,8 +910,8 @@ cc_test(
     name = "call_graph_test",
     srcs = ["call_graph_test.cc"],
     deps = [
+        ":logging",
         "@centipede//:call_graph",
-        "@centipede//:logging",
         "@com_google_googletest//:gtest_main",
     ],
 )
