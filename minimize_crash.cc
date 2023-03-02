@@ -38,6 +38,8 @@ static void MinimizeCrash(const Environment &env, CentipedeCallbacks *callbacks,
   LOG(INFO) << "Starting the crash minimization loop";
   size_t num_batches = env.num_runs / env.batch_size;
   for (size_t i = 0; i < num_batches; ++i) {
+    LOG_EVERY_POW_2(INFO) << "[" << i << "] Minimizing... Interrupt to stop";
+    if (EarlyExitRequested()) break;
     // Create several mutants that are smaller than the current smallest one.
     //
     // Currently, we do this by calling the vanilla mutator and
