@@ -34,6 +34,7 @@
 #include "./binary_info.h"
 #include "./blob_file.h"
 #include "./centipede.h"
+#include "./centipede_callbacks.h"
 #include "./command.h"
 #include "./coverage.h"
 #include "./defs.h"
@@ -192,10 +193,11 @@ int CentipedeMain(const Environment &env,
   LOG(INFO) << "Coverage dir " << env.MakeCoverageDirPath();
   RemoteMkdir(env.MakeCoverageDirPath());
 
-  auto one_time_callbacks = callbacks_factory.create(env);
   BinaryInfo binary_info;
-  one_time_callbacks->PopulateBinaryInfo(binary_info);
-  callbacks_factory.destroy(one_time_callbacks);
+  {
+    ScopedCentipedeCallbacks scoped_callbacks(callbacks_factory, env);
+    scoped_callbacks.callbacks()->PopulateBinaryInfo(binary_info);
+  }
 
   std::string pcs_file_path;
   if (binary_info.uses_legacy_trace_pc_instrumentation) {
@@ -218,11 +220,10 @@ int CentipedeMain(const Environment &env,
 
     if (env.dry_run) return;
 
-    auto user_callbacks = callbacks_factory.create(my_env);
-    Centipede centipede(my_env, *user_callbacks, binary_info, coverage_logger,
-                        stats);
+    ScopedCentipedeCallbacks scoped_callbacks(callbacks_factory, my_env);
+    Centipede centipede(my_env, *scoped_callbacks.callbacks(), binary_info,
+                        coverage_logger, stats);
     centipede.FuzzingLoop();
-    callbacks_factory.destroy(user_callbacks);
   };
 
   std::vector<Environment> envs(env.num_threads, env);

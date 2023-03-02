@@ -23,21 +23,6 @@
 
 namespace centipede {
 
-// Creates a CentipedeCallbacks object in CTOR and destroys it in DTOR.
-// TODO(kcc): consider moving this to centipede_callbacks.h
-class ScopedCentipedeCallbacks {
- public:
-  ScopedCentipedeCallbacks(CentipedeCallbacksFactory &factory,
-                           const Environment &env)
-      : factory_(factory), callbacks_(factory_.create(env)) {}
-  ~ScopedCentipedeCallbacks() { factory_.destroy(callbacks_); }
-  CentipedeCallbacks *callbacks() { return callbacks_; }
-
- private:
-  CentipedeCallbacksFactory &factory_;
-  CentipedeCallbacks *callbacks_;
-};
-
 // Work queue for the minimizer.
 // TODO(kcc): extend it to suport concurrent executions (add locks, etc).
 struct MinimizerWorkQueue {

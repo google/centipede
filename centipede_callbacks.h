@@ -166,6 +166,20 @@ class DefaultCallbacksFactory : public CentipedeCallbacksFactory {
   void destroy(CentipedeCallbacks *callbacks) override { delete callbacks; }
 };
 
+// Creates a CentipedeCallbacks object in CTOR and destroys it in DTOR.
+class ScopedCentipedeCallbacks {
+ public:
+  ScopedCentipedeCallbacks(CentipedeCallbacksFactory &factory,
+                           const Environment &env)
+      : factory_(factory), callbacks_(factory_.create(env)) {}
+  ~ScopedCentipedeCallbacks() { factory_.destroy(callbacks_); }
+  CentipedeCallbacks *callbacks() { return callbacks_; }
+
+ private:
+  CentipedeCallbacksFactory &factory_;
+  CentipedeCallbacks *callbacks_;
+};
+
 }  // namespace centipede
 
 #endif  // THIRD_PARTY_CENTIPEDE_CENTIPEDE_CALLBACKS_H_
