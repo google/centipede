@@ -217,8 +217,12 @@ struct GlobalRunnerState {
   uint32_t *pc_guard_start;
   uint32_t *pc_guard_stop;
 
-  // Observed paths.
-  ConcurrentBitSet<kBitSetSize> path_feature_set;
+  static const size_t kPathBitSetSize = 1 << 25;  // Arbitrary very large size.
+  // Observed paths. The total number of observed paths for --path_level=N
+  // can be up to NumPCs**N.
+  // So, we make the bitset very large, but it may still saturate.
+  ConcurrentBitSet<kPathBitSetSize> path_feature_set;
+
   // Observed individual PCs.
   ConcurrentBitSet<kBitSetSize> pc_feature_set;
 
