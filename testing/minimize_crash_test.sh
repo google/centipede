@@ -50,4 +50,28 @@ centipede::assert_regex_in_file "Crasher: size: 5: .*fuz.*" "${LOG}"
 # Check that we actually have a 5-byte-long file in "${WD}/crashes".
 find "${WD}/crashes" -size 5c
 
+# Cats a large crasher consisting of 2*n+5 bytes to stdout.
+# $1: n
+make_large_crasher() {
+  echo -n .f;
+  cat /dev/urandom | head -c "${1}"
+  echo -n u
+  cat /dev/urandom | head -c "${1}"
+  echo -n z.
+}
+
+# Create a 105-byte crasher.
+make_large_crasher 50 > "${CRASHER}"
+
+# Run minimization on the large crasher in multiple threads.
+centipede::ensure_empty_dir "${WD}"
+"${CENTIPEDE_BINARY}" --binary="${TARGET_BINARY}" --workdir="${WD}" \
+  --minimize_crash="${CRASHER}" --seed=1 --num_runs=100000 -j 5 \
+  2>&1 |tee "${LOG}"
+
+# Check that we found crashers of 99 bytes or less.
+# This is not much given that the original crasher is 105 bytes,
+# but otherwise we risk making this test too flaky.
+centipede::assert_regex_in_file "Crasher: size: [0-9]\{1,2\}:" "${LOG}"
+
 echo "PASS"

@@ -190,6 +190,7 @@ cc_library(
         ":environment",
         ":logging",
         ":util",
+        "@com_google_absl//absl/synchronization",
     ],
 )
 

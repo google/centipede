@@ -14,9 +14,13 @@
 
 #include "./minimize_crash.h"
 
+#include <algorithm>
 #include <filesystem>  // NOLINT
+#include <thread>      // NOLINT(build/c++11)
 
+#include "absl/synchronization/mutex.h"
 #include "./centipede_callbacks.h"
+#include "./defs.h"
 #include "./environment.h"
 #include "./logging.h"
 #include "./util.h"
@@ -24,37 +28,85 @@
 namespace centipede {
 
 // Work queue for the minimizer.
-// TODO(kcc): extend it to suport concurrent executions (add locks, etc).
+// Thread-safe.
 struct MinimizerWorkQueue {
-  std::string crash_dir;
-  std::vector<ByteArray> crashers;
+ public:
+  // Creates the queue.
+  // `crash_dir_path` is the directory path where new crashers are written.
+  // `crasher` is the initial crashy input.
+  MinimizerWorkQueue(const std::string_view crash_dir_path,
+                     const ByteArray crasher)
+      : crash_dir_path_(crash_dir_path), crashers_{ByteArray(crasher)} {
+    std::filesystem::create_directory(crash_dir_path_);
+  }
+
+  // Returns up to `max_num_crashers` most recently added crashers.
+  std::vector<ByteArray> GetRecentCrashers(size_t max_num_crashers) {
+    absl::MutexLock lock(&mutex_);
+    size_t num_crashers_to_return =
+        std::min(crashers_.size(), max_num_crashers);
+    return {crashers_.end() - num_crashers_to_return, crashers_.end()};
+  }
+
+  // Adds `crasher` to the queue, writes it to `crash_dir_path_/Hash(crasher)`.
+  // The crasher must be smaller than the original one.
+  void AddCrasher(ByteArray crasher) {
+    absl::MutexLock lock(&mutex_);
+    CHECK_LT(crasher.size(), crashers_.front().size());
+    crashers_.emplace_back(crasher);
+    // Write the crasher to disk.
+    auto hash = Hash(crasher);
+    auto dir = crash_dir_path_;
+    std::string file_path = dir.append(hash);
+    WriteToLocalFile(file_path, crasher);
+  }
+
+  // Returns true if new smaller crashes were found.
+  bool SmallerCrashesFound() const {
+    absl::MutexLock lock(&mutex_);
+    return crashers_.size() > 1;
+  }
+
+ private:
+  mutable absl::Mutex mutex_;
+  const std::filesystem::path crash_dir_path_;
+  std::vector<ByteArray> crashers_ ABSL_GUARDED_BY(mutex_);
 };
 
 // Performs a minimization loop in one thread.
-static void MinimizeCrash(const Environment &env, CentipedeCallbacks *callbacks,
+static void MinimizeCrash(const Environment &env,
+                          CentipedeCallbacksFactory &callbacks_factory,
                           MinimizerWorkQueue &queue) {
+  ScopedCentipedeCallbacks scoped_callback(callbacks_factory, env);
+  auto callbacks = scoped_callback.callbacks();
   BatchResult batch_result;
 
-  LOG(INFO) << "Starting the crash minimization loop";
   size_t num_batches = env.num_runs / env.batch_size;
   for (size_t i = 0; i < num_batches; ++i) {
     LOG_EVERY_POW_2(INFO) << "[" << i << "] Minimizing... Interrupt to stop";
     if (EarlyExitRequested()) break;
+    // Get up to kMaxNumCrashersToGet most recent crashers. We don't want just
+    // the most recent crasher to avoid being stuck in local minimum.
+    constexpr size_t kMaxNumCrashersToGet = 20;
+    const auto recent_crashers = queue.GetRecentCrashers(kMaxNumCrashersToGet);
+    CHECK(!recent_crashers.empty());
+    // Compute the minimal known crasher size.
+    size_t min_known_size = recent_crashers.front().size();
+    for (const auto &crasher : recent_crashers) {
+      min_known_size = std::min(min_known_size, crasher.size());
+    }
+
     // Create several mutants that are smaller than the current smallest one.
     //
     // Currently, we do this by calling the vanilla mutator and
     // discarding all inputs that are too large.
     // TODO(kcc): modify the Mutate() interface such that max_len can be passed.
     //
-    // We currently mutate all known crashers, not just the smallest one(s)
-    // because we want to avoid being stuck in local minimum.
-    // TODO(kcc): experiment with heuristics here: e.g. mutate N smallest, etc.
-
     std::vector<ByteArray> mutants;
-    callbacks->Mutate(queue.crashers, env.batch_size, mutants);
+    callbacks->Mutate(recent_crashers, env.batch_size, mutants);
     std::vector<ByteArray> smaller_mutants;
     for (const auto &m : mutants) {
-      if (m.size() < queue.crashers.back().size()) smaller_mutants.push_back(m);
+      if (m.size() < min_known_size) smaller_mutants.push_back(m);
     }
 
     // Execute all mutants. If a new crasher is found, add it to `queue`.
@@ -64,17 +116,11 @@ static void MinimizeCrash(const Environment &env, CentipedeCallbacks *callbacks,
       const auto &new_crasher = smaller_mutants[crash_inputs_idx];
       LOG(INFO) << "Crasher: size: " << new_crasher.size() << ": "
                 << AsString(new_crasher, 40);
-      queue.crashers.emplace_back(new_crasher);
-      // Write the crasher to disk.
-      auto hash = Hash(new_crasher);
-      std::string file_path =
-          std::filesystem::path(queue.crash_dir).append(hash);
-      WriteToLocalFile(file_path, new_crasher);
+      queue.AddCrasher(new_crasher);
     }
   }
 }
 
-// TODO(kcc): respect --num_threads.
 int MinimizeCrash(ByteSpan crashy_input, const Environment &env,
                   CentipedeCallbacksFactory &callbacks_factory) {
   ScopedCentipedeCallbacks scoped_callback(callbacks_factory, env);
@@ -89,14 +135,22 @@ int MinimizeCrash(ByteSpan crashy_input, const Environment &env,
     return EXIT_FAILURE;
   }
 
-  MinimizerWorkQueue queue;
-  queue.crashers = {original_crashy_input};
-  queue.crash_dir = env.MakeCrashReproducerDirPath();
-  std::filesystem::create_directory(queue.crash_dir);
+  LOG(INFO) << "Starting the crash minimization loop in " << env.num_threads
+            << "threads";
 
-  MinimizeCrash(env, callbacks, queue);
+  MinimizerWorkQueue queue(env.MakeCrashReproducerDirPath(),
+                           original_crashy_input);
 
-  return queue.crashers.size() > 1 ? EXIT_SUCCESS : EXIT_FAILURE;
+  std::vector<std::thread> threads(env.num_threads);
+  for (auto &thread : threads) {
+    thread =
+        std::thread([&]() { MinimizeCrash(env, callbacks_factory, queue); });
+  }
+  for (auto &thread : threads) {
+    thread.join();
+  }
+
+  return queue.SmallerCrashesFound() ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 }  // namespace centipede
