@@ -23,6 +23,7 @@ TEST(ReversePCTable, ReversePCTable) {
   ReversePCTable table;
   table.SetFromPCs({500, 400, 100, 200, 300});
 
+  EXPECT_EQ(table.NumPcs(), 5);
   EXPECT_EQ(table.GetPCIndex(0), ReversePCTable::kUnknownPC);
   EXPECT_EQ(table.GetPCIndex(50), ReversePCTable::kUnknownPC);
   EXPECT_EQ(table.GetPCIndex(150), ReversePCTable::kUnknownPC);

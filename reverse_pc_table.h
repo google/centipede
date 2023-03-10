@@ -33,6 +33,7 @@ class ReversePCTable {
   // The assumption is that all PCs are relatively small, such that the
   // implementation is allowed to create an array of max_element(pcs) elements.
   void SetFromPCs(absl::Span<const uintptr_t> pcs) {
+    num_pcs_ = pcs.size();
     uintptr_t max_pc = *std::max_element(pcs.begin(), pcs.end());
     // Create an array of max_pc + 1 elements such that we can directly
     // index this array with any pc from `pcs`.
@@ -52,10 +53,14 @@ class ReversePCTable {
     return table_[pc];
   }
 
+  // Returns the number of PCs that was passes to SetFromPCs().
+  size_t NumPcs() const { return num_pcs_; }
+
  private:
   // We use size_ and std::unique_ptr instead of std::vector<>
   // because this way size_ is cheaper to compute inside GetPCIndex().
   size_t size_ = 0;
+  size_t num_pcs_ = 0;
   std::unique_ptr<size_t[]> table_;
 };
 
