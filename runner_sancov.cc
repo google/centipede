@@ -159,15 +159,16 @@ void __sanitizer_cov_cfs_init(const uintptr_t *beg, const uintptr_t *end) {
 // With __sanitizer_cov_trace_pc this is PC itself, normalized by subtracting
 // the DSO's dynamic start address.
 static inline void HandleOnePc(uintptr_t normalized_pc) {
-  // counter or pc features.
+  // Set the corresponding pc_feature unconditionally, even though there is
+  // run_time_flags.use_pc_features to avoid extra cmp on the fast path.
+  // The flag is checked when sending features to the engine.
+  state.pc_feature_set.set(normalized_pc);
+
+  // counter features.
   if (state.run_time_flags.use_counter_features) {
     state.counter_array.Increment(normalized_pc);
   }
 
-  // TODO(kcc): remove use_pc_features flags since we always set it.
-  if (state.run_time_flags.use_pc_features) {
-    state.pc_feature_set.set(normalized_pc);
-  }
 
   // path features.
   if (auto path_level = state.run_time_flags.path_level) {
