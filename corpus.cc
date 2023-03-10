@@ -39,7 +39,7 @@ PCIndexVec FeatureSet::ToCoveragePCs() const {
 }
 
 size_t FeatureSet::CountFeatures(feature_domains::Domain domain) {
-  return features_per_domain_[domain.domain_id];
+  return features_per_domain_[domain.domain_id()];
 }
 
 __attribute__((noinline))  // to see it in profile.

@@ -73,85 +73,68 @@ namespace feature_domains {
 
 // Feature domain is a subset of 64-bit integers dedicated to a certain
 // kind of fuzzing features.
-// All domains are of the same size (kSize), the first domain starts with zero,
-// the second is adjacent to the first and so on.
-// This way, we can compute a domain for a given feature by dividing by kSize.
-struct Domain {
-  enum DomainId {
-    kUnknown = 0,
-    kPCs,
-    k8bitCounters,
-    kDataFlow,
-    kCMP,
-    kBoundedPath,
-    kPCPair,
-    kLastDomain,  // Should remain the last.
-  };
+// All domains are of the same size (kDomainSize), This way, we can compute
+// a domain for a given feature by dividing by kDomainSize.
+class Domain {
+ public:
+  // kDomainSize is the largest power of two such that all domains fit.
+  static constexpr size_t kMaxNumDomainsLog = 6;
+  static constexpr size_t kMaxNumDomains = 1 << kMaxNumDomainsLog;
+  static constexpr size_t kDomainSize = 1ULL << (64 - kMaxNumDomainsLog);
+  static constexpr size_t kLastDomainId = kMaxNumDomains - 1;
 
-  // kSize is the largest power of two such that all domains fit.
-  static constexpr size_t kSize = 1ULL << 60;
-  static_assert(std::numeric_limits<size_t>::max() / kSize > kLastDomain,
-                "domains must fit into 64 bits");
+  constexpr Domain(size_t domain_id) : domain_id_(domain_id) {}
 
-  DomainId domain_id;
-
-  constexpr feature_t begin() const { return kSize * domain_id; }
-  constexpr feature_t end() const { return begin() + kSize; }
+  constexpr feature_t begin() const { return kDomainSize * domain_id_; }
+  constexpr feature_t end() const { return begin() + kDomainSize; }
   bool Contains(feature_t feature) const {
     return feature >= begin() && feature < end();
   }
+  constexpr size_t domain_id() const { return domain_id_; }
 
   // Converts any `number` into a feature in this domain.
   feature_t ConvertToMe(size_t number) const {
-    return begin() + number % kSize;
+    return begin() + number % kDomainSize;
   }
 
-  // Returns the DomainId of the domain that the feature belongs to, or
-  // LastDomain if the feature is outside of all domains.
-  static DomainId FeatureToDomainId(feature_t feature) {
-    size_t idx = feature / kSize;
-    if (idx >= kLastDomain) return kLastDomain;
-    return static_cast<DomainId>(idx);
+  // Returns the DomainId of the domain that the feature belongs to.
+  static size_t FeatureToDomainId(feature_t feature) {
+    return feature / kDomainSize;
   }
+
+ private:
+  const size_t domain_id_;
 };
 
-// The first 2^32 features are reserved as unknown, just in case.
-// Fuzz runners that don't obey the rules in this file will likely utilize
-// features from this domain.
-constexpr Domain kUnknown = {Domain::kUnknown};
+// NEXT_DOMAIN_ID() returns a constexpr value for the unique domain ID.
+// TODO(kcc): Ideally, it would return consecutive values, but it's unclear how
+// to do this with the constexpr magic. Suggestions are welcome, but not
+// critical. For now we just use __LINE__ - kFirstDomainLine as the unique ID.
+constexpr size_t kFirstDomainLine = __LINE__;
+#define NEXT_DOMAIN_ID() (__LINE__ - kFirstDomainLine)
+// Catch-all domain for unknown features.
+constexpr Domain kUnknown = {NEXT_DOMAIN_ID()};
+// Represents PCs, i.e. control flow edges.
+// Use ConvertPCFeatureToPcIndex() to convert back to a PC index.
+constexpr Domain kPCs = {NEXT_DOMAIN_ID()};
+// Features derived from edge counters. See Convert8bitCounterToNumber().
+constexpr Domain k8bitCounters = {NEXT_DOMAIN_ID()};
+// Features derived from data flow edges.
+// A typical data flow edge is a pair of PCs: {store-PC, load-PC}.
+// Another variant of a data flow edge is a pair of {global-address, load-PC}.
+constexpr Domain kDataFlow = {NEXT_DOMAIN_ID()};
+// Features derived from instrumenting CMP instructions.
+constexpr Domain kCMP = {NEXT_DOMAIN_ID()};
+// Features derived from computing (bounded) control flow paths.
+constexpr Domain kBoundedPath = {NEXT_DOMAIN_ID()};
+// Features derived from (unordered) pairs of PCs.
+constexpr Domain kPCPair = {NEXT_DOMAIN_ID()};
+static_assert(NEXT_DOMAIN_ID() < Domain::kLastDomainId);
+constexpr Domain kLastDomainId = {Domain::kLastDomainId};  // must be last.
 
 // Special feature used to indicate an absence of features. Typically used where
 // a feature array must not be empty, but doesn't have any other features.
 constexpr feature_t kNoFeature = kUnknown.begin();
-
-// Represents PCs, i.e. control flow edges.
-// Use ConvertPCFeatureToPcIndex() to convert back to a PC index.
-constexpr Domain kPCs = {Domain::kPCs};
-
-// Features derived from
-// https://clang.llvm.org/docs/SanitizerCoverage.html#inline-8bit-counters.
-// Every such feature corresponds to one control flow edge and its counter,
-// see Convert8bitCounterToFeature and Convert8bitCounterFeatureToPcIndex.
-constexpr Domain k8bitCounters = {Domain::k8bitCounters};
-
-// Features derived from data flow edges.
-// A typical data flow edge is a pair of PCs: {store-PC, load-PC}.
-// Another variant of a data flow edge is a pair of {global-address, load-PC}.
-constexpr Domain kDataFlow = {Domain::kDataFlow};
-
-// Features derived from instrumenting CMP instructions.
-constexpr Domain kCMP = {Domain::kCMP};
-
-// Features derived from computing (bounded) control flow paths.
-// Even bounded paths can be very numerous, so we intentionally limit
-// their number to 2^32.
-constexpr Domain kBoundedPath = {Domain::kBoundedPath};
-
-// Features derived from (unordered) pairs of PCs.
-constexpr Domain kPCPair = {Domain::kPCPair};
-
-// Don't put any domains after this one.
-constexpr Domain kLastDomain = {Domain::kLastDomain};
 
 }  // namespace feature_domains
 
@@ -208,7 +191,7 @@ inline void ForEachNonZeroByte(const uint8_t *bytes, size_t num_bytes,
 
 // Given the `feature` from the PC domain, returns the feature's
 // pc_index. I.e. reverse of kPC.ConvertToMe(), assuming all PCs originally
-// converted to features were less than Domain::kSize.
+// converted to features were less than Domain::kDomainSize.
 inline size_t ConvertPCFeatureToPcIndex(feature_t feature) {
   auto domain = feature_domains::kPCs;
   if (!domain.Contains(feature)) __builtin_trap();
