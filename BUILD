@@ -52,7 +52,11 @@ cc_binary(
 cc_library(
     name = "feature",
     srcs = ["feature.cc"],
-    hdrs = ["feature.h"],
+    hdrs = [
+        "concurrent_bitset.h",  # TODO(kcc): consider moving to a separte cc_library.
+        "feature.h",
+        "foreach_nonzero.h",  # TODO(kcc): consider moving to a separte cc_library.
+    ],
 )
 
 cc_library(
@@ -560,6 +564,7 @@ cc_library(
 RUNNER_SOURCES_NO_MAIN = [
     "byte_array_mutator.cc",
     "byte_array_mutator.h",
+    "concurrent_bitset.h",
     "defs.h",
     "execution_request.cc",
     "execution_request.h",
@@ -567,6 +572,7 @@ RUNNER_SOURCES_NO_MAIN = [
     "execution_result.h",
     "feature.cc",
     "feature.h",
+    "foreach_nonzero.h",
     "knobs.h",
     "knobs.cc",
     "reverse_pc_table.h",

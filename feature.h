@@ -43,6 +43,9 @@
 #include <memory>
 #include <vector>
 
+#include "./concurrent_bitset.h"
+#include "./foreach_nonzero.h"
+
 namespace centipede {
 
 // Feature is an integer that identifies some unique behaviour
@@ -156,39 +159,6 @@ inline size_t Convert8bitCounterToNumber(size_t pc_index,
   return pc_index * 8 + counter_log2;
 }
 
-// Iterates over [bytes, bytes + num_bytes) and calls action(idx, bytes[idx]),
-// for every non-zero bytes[idx].
-// Optimized for the case where lots of bytes are zero.
-template <typename Action>
-inline void ForEachNonZeroByte(const uint8_t *bytes, size_t num_bytes,
-                               Action action) {
-  // The main loop will read words of this size.
-  const uintptr_t kWordSize = sizeof(uintptr_t);
-  uintptr_t initial_alignment = reinterpret_cast<uintptr_t>(bytes) % kWordSize;
-  size_t idx = 0;
-  uintptr_t alignment = initial_alignment;
-  // Iterate the first few until we reach alignment by word size.
-  for (; idx < num_bytes && alignment != 0;
-       idx++, alignment = (alignment + 1) % kWordSize) {
-    if (bytes[idx]) action(idx, bytes[idx]);
-  }
-  // Iterate one word at a time. If the word is != 0, iterate its bytes.
-  for (; idx + kWordSize - 1 < num_bytes; idx += kWordSize) {
-    uintptr_t wide_load;
-    memcpy(&wide_load, bytes + idx, kWordSize);
-    if (!wide_load) continue;
-    // This loop assumes little-endianness. (Tests will break on big-endian).
-    for (size_t pos = 0; pos < kWordSize; pos++) {
-      uint8_t value = wide_load >> (pos * 8);  // lowest byte is taken.
-      if (value) action(idx + pos, value);
-    }
-  }
-  // Iterate the last few.
-  for (; idx < num_bytes; idx++) {
-    if (bytes[idx]) action(idx, bytes[idx]);
-  }
-}
-
 // Given the `feature` from the PC domain, returns the feature's
 // pc_index. I.e. reverse of kPC.ConvertToMe(), assuming all PCs originally
 // converted to features were less than Domain::kDomainSize.
@@ -300,60 +270,6 @@ class HashedRingBuffer {
   size_t buffer_[kSize];   // All elements.
   size_t last_added_pos_;  // Position of the last added element.
   size_t hash_;            // XOR of all elements in buffer_.
-};
-
-// A fixed-size bitset with a lossy concurrent set() function.
-// kSize must be a multiple of 512 - this allows the implementation
-// to use any word size up to 64 bytes.
-template <size_t kSizeInBits>
-class ConcurrentBitSet {
- public:
-  static_assert((kSizeInBits % 512) == 0);
-
-  // Constructs an empty bit set.
-  ConcurrentBitSet() = default;
-
-  // Clears the bit set.
-  void clear() { memset(words_, 0, sizeof(words_)); }
-
-  // Sets the bit `idx % kSizeInBits`.
-  // set() can be called concurrently with another set().
-  // If several threads race to update adjacent bits,
-  // the update may be lost (i.e. set() is lossy).
-  // We could use atomic set-bit instructions to make it non-lossy,
-  // but it is going to be too expensive.
-  void set(size_t idx) {
-    idx %= kSizeInBits;
-    size_t word_idx = idx / kBitsInWord;
-    size_t bit_idx = idx % kBitsInWord;
-    word_t mask = 1ULL << bit_idx;
-    word_t word = __atomic_load_n(&words_[word_idx], __ATOMIC_RELAXED);
-    if (!(word & mask)) {
-      word |= mask;
-      __atomic_store_n(&words_[word_idx], word, __ATOMIC_RELAXED);
-    }
-  }
-
-  // Calls `action(index)` for every index of a non-zero bit in the set.
-  template <typename Action>
-  __attribute__((noinline)) void ForEachNonZeroBit(Action action) {
-    for (size_t word_idx = 0; word_idx < kSizeInWords; word_idx++) {
-      if (word_t word = words_[word_idx]) {
-        do {
-          size_t bit_idx = __builtin_ctzll(word);
-          action(word_idx * kBitsInWord + bit_idx);
-          word_t mask = 1ULL << bit_idx;
-          word &= ~mask;
-        } while (word);
-      }
-    }
-  }
-
- private:
-  using word_t = uintptr_t;
-  static const size_t kBitsInWord = 8 * sizeof(word_t);
-  static const size_t kSizeInWords = kSizeInBits / kBitsInWord;
-  word_t words_[kSizeInWords] = {};
 };
 
 // A simple fixed-size byte array.
