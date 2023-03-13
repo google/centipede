@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <numeric>
 #include <string>
 #include <thread>  // NOLINT.
@@ -165,12 +166,13 @@ TEST(Feature, ConvertPcAndArgPairToCMPFeature) {
 }
 
 template <typename Action>
-void TrivialForEachNonZeroByte(const uint8_t *bytes, size_t num_bytes,
+void TrivialForEachNonZeroByte(uint8_t *bytes, size_t num_bytes,
                                Action action) {
   for (size_t i = 0; i < num_bytes; i++) {
     uint8_t value = bytes[i];
     if (value) {
       action(i, value);
+      bytes[i] = 0;
     }
   }
 }
@@ -178,7 +180,7 @@ void TrivialForEachNonZeroByte(const uint8_t *bytes, size_t num_bytes,
 TEST(Feature, ForEachNonZeroByte) {
   // Some long data with long spans of zeros and a few non-zeros.
   // We will test all sub-arrays of this array.
-  uint8_t test_data[] = {
+  const uint8_t test_data[] = {
       1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -189,19 +191,28 @@ TEST(Feature, ForEachNonZeroByte) {
       0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   };
-  size_t test_data_size = sizeof(test_data);
+  const size_t kTestDataSize = sizeof(test_data);
+  uint8_t test_data_copy[kTestDataSize];
 
-  for (size_t offset = 0; offset < test_data_size; offset++) {
-    for (size_t size = 0; offset + size < test_data_size; size++) {
+  for (size_t offset = 0; offset < kTestDataSize; offset++) {
+    for (size_t size = 0; offset + size < kTestDataSize; size++) {
       std::vector<std::pair<size_t, uint8_t>> v1, v2;
-      TrivialForEachNonZeroByte(test_data + offset, size,
-                                [&](size_t idx, uint8_t value) {
-                                  v1.emplace_back(idx, value);
-                                });
-      ForEachNonZeroByte(test_data + offset, size,
-                         [&](size_t idx, uint8_t value) {
-                           v2.emplace_back(idx, value);
-                         });
+      memcpy(test_data_copy, test_data, kTestDataSize);
+      TrivialForEachNonZeroByte(
+          test_data_copy + offset, size,
+          [&](size_t idx, uint8_t value) { v1.emplace_back(idx, value); });
+      for (size_t i = 0; i < size; ++i) {
+        CHECK_EQ(test_data_copy[offset + i], 0);
+      }
+
+      memcpy(test_data_copy, test_data, kTestDataSize);
+      ForEachNonZeroByte(
+          test_data_copy + offset, size,
+          [&](size_t idx, uint8_t value) { v2.emplace_back(idx, value); });
+      for (size_t i = 0; i < size; ++i) {
+        CHECK_EQ(test_data_copy[offset + i], 0);
+      }
+
       EXPECT_EQ(v1, v2);
     }
   }

@@ -33,10 +33,10 @@
 namespace centipede {
 
 // Iterates over [bytes, bytes + num_bytes) and calls action(idx, bytes[idx]),
-// for every non-zero bytes[idx].
+// for every non-zero bytes[idx]. Then clears those non-zero bytes.
 // Optimized for the case where lots of bytes are zero.
 template <typename Action>
-inline void ForEachNonZeroByte(const uint8_t *bytes, size_t num_bytes,
+inline void ForEachNonZeroByte(uint8_t *bytes, size_t num_bytes,
                                Action action) {
   // The main loop will read words of this size.
   const uintptr_t kWordSize = sizeof(uintptr_t);
@@ -46,13 +46,17 @@ inline void ForEachNonZeroByte(const uint8_t *bytes, size_t num_bytes,
   // Iterate the first few until we reach alignment by word size.
   for (; idx < num_bytes && alignment != 0;
        idx++, alignment = (alignment + 1) % kWordSize) {
-    if (bytes[idx]) action(idx, bytes[idx]);
+    if (bytes[idx]) {
+      action(idx, bytes[idx]);
+      bytes[idx] = 0;
+    }
   }
   // Iterate one word at a time. If the word is != 0, iterate its bytes.
   for (; idx + kWordSize - 1 < num_bytes; idx += kWordSize) {
     uintptr_t wide_load;
     memcpy(&wide_load, bytes + idx, kWordSize);
     if (!wide_load) continue;
+    memset(bytes + idx, 0, kWordSize);
     // This loop assumes little-endianness. (Tests will break on big-endian).
     for (size_t pos = 0; pos < kWordSize; pos++) {
       uint8_t value = wide_load >> (pos * 8);  // lowest byte is taken.
@@ -61,7 +65,10 @@ inline void ForEachNonZeroByte(const uint8_t *bytes, size_t num_bytes,
   }
   // Iterate the last few.
   for (; idx < num_bytes; idx++) {
-    if (bytes[idx]) action(idx, bytes[idx]);
+    if (bytes[idx]) {
+      action(idx, bytes[idx]);
+      bytes[idx] = 0;
+    }
   }
 }
 
