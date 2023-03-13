@@ -74,11 +74,13 @@ class ConcurrentBitSet {
     }
   }
 
-  // Calls `action(index)` for every index of a non-zero bit in the set.
+  // Calls `action(index)` for every index of a non-zero bit in the set,
+  // then sets all those bits to zero.
   template <typename Action>
   __attribute__((noinline)) void ForEachNonZeroBit(Action action) {
     for (size_t word_idx = 0; word_idx < kSizeInWords; word_idx++) {
       if (word_t word = words_[word_idx]) {
+        words_[word_idx] = 0;
         do {
           size_t bit_idx = __builtin_ctzll(word);
           action(word_idx * kBitsInWord + bit_idx);

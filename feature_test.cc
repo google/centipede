@@ -273,6 +273,10 @@ TEST(Feature, ConcurrentBitSet) {
   bs.ForEachNonZeroBit([&](size_t idx) { out_bits.push_back(idx); });
   expected_out_bits = {42};
   EXPECT_EQ(out_bits, expected_out_bits);
+  // Check that all bits are now clear.
+  out_bits.clear();
+  bs.ForEachNonZeroBit([&](size_t idx) { out_bits.push_back(idx); });
+  EXPECT_TRUE(out_bits.empty());
 }
 
 // Tests ConcurrentBitSet from multiple threads.
