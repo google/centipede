@@ -259,11 +259,15 @@ static void WriteFeaturesToFile(FILE *file,
 __attribute__((noinline))  // so that we see it in profile.
 static void
 PrepareCoverage() {
-  if (state.run_time_flags.use_counter_features) state.counter_array.Clear();
+  if (state.run_time_flags.use_counter_features ||
+      state.run_time_flags.use_pc_features) {
+    // TODO(kcc): instead of clearing counters before every run,
+    // clear them after every run, at the same time as we read them.
+    memset(state.pc_counters, 0, state.pc_counters_size);
+  }
   if (state.run_time_flags.use_dataflow_features)
     state.data_flow_feature_set.clear();
   if (state.run_time_flags.use_cmp_features) state.cmp_feature_set.clear();
-  if (state.run_time_flags.use_pc_features) state.pc_feature_set.clear();
   if (state.run_time_flags.path_level) {
     state.path_feature_set.clear();
     state.ForEachTls([](centipede::ThreadLocalRunnerState &tls) {
@@ -287,15 +291,18 @@ PostProcessCoverage(int target_return_value) {
   if (target_return_value == -1) return;
 
   // Convert counters to features.
-  if (state.run_time_flags.use_counter_features) {
-    centipede::ForEachNonZeroByte(
-        state.counter_array.data(), state.counter_array.size(),
-        [](size_t idx, uint8_t value) {
+  centipede::ForEachNonZeroByte(
+      state.pc_counters, state.pc_counters_size, [](size_t idx, uint8_t value) {
+        if (state.run_time_flags.use_pc_features) {
+          g_features.push_back(
+              centipede::feature_domains::kPCs.ConvertToMe(idx));
+        }
+        if (state.run_time_flags.use_counter_features) {
           g_features.push_back(
               centipede::feature_domains::k8bitCounters.ConvertToMe(
                   centipede::Convert8bitCounterToNumber(idx, value)));
-        });
-  }
+        }
+      });
 
   // Convert data flow bit set to features.
   if (state.run_time_flags.use_dataflow_features) {
@@ -317,13 +324,6 @@ PostProcessCoverage(int target_return_value) {
     state.path_feature_set.ForEachNonZeroBit([](size_t idx) {
       g_features.push_back(
           centipede::feature_domains::kBoundedPath.ConvertToMe(idx));
-    });
-  }
-
-  // Convert pc bit set to features.
-  if (state.run_time_flags.use_pc_features) {
-    state.pc_feature_set.ForEachNonZeroBit([](size_t idx) {
-      g_features.push_back(centipede::feature_domains::kPCs.ConvertToMe(idx));
     });
   }
 }

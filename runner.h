@@ -214,21 +214,19 @@ struct GlobalRunnerState {
   // * Use call stacks instead of paths (via unwinding or other
   // instrumentation).
 
-  uint32_t *pc_guard_start;
-  uint32_t *pc_guard_stop;
+  // These fields must not be initialized in CTOR.
+  // The global state object will have them initialized to zero anyway.
+  // The actual initialization may happen before the CTOR is called.
+  uint32_t *pc_guard_start;  // from __sanitizer_cov_trace_pc_guard_init.
+  uint32_t *pc_guard_stop;   // from __sanitizer_cov_trace_pc_guard_init.
+  uint8_t *pc_counters;      // initialized once we know pc_guard_start/stop.
+  size_t pc_counters_size;   // ditto.
 
   static const size_t kPathBitSetSize = 1 << 25;  // Arbitrary very large size.
   // Observed paths. The total number of observed paths for --path_level=N
   // can be up to NumPCs**N.
   // So, we make the bitset very large, but it may still saturate.
   ConcurrentBitSet<kPathBitSetSize> path_feature_set;
-
-  // Observed individual PCs.
-  ConcurrentBitSet<kBitSetSize> pc_feature_set;
-
-  // Control flow edge counters.
-  inline static const size_t kCounterArraySize = 1 << 15;  // Some large size.
-  CounterArray<kCounterArraySize> counter_array;
 
   // Execution stats for the currently executed input.
   ExecutionResult::Stats stats;

@@ -152,6 +152,15 @@ void __sanitizer_cov_cfs_init(const uintptr_t *beg, const uintptr_t *end) {
   state.cfs_end = end;
 }
 
+// Updates the state of the paths, `path_level > 0`.
+// Marked noinline so that not to create spills/fills on the fast path
+// of __sanitizer_cov_trace_pc_guard.
+__attribute__((noinline)) static void HandlePath(uintptr_t normalized_pc,
+                                                 uint32_t path_level) {
+  uintptr_t hash = tls.path_ring_buffer.push(normalized_pc, path_level);
+  state.path_feature_set.set(hash);
+}
+
 // Handles one obeserved PC.
 // `normalized_pc` is a integer representation of PC that is stable between
 // the executions.
@@ -159,22 +168,16 @@ void __sanitizer_cov_cfs_init(const uintptr_t *beg, const uintptr_t *end) {
 // With __sanitizer_cov_trace_pc this is PC itself, normalized by subtracting
 // the DSO's dynamic start address.
 static inline void HandleOnePc(uintptr_t normalized_pc) {
-  // Set the corresponding pc_feature unconditionally, even though there is
-  // run_time_flags.use_pc_features to avoid extra cmp on the fast path.
-  // The flag is checked when sending features to the engine.
-  state.pc_feature_set.set(normalized_pc);
-
-  // counter features.
-  if (state.run_time_flags.use_counter_features) {
-    state.counter_array.Increment(normalized_pc);
+  if (uint8_t *counters = state.pc_counters) {
+    // Perform a saturating increment of the counter.
+    uint8_t *ptr = counters + normalized_pc;
+    uint8_t counter = __atomic_load_n(ptr, __ATOMIC_RELAXED);
+    if (counter != 255) __atomic_store_n(ptr, counter + 1, __ATOMIC_RELAXED);
   }
-
 
   // path features.
-  if (auto path_level = state.run_time_flags.path_level) {
-    uintptr_t hash = tls.path_ring_buffer.push(normalized_pc, path_level);
-    state.path_feature_set.set(hash);
-  }
+  if (auto path_level = state.run_time_flags.path_level)
+    HandlePath(normalized_pc, path_level);
 }
 
 // Caller PC is the PC of the call instruction.
@@ -189,6 +192,16 @@ static uintptr_t ReturnAddressToCallerPc(uintptr_t return_address) {
 #else
 #error "unsupported architecture"
 #endif
+}
+
+// Lazily initializes state.pc_counters / state.pc_counters_size.
+static void LazyAllocatePcCounters(size_t size) {
+  if (state.pc_counters) return;
+  state.pc_counters_size = size;
+  // We use calloc() assuming that for large allocations it will not clear
+  // the memory but will simply rely on mmap to return zero pages.
+  // If this assumption doesn't hold, may need to use mmap directly.
+  state.pc_counters = static_cast<uint8_t *>(calloc(size, sizeof(uint8_t)));
 }
 
 // MainObjectLazyInit() and helpers allow us to initialize state.main_object
@@ -215,6 +228,7 @@ static void MainObjectLazyInitOnceCallback() {
       centipede::GetDlInfo(state.GetStringFlag(":dl_path_suffix="));
   fprintf(stderr, "MainObjectLazyInitOnceCallback %zx\n",
           state.main_object.start_address);
+  LazyAllocatePcCounters(state.reverse_pc_table.NumPcs());
 }
 
 __attribute__((noinline)) static void MainObjectLazyInit() {
@@ -231,7 +245,8 @@ __attribute__((noinline)) static void MainObjectLazyInit() {
 // this variant.
 void __sanitizer_cov_trace_pc() {
   uintptr_t pc = reinterpret_cast<uintptr_t>(__builtin_return_address(0));
-  if (!state.main_object.start_address) MainObjectLazyInit();
+  if (!state.main_object.start_address || !state.pc_counters)
+    MainObjectLazyInit();
   pc -= state.main_object.start_address;
   pc = ReturnAddressToCallerPc(pc);
   auto idx = state.reverse_pc_table.GetPCIndex(pc);
@@ -242,6 +257,7 @@ void __sanitizer_cov_trace_pc() {
 void __sanitizer_cov_trace_pc_guard_init(uint32_t *start, uint32_t *stop) {
   state.pc_guard_start = start;
   state.pc_guard_stop = stop;
+  LazyAllocatePcCounters(stop - start);
 }
 
 // This function is called on every instrumented edge.
