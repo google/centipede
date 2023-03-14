@@ -256,20 +256,16 @@ static void WriteFeaturesToFile(FILE *file,
 }
 
 // Clears all coverage data.
+// All bitsets, counter arrays and such need to be clear before every execution.
+// However, clearing them is expensive because they are sparse.
+// Instead, we rely on ForEachNonZeroByte() and
+// ConcurrentBitSet::ForEachNonZeroBit to clear the bits/bytes after they
+// finish iterating.
+// We still need to clear all the thread-local data updated during execution.
 __attribute__((noinline))  // so that we see it in profile.
 static void
 PrepareCoverage() {
-  if (state.run_time_flags.use_counter_features ||
-      state.run_time_flags.use_pc_features) {
-    // TODO(kcc): instead of clearing counters before every run,
-    // clear them after every run, at the same time as we read them.
-    memset(state.pc_counters, 0, state.pc_counters_size);
-  }
-  if (state.run_time_flags.use_dataflow_features)
-    state.data_flow_feature_set.clear();
-  if (state.run_time_flags.use_cmp_features) state.cmp_feature_set.clear();
   if (state.run_time_flags.path_level) {
-    state.path_feature_set.clear();
     state.ForEachTls([](centipede::ThreadLocalRunnerState &tls) {
       tls.path_ring_buffer.clear();
     });
