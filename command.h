@@ -15,11 +15,15 @@
 #ifndef THIRD_PARTY_CENTIPEDE_COMMAND_H_
 #define THIRD_PARTY_CENTIPEDE_COMMAND_H_
 
+#include <sys/stat.h>
+#include <sys/types.h>
+
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "absl/time/time.h"
 
 namespace centipede {
@@ -88,6 +92,10 @@ class Command final {
   const std::string& path() const { return path_; }
 
  private:
+  // Returns true is the fork server process, previously started with
+  // `StartFormServer()`, is still running and is responsive.
+  absl::Status AssertForkServerIsHealthy();
+
   const std::string path_;
   const std::vector<std::string> args_;
   const std::vector<std::string> env_;
@@ -96,9 +104,16 @@ class Command final {
   const absl::Duration timeout_;
   const std::string temp_file_path_;
   const std::string command_line_ = ToString();
-  // Pipe paths and file descriptors for the fork server.
+  // Pipe paths and file descriptors.
   std::string fifo_path_[2];
   int pipe_[2] = {-1, -1};
+  // The PID of the fork server process. When this is >= 0, `Execute()` assumes
+  // that the fork server is running and the pipe are ready for comms.
+  pid_t fork_server_pid_ = -1;
+  // A `stat` of the fork server's binary right after it's started. Used to
+  // detect that the running process with `fork_server_pid_` is still the
+  // original fork server, not a PID recycled by the OS.
+  struct stat fork_server_exe_stat_ = {};
 };
 
 }  // namespace centipede
