@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define WEAK_SANCOV_DEF(return_type, name, ...) \
-  extern "C" __attribute__((weak)) \
-  return_type name(__VA_ARGS__)
+#define WEAK_SANCOV_DEF(return_type, name, ...)                           \
+  extern "C" __attribute__((visibility("default"))) __attribute__((weak)) \
+  return_type                                                             \
+  name(__VA_ARGS__)
 
 WEAK_SANCOV_DEF(void, __sanitizer_cov_trace_cmp, void) {}
 WEAK_SANCOV_DEF(void, __sanitizer_cov_trace_cmp1, void) {}
