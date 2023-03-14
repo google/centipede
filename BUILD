@@ -118,6 +118,16 @@ cc_library(
 )
 
 cc_library(
+    name = "pagemap",
+    srcs = ["pagemap.cc"],
+    hdrs = ["pagemap.h"],
+    deps = [
+        ":defs",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
     name = "config_util",
     srcs = ["config_util.cc"],
     hdrs = ["config_util.h"],
@@ -681,6 +691,17 @@ cc_test(
         ":test_util",
         ":util",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "pagemap_test",
+    srcs = ["pagemap_test.cc"],
+    deps = [
+        ":defs",
+        ":feature",
+        ":pagemap",
         "@com_google_googletest//:gtest_main",
     ],
 )
