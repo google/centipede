@@ -26,6 +26,7 @@
 
 #include "googletest/include/gtest/gtest.h"
 #include "absl/container/flat_hash_set.h"
+#include "./concurrent_byteset.h"
 #include "./logging.h"
 
 namespace centipede {
@@ -277,6 +278,28 @@ TEST(Feature, ConcurrentBitSet) {
   out_bits.clear();
   bs.ForEachNonZeroBit([&](size_t idx) { out_bits.push_back(idx); });
   EXPECT_TRUE(out_bits.empty());
+}
+
+TEST(Feature, ConcurrentByteSet) {
+  ConcurrentByteSet<1024> bs;
+  const std::vector<std::pair<size_t, uint8_t>> in = {
+      {0, 1}, {1, 42}, {2, 33}, {100, 15}, {102, 1}, {800, 66}};
+
+  for (const auto &idx_value : in) {
+    bs.Set(idx_value.first, idx_value.second);
+  }
+
+  // Test ForEachNonZeroByte.
+  std::vector<std::pair<size_t, uint8_t>> out;
+  bs.ForEachNonZeroByte(
+      [&](size_t idx, uint8_t value) { out.emplace_back(idx, value); });
+  EXPECT_EQ(out, in);
+
+  // Now bs should be empty.
+  out.clear();
+  bs.ForEachNonZeroByte(
+      [&](size_t idx, uint8_t value) { out.emplace_back(idx, value); });
+  EXPECT_TRUE(out.empty());
 }
 
 // Tests ConcurrentBitSet from multiple threads.

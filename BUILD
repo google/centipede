@@ -54,6 +54,7 @@ cc_library(
     srcs = ["feature.cc"],
     hdrs = [
         "concurrent_bitset.h",  # TODO(kcc): consider moving to a separte cc_library.
+        "concurrent_byteset.h",  # TODO(kcc): consider moving to a separte cc_library.
         "feature.h",
         "foreach_nonzero.h",  # TODO(kcc): consider moving to a separte cc_library.
     ],
