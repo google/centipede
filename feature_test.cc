@@ -256,9 +256,10 @@ TEST(Feature, HashedRingBuffer) {
 }
 
 TEST(Feature, ConcurrentBitSet) {
-  ConcurrentBitSet<512> bs;
-  std::vector<size_t> in_bits = {0, 1, 2, 100, 102, 800};
-  std::vector<size_t> expected_out_bits = {0, 1, 2, 100, 102, 800 % 512};
+  constexpr size_t kSize = 1 << 16;
+  ConcurrentBitSet<kSize> bs;
+  std::vector<size_t> in_bits = {0, 1, 2, 100, 102, 1000000};
+  std::vector<size_t> expected_out_bits = {0, 1, 2, 100, 102, 1000000 % kSize};
   std::vector<size_t> out_bits;
   for (auto idx : in_bits) {
     bs.set(idx);
@@ -304,7 +305,7 @@ TEST(Feature, ConcurrentByteSet) {
 
 // Tests ConcurrentBitSet from multiple threads.
 TEST(Feature, ConcurrentBitSet_Threads) {
-  ConcurrentBitSet<512> bs;
+  ConcurrentBitSet<(1 << 16)> bs;
   // 3 threads will each set one specific bit in a long loop.
   // 4th thread will set another bit, just once.
   // The set() function is lossy, i.e. it may fail to set the bit.

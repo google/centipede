@@ -42,17 +42,16 @@
 #include <limits>
 #include <memory>
 
-#include "./foreach_nonzero.h"
+#include "./concurrent_byteset.h"
 
 namespace centipede {
 
 // A fixed-size bitset with a lossy concurrent set() function.
-// kSize must be a multiple of 512 - this allows the implementation
-// to use any word size up to 64 bytes.
+// kSize (in bits) must be a multiple of 2**16.
 template <size_t kSizeInBits>
 class ConcurrentBitSet {
  public:
-  static_assert((kSizeInBits % 512) == 0);
+  static_assert((kSizeInBits % (1<<16)) == 0);
 
   // Constructs an empty bit set.
   ConcurrentBitSet() = default;
@@ -60,7 +59,7 @@ class ConcurrentBitSet {
   // Clears the bit set.
   void clear() {
     memset(words_, 0, sizeof(words_));
-    memset(lines_, 0, sizeof(lines_));
+    lines_.clear();
   }
 
   // Sets the bit `idx % kSizeInBits`.
@@ -74,7 +73,7 @@ class ConcurrentBitSet {
     size_t word_idx = idx / kBitsInWord;
     size_t bit_idx = idx % kBitsInWord;
     size_t line_idx = word_idx / kWordsInLine;
-    __atomic_store_n(&lines_[line_idx], 1, __ATOMIC_RELAXED);
+    lines_.Set(line_idx, 1);
     word_t mask = 1ULL << bit_idx;
     word_t word = __atomic_load_n(&words_[word_idx], __ATOMIC_RELAXED);
     if (!(word & mask)) {
@@ -88,12 +87,11 @@ class ConcurrentBitSet {
   __attribute__((noinline)) void ForEachNonZeroBit(
       const std::function<void(size_t idx)> &action) {
     // Iterates over all non-empty lines.
-    ForEachNonZeroByte(&lines_[0], kSizeInLines,
-                       [&](size_t idx, uint8_t value) {
-                         size_t word_idx_beg = idx * kWordsInLine;
-                         size_t word_idx_end = word_idx_beg + kWordsInLine;
-                         ForEachNonZeroBit(action, word_idx_beg, word_idx_end);
-                       });
+    lines_.ForEachNonZeroByte([&](size_t idx, uint8_t value) {
+      size_t word_idx_beg = idx * kWordsInLine;
+      size_t word_idx_end = word_idx_beg + kWordsInLine;
+      ForEachNonZeroBit(action, word_idx_beg, word_idx_end);
+    });
   }
 
  private:
@@ -126,7 +124,7 @@ class ConcurrentBitSet {
   static const size_t kBytesInLine = 64;
   static const size_t kWordsInLine = kBytesInLine / kBytesInWord;
   static const size_t kSizeInLines = kSizeInWords / kWordsInLine;
-  uint8_t lines_[kSizeInLines] = {};
+  ConcurrentByteSet<kSizeInLines> lines_;
   word_t words_[kSizeInWords] = {};
 };
 
