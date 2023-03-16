@@ -109,30 +109,26 @@ class Domain {
   const size_t domain_id_;
 };
 
-// NEXT_DOMAIN_ID() returns a constexpr value for the unique domain ID.
-// TODO(kcc): Ideally, it would return consecutive values, but it's unclear how
-// to do this with the constexpr magic. Suggestions are welcome, but not
-// critical. For now we just use __LINE__ - kFirstDomainLine as the unique ID.
-constexpr size_t kFirstDomainLine = __LINE__;
-#define NEXT_DOMAIN_ID() (__LINE__ - kFirstDomainLine)
 // Catch-all domain for unknown features.
-constexpr Domain kUnknown = {NEXT_DOMAIN_ID()};
+constexpr Domain kUnknown = {__COUNTER__};
+static_assert(kUnknown.domain_id() == 0);  // No one used __COUNTER__ before.
 // Represents PCs, i.e. control flow edges.
 // Use ConvertPCFeatureToPcIndex() to convert back to a PC index.
-constexpr Domain kPCs = {NEXT_DOMAIN_ID()};
+constexpr Domain kPCs = {__COUNTER__};
+static_assert(kPCs.domain_id() != kUnknown.domain_id());  // just in case.
 // Features derived from edge counters. See Convert8bitCounterToNumber().
-constexpr Domain k8bitCounters = {NEXT_DOMAIN_ID()};
+constexpr Domain k8bitCounters = {__COUNTER__};
 // Features derived from data flow edges.
 // A typical data flow edge is a pair of PCs: {store-PC, load-PC}.
 // Another variant of a data flow edge is a pair of {global-address, load-PC}.
-constexpr Domain kDataFlow = {NEXT_DOMAIN_ID()};
+constexpr Domain kDataFlow = {__COUNTER__};
 // Features derived from instrumenting CMP instructions.
-constexpr Domain kCMP = {NEXT_DOMAIN_ID()};
+constexpr Domain kCMP = {__COUNTER__};
 // Features derived from computing (bounded) control flow paths.
-constexpr Domain kBoundedPath = {NEXT_DOMAIN_ID()};
+constexpr Domain kBoundedPath = {__COUNTER__};
 // Features derived from (unordered) pairs of PCs.
-constexpr Domain kPCPair = {NEXT_DOMAIN_ID()};
-static_assert(NEXT_DOMAIN_ID() < Domain::kLastDomainId);
+constexpr Domain kPCPair = {__COUNTER__};
+static_assert(__COUNTER__ < Domain::kLastDomainId);
 constexpr Domain kLastDomainId = {Domain::kLastDomainId};  // must be last.
 
 // Special feature used to indicate an absence of features. Typically used where
