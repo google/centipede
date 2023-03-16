@@ -37,8 +37,11 @@
 // add here. This header needs to remain mostly bare-bones so that we can
 // include it into runner.
 #include <cstdint>
+#include <functional>
 #include <limits>
 #include <memory>
+
+#include "./foreach_nonzero.h"
 
 namespace centipede {
 
@@ -54,7 +57,10 @@ class ConcurrentBitSet {
   ConcurrentBitSet() = default;
 
   // Clears the bit set.
-  void clear() { memset(words_, 0, sizeof(words_)); }
+  void clear() {
+    memset(words_, 0, sizeof(words_));
+    memset(lines_, 0, sizeof(lines_));
+  }
 
   // Sets the bit `idx % kSizeInBits`.
   // set() can be called concurrently with another set().
@@ -66,6 +72,8 @@ class ConcurrentBitSet {
     idx %= kSizeInBits;
     size_t word_idx = idx / kBitsInWord;
     size_t bit_idx = idx % kBitsInWord;
+    size_t line_idx = word_idx / kWordsInLine;
+    __atomic_store_n(&lines_[line_idx], 1, __ATOMIC_RELAXED);
     word_t mask = 1ULL << bit_idx;
     word_t word = __atomic_load_n(&words_[word_idx], __ATOMIC_RELAXED);
     if (!(word & mask)) {
@@ -76,9 +84,22 @@ class ConcurrentBitSet {
 
   // Calls `action(index)` for every index of a non-zero bit in the set,
   // then sets all those bits to zero.
-  template <typename Action>
-  __attribute__((noinline)) void ForEachNonZeroBit(Action action) {
-    for (size_t word_idx = 0; word_idx < kSizeInWords; word_idx++) {
+  __attribute__((noinline)) void ForEachNonZeroBit(
+      const std::function<void(size_t idx)> &action) {
+    // Iterates over all non-empty lines.
+    ForEachNonZeroByte(&lines_[0], kSizeInLines,
+                       [&](size_t idx, uint8_t value) {
+                         size_t word_idx_beg = idx * kWordsInLine;
+                         size_t word_idx_end = word_idx_beg + kWordsInLine;
+                         ForEachNonZeroBit(action, word_idx_beg, word_idx_end);
+                       });
+  }
+
+ private:
+  // Iterates over the range of words [`word_idx_beg`, `word_idx_end`).
+  void ForEachNonZeroBit(const std::function<void(size_t idx)> &action,
+                         size_t word_idx_beg, size_t word_idx_end) {
+    for (size_t word_idx = word_idx_beg; word_idx < word_idx_end; ++word_idx) {
       if (word_t word = words_[word_idx]) {
         words_[word_idx] = 0;
         do {
@@ -91,10 +112,20 @@ class ConcurrentBitSet {
     }
   }
 
- private:
+  // A word is the largest integer type convenient for bit-wise opeartions.
   using word_t = uintptr_t;
-  static const size_t kBitsInWord = 8 * sizeof(word_t);
+  static const size_t kBytesInWord = sizeof(word_t);
+  static const size_t kBitsInWord = CHAR_BIT * kBytesInWord;
   static const size_t kSizeInWords = kSizeInBits / kBitsInWord;
+
+  // All words are logically split into lines.
+  // When Set() is called, we set the corresponding element of lines_ to 1, so
+  // that we now know that at least 1 bit in that line is set. Then, in
+  // ForEachNonZeroBit, we iterate only those lines that have non-zero bits.
+  static const size_t kBytesInLine = 64;
+  static const size_t kWordsInLine = kBytesInLine / kBytesInWord;
+  static const size_t kSizeInLines = kSizeInWords / kWordsInLine;
+  uint8_t lines_[kSizeInLines] = {};
   word_t words_[kSizeInWords] = {};
 };
 

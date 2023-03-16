@@ -313,6 +313,23 @@ TEST(Feature, ConcurrentBitSet_Threads) {
   }
 }
 
+static ConcurrentBitSet<(1 << 20)> large_concurrent_bitset;
+
+TEST(Feature, ConcurrentBitSet_Large) {
+  const std::vector<size_t> in_bits = {0,   1,     2,     100,   102,
+                                       800, 10000, 20000, 30000, 500000};
+
+  for (size_t iter = 0; iter < 100000; ++iter) {
+    for (auto idx : in_bits) {
+      large_concurrent_bitset.set(idx);
+    }
+    std::vector<size_t> out_bits;
+    large_concurrent_bitset.ForEachNonZeroBit(
+        [&](size_t idx) { out_bits.push_back(idx); });
+    EXPECT_EQ(out_bits, in_bits);
+  }
+}
+
 TEST(Feature, FeatureArray) {
   FeatureArray<3> array;
   EXPECT_EQ(array.size(), 0);
