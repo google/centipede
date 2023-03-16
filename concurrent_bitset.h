@@ -36,6 +36,7 @@
 // WARNING!!!: Be very careful with what STL headers or other dependencies you
 // add here. This header needs to remain mostly bare-bones so that we can
 // include it into runner.
+#include <climits>
 #include <cstdint>
 #include <functional>
 #include <limits>
