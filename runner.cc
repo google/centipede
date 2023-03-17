@@ -48,6 +48,11 @@
 #include "./runner_utils.h"
 #include "./shared_memory_blob_sequence.h"
 
+__attribute__((
+    weak)) extern centipede::feature_t __start___centipede_extra_features;
+__attribute__((
+    weak)) extern centipede::feature_t __stop___centipede_extra_features;
+
 namespace centipede {
 
 // Use of the fixed init priority allows to call CentipedeRunnerMain
@@ -321,6 +326,16 @@ PostProcessCoverage(int target_return_value) {
       g_features.push_back(
           centipede::feature_domains::kBoundedPath.ConvertToMe(idx));
     });
+  }
+
+  // Copy the features from __centipede_extra_features to g_features.
+  // Zero features are ignored - we treat them as default (unset) values.
+  for (auto *p = state.user_defined_begin; p != state.user_defined_end; ++p) {
+    if (auto feature = *p) {
+      g_features.push_back(
+          centipede::feature_domains::kUserDefined.ConvertToMe(feature));
+      *p = 0;  // cleanup for the next iteration.
+    }
   }
 }
 
@@ -712,6 +727,18 @@ GlobalRunnerState::GlobalRunnerState() {
   }
 
   MaybePopluateReversePCTable();
+
+  // initialize the user defined section.
+  user_defined_begin =
+      &__start___centipede_extra_features;
+  user_defined_end =
+      &__stop___centipede_extra_features;
+  if (user_defined_begin && user_defined_end) {
+    fprintf(
+        stderr,
+        "section(\"__centipede_extra_features\") detected with %zd elements\n",
+        user_defined_end - user_defined_begin);
+  }
 }
 
 GlobalRunnerState::~GlobalRunnerState() {

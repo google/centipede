@@ -222,6 +222,10 @@ struct GlobalRunnerState {
   uint8_t *pc_counters;      // initialized once we know pc_guard_start/stop.
   size_t pc_counters_size;   // ditto.
 
+  // Initialized in CTOR from the __centipede_extra_features section.
+  feature_t *user_defined_begin;
+  feature_t *user_defined_end;
+
   static const size_t kPathBitSetSize = 1 << 25;  // Arbitrary very large size.
   // Observed paths. The total number of observed paths for --path_level=N
   // can be up to NumPCs**N.

@@ -205,6 +205,7 @@ void Centipede::UpdateAndMaybeLogStats(std::string_view log_type,
             << " cmp: " << fs_.CountFeatures(feature_domains::kCMP)
             << " path: " << fs_.CountFeatures(feature_domains::kBoundedPath)
             << " pair: " << fs_.CountFeatures(feature_domains::kPCPair)
+            << " usr: " << fs_.CountFeatures(feature_domains::kUserDefined)
             << " corp: " << corpus_.NumActive() << "/" << corpus_.NumTotal()
             << " fr: " << coverage_frontier_.NumFunctionsInFrontier()
             << " max/avg: " << max_corpus_size << "/" << avg_corpus_size << " "

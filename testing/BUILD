@@ -39,6 +39,10 @@ centipede_fuzz_target(
     name = "minimize_me_fuzz_target",
 )
 
+centipede_fuzz_target(
+    name = "user_defined_features_target",
+)
+
 # Simple fuzz target used for testing.
 centipede_fuzz_target(
     name = "test_fuzz_target",
@@ -200,6 +204,16 @@ sh_test(
     srcs = ["minimize_crash_test.sh"],
     data = [
         ":minimize_me_fuzz_target",
+        "@centipede",
+        "@centipede//:test_util_sh",
+    ],
+)
+
+sh_test(
+    name = "user_defined_features_test",
+    srcs = ["user_defined_features_test.sh"],
+    data = [
+        ":user_defined_features_target",
         "@centipede",
         "@centipede//:test_util_sh",
     ],

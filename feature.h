@@ -128,6 +128,9 @@ constexpr Domain kCMP = {__COUNTER__};
 constexpr Domain kBoundedPath = {__COUNTER__};
 // Features derived from (unordered) pairs of PCs.
 constexpr Domain kPCPair = {__COUNTER__};
+// Features defined by a user via
+// __attribute__((section("__centipede_extra_features"))).
+constexpr Domain kUserDefined = {__COUNTER__};
 static_assert(__COUNTER__ < Domain::kLastDomainId);
 constexpr Domain kLastDomainId = {Domain::kLastDomainId};  // must be last.
 
