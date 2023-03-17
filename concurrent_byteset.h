@@ -45,7 +45,10 @@ namespace centipede {
 template <size_t kSize>
 class ConcurrentByteSet {
  public:
-  static_assert((kSize % 64) == 0);
+  static constexpr size_t kSizeInBytes = kSize;
+  // kSize must be multiple of this.
+  static constexpr size_t kSizeMultiple = 64;
+  static_assert((kSize % kSizeMultiple) == 0);
 
   // Constructs an empty byte set.
   ConcurrentByteSet() = default;
@@ -62,11 +65,17 @@ class ConcurrentByteSet {
 
   // Calls `action(index, value)` for every {index,value} of a non-zero byte in
   // the set, then sets all those bytes to zero.
-  void ForEachNonZeroByte(const std::function<void(size_t, uint8_t)> &action) {
+  // `from` and `to` set the range of elements to iterate, both must be
+  // multiples of kSizeMultiple.
+  void ForEachNonZeroByte(const std::function<void(size_t, uint8_t)> &action,
+                          size_t from = 0, size_t to = kSize) {
     using word_t = uintptr_t;
     constexpr size_t kWordSize = sizeof(word_t);
+    if (from % kSizeMultiple) __builtin_trap();
+    if (to % kSizeMultiple) __builtin_trap();
+    if (to > kSize) __builtin_trap();
     // Iterate one word at a time.
-    for (uint8_t *ptr = &bytes_[0], *end = &bytes_[kSize]; ptr < end;
+    for (uint8_t *ptr = &bytes_[from], *end = &bytes_[to]; ptr < end;
          ptr += kWordSize) {
       word_t word;
       __builtin_memcpy(&word, ptr, kWordSize);
@@ -83,6 +92,63 @@ class ConcurrentByteSet {
  private:
   uint8_t bytes_[kSize] __attribute__((aligned(64))) = {};
 };
+
+// Similar to ConcurrentByteSet, but consists of two layers, upper and lower.
+// The size of the lower layer is a multiple of the size of the upper layer.
+// Set() writes 1 to an element in the upper layer and then writes `value` to an
+// element of the lower value. This allows ForEachNonZeroByte() to
+// skip sub-regions of lower layer that were not written to.
+// Otherwise the interface and the behaviour is equivalent to ConcurrentByteSet.
+template <size_t kSize, typename Upper,
+          typename Lower = ConcurrentByteSet<kSize>>
+class LayeredConcurrentByteSet {
+ public:
+  static constexpr size_t kSizeInBytes = kSize;
+  static constexpr size_t kSizeMultiple =
+      Lower::kSizeMultiple * Upper::kSizeMultiple;
+  static_assert(kSize == Lower::kSizeInBytes);
+
+  LayeredConcurrentByteSet() = default;
+
+  void clear() {
+    upper_layer_.clear();
+    lower_layer_.clear();
+  }
+
+  void Set(size_t idx, uint8_t value) {
+    if (idx >= kSize) __builtin_trap();
+    upper_layer_.Set(idx / kLayerRatio, 1);
+    lower_layer_.Set(idx, value);
+  }
+
+  void ForEachNonZeroByte(const std::function<void(size_t, uint8_t)> &action,
+                          size_t from = 0, size_t to = kSize) {
+    if (to > kSize) __builtin_trap();
+    if (from % kSizeMultiple) __builtin_trap();
+    if (to % kSizeMultiple) __builtin_trap();
+    size_t upper_from = from / kLayerRatio;
+    size_t upper_to = to / kLayerRatio;
+    upper_layer_.ForEachNonZeroByte(
+        [&](size_t idx, uint8_t value) {
+          size_t lower_from = idx * kLayerRatio;
+          size_t lower_to = lower_from + kLayerRatio;
+          lower_layer_.ForEachNonZeroByte(action, lower_from, lower_to);
+        },
+        upper_from, upper_to);
+  }
+
+ private:
+  Upper upper_layer_;
+  Lower lower_layer_;
+  static constexpr size_t kLayerRatio =
+      Lower::kSizeInBytes / Upper::kSizeInBytes;
+  static_assert((Lower::kSizeInBytes % Upper::kSizeInBytes) == 0);
+};
+
+// Two-layer ConcurrentByteSet() with upper layer 64x smaller than the lower.
+template <size_t kSize>
+class TwoLayerConcurrentByteSet
+    : public LayeredConcurrentByteSet<kSize, ConcurrentByteSet<kSize / 64>> {};
 
 }  // namespace centipede
 

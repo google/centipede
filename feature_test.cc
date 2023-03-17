@@ -303,6 +303,28 @@ TEST(Feature, ConcurrentByteSet) {
   EXPECT_TRUE(out.empty());
 }
 
+TEST(Feature, TwoLayerConcurrentByteSet) {
+  TwoLayerConcurrentByteSet<(1 << 17)> bs;
+  const std::vector<std::pair<size_t, uint8_t>> in = {
+      {0, 1}, {1, 42}, {2, 33}, {100, 15}, {102, 1}, {800, 66}};
+
+  for (const auto &idx_value : in) {
+    bs.Set(idx_value.first, idx_value.second);
+  }
+
+  // Test ForEachNonZeroByte.
+  std::vector<std::pair<size_t, uint8_t>> out;
+  bs.ForEachNonZeroByte(
+      [&](size_t idx, uint8_t value) { out.emplace_back(idx, value); });
+  EXPECT_EQ(out, in);
+
+  // Now bs should be empty.
+  out.clear();
+  bs.ForEachNonZeroByte(
+      [&](size_t idx, uint8_t value) { out.emplace_back(idx, value); });
+  EXPECT_TRUE(out.empty());
+}
+
 // Tests ConcurrentBitSet from multiple threads.
 TEST(Feature, ConcurrentBitSet_Threads) {
   ConcurrentBitSet<(1 << 16)> bs;
