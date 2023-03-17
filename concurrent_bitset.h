@@ -42,6 +42,7 @@
 #include <limits>
 #include <memory>
 
+#include "absl/base/const_init.h"
 #include "./concurrent_byteset.h"
 
 namespace centipede {
@@ -55,6 +56,8 @@ class ConcurrentBitSet {
 
   // Constructs an empty bit set.
   ConcurrentBitSet() = default;
+  // Creates a ConcurrentBitSet with static storage duration.
+  explicit constexpr ConcurrentBitSet(absl::ConstInitType) {}
 
   // Clears the bit set.
   void clear() {

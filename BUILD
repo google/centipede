@@ -48,7 +48,7 @@ cc_binary(
 #                             C++ libraries
 ################################################################################
 
-# This lib must have zero dependencies (other than libc). See feature.h.
+# This lib must have zero non-trivial dependencies (other than libc). See feature.h.
 cc_library(
     name = "feature",
     srcs = ["feature.cc"],
@@ -57,6 +57,9 @@ cc_library(
         "concurrent_byteset.h",  # TODO(kcc): consider moving to a separte cc_library.
         "feature.h",
         "foreach_nonzero.h",  # TODO(kcc): consider moving to a separte cc_library.
+    ],
+    deps = [
+        "@com_google_absl//absl/base:core_headers",  # exception, ok to depend on here.
     ],
 )
 
@@ -614,7 +617,11 @@ RUNNER_LINKOPTS = [
     "-lpthread",  # for pthread_once
 ]
 
-RUNNER_DEPS = ["@com_google_absl//absl/types:span"]  # WARNING: be careful with more deps.
+# WARNING: be careful with more deps here. Use only the most trivial ones.
+RUNNER_DEPS = [
+    "@com_google_absl//absl/types:span",
+    "//third_party/absl/base:core_headers",
+]
 
 # A fuzz target needs to link with this library in order to run with Centipede.
 # The fuzz target must provide its own main().
@@ -847,6 +854,7 @@ cc_test(
     deps = [
         ":feature",
         ":logging",
+        "@com_google_absl//absl/base:core_headers",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_googletest//:gtest_main",
     ],

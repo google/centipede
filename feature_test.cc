@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "googletest/include/gtest/gtest.h"
+#include "absl/base/const_init.h"
 #include "absl/container/flat_hash_set.h"
 #include "./concurrent_byteset.h"
 #include "./logging.h"
@@ -359,20 +360,25 @@ TEST(Feature, ConcurrentBitSet_Threads) {
   }
 }
 
-static ConcurrentBitSet<(1 << 20)> large_concurrent_bitset;
+// Global ConcurrentBitSet with a absl::kConstInit CTOR.
+static ConcurrentBitSet<(1 << 20)> large_concurrent_bitset(absl::kConstInit);
+// Create a __thread object to ensure we can have a constexpr CTOR.
+static __thread ConcurrentBitSet<(1 << 20)> large_tls_concurrent_bitset(
+    absl::kConstInit);
 
 TEST(Feature, ConcurrentBitSet_Large) {
-  const std::vector<size_t> in_bits = {0,   1,     2,     100,   102,
-                                       800, 10000, 20000, 30000, 500000};
+  for (auto *bs : {&large_concurrent_bitset, &large_tls_concurrent_bitset}) {
+    const std::vector<size_t> in_bits = {0,   1,     2,     100,   102,
+                                         800, 10000, 20000, 30000, 500000};
 
-  for (size_t iter = 0; iter < 100000; ++iter) {
-    for (auto idx : in_bits) {
-      large_concurrent_bitset.set(idx);
+    for (size_t iter = 0; iter < 100000; ++iter) {
+      for (auto idx : in_bits) {
+        bs->set(idx);
+      }
+      std::vector<size_t> out_bits;
+      bs->ForEachNonZeroBit([&](size_t idx) { out_bits.push_back(idx); });
+      EXPECT_EQ(out_bits, in_bits);
     }
-    std::vector<size_t> out_bits;
-    large_concurrent_bitset.ForEachNonZeroBit(
-        [&](size_t idx) { out_bits.push_back(idx); });
-    EXPECT_EQ(out_bits, in_bits);
   }
 }
 
