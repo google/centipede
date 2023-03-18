@@ -304,8 +304,12 @@ TEST(Feature, ConcurrentByteSet) {
   EXPECT_TRUE(out.empty());
 }
 
+// Declare as __thread to test the existence of constexpr CTOR.
+static __thread TwoLayerConcurrentByteSet<(1 << 17)> two_layer_byte_set(
+    absl::kConstInit);
+
 TEST(Feature, TwoLayerConcurrentByteSet) {
-  TwoLayerConcurrentByteSet<(1 << 17)> bs;
+  auto &bs = two_layer_byte_set;
   const std::vector<std::pair<size_t, uint8_t>> in = {
       {0, 1}, {1, 42}, {2, 33}, {100, 15}, {102, 1}, {800, 66}};
 

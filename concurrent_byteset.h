@@ -32,6 +32,8 @@
 // add here. This header needs to remain mostly bare-bones so that we can
 // include it into runner.
 
+#include "absl/base/const_init.h"
+
 namespace centipede {
 
 // TODO(kcc): replace the standalone ForEachNonZeroByte with code from here.
@@ -52,6 +54,8 @@ class ConcurrentByteSet {
 
   // Constructs an empty byte set.
   ConcurrentByteSet() = default;
+  // Creates a ConcurrentByteSet with static storage duration.
+  explicit constexpr ConcurrentByteSet(absl::ConstInitType) {}
 
   // Clears the set.
   void clear() { memset(bytes_, 0, sizeof(bytes_)); }
@@ -109,6 +113,9 @@ class LayeredConcurrentByteSet {
   static_assert(kSize == Lower::kSizeInBytes);
 
   LayeredConcurrentByteSet() = default;
+  // Creates a LayeredConcurrentByteSet with static storage duration.
+  explicit constexpr LayeredConcurrentByteSet(absl::ConstInitType)
+      : upper_layer_(absl::kConstInit), lower_layer_(absl::kConstInit) {}
 
   void clear() {
     upper_layer_.clear();
@@ -148,7 +155,13 @@ class LayeredConcurrentByteSet {
 // Two-layer ConcurrentByteSet() with upper layer 64x smaller than the lower.
 template <size_t kSize>
 class TwoLayerConcurrentByteSet
-    : public LayeredConcurrentByteSet<kSize, ConcurrentByteSet<kSize / 64>> {};
+    : public LayeredConcurrentByteSet<kSize, ConcurrentByteSet<kSize / 64>> {
+ public:
+  // Creates a TwoLayerConcurrentByteSet with static storage duration.
+  explicit constexpr TwoLayerConcurrentByteSet(absl::ConstInitType)
+      : LayeredConcurrentByteSet<kSize, ConcurrentByteSet<kSize / 64>>(
+            absl::kConstInit) {}
+};
 
 }  // namespace centipede
 
