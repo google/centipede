@@ -56,8 +56,8 @@ class CmpTrace {
     rand_seed_ = rand_seed_ * 1103515245 + 12345;
     Item &item = items_[rand_seed_ % kNumItems];
     item.size.set(size);
-    memcpy(item.value0, value0, size);
-    memcpy(item.value1, value1, size);
+    __builtin_memcpy(item.value0, value0, size);
+    __builtin_memcpy(item.value1, value1, size);
   }
 
   // Captures one CMP argument pair, as two integers of kFixedSize bytes each.
