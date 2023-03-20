@@ -122,8 +122,23 @@ constexpr Domain k8bitCounters = {__COUNTER__};
 // A typical data flow edge is a pair of PCs: {store-PC, load-PC}.
 // Another variant of a data flow edge is a pair of {global-address, load-PC}.
 constexpr Domain kDataFlow = {__COUNTER__};
-// Features derived from instrumenting CMP instructions.
+// Features derived from instrumenting CMP instructions. TODO(kcc): remove.
 constexpr Domain kCMP = {__COUNTER__};
+
+// Features in the following domains are created for comparison instructions
+// 'a CMP b'. One component of the feature is the context, i.e. where the
+// comparison happened. Another component depends on {a,b}.
+//
+// a == b.
+// The other domains (kCMPModDiff, kCMPHamming, kCMPDiffLog) are for a != b.
+constexpr Domain kCMPEq = {__COUNTER__};
+// (a - b) if |a-b| < 32, see ABToCmpModDiff.
+constexpr Domain kCMPModDiff = {__COUNTER__};
+// hamming_distance(a, b), ABToCmpHamming.
+constexpr Domain kCMPHamming = {__COUNTER__};
+// log2(a > b ? a - b : b - a), see ABToCmpDiffLog.
+constexpr Domain kCMPDiffLog = {__COUNTER__};
+
 // Features derived from computing (bounded) control flow paths.
 constexpr Domain kBoundedPath = {__COUNTER__};
 // Features derived from (unordered) pairs of PCs.
@@ -174,6 +189,23 @@ inline size_t ConvertPcPairToNumber(uintptr_t pc1, uintptr_t pc2,
   return pc1 * max_pc + pc2;
 }
 
+// Transforms {a,b}, a!=b, into a number in [0,64) using a-b.
+inline uintptr_t ABToCmpModDiff(uintptr_t a, uintptr_t b) {
+  uintptr_t diff = a - b;
+  return diff <= 32 ? diff : -diff < 32 ? 32 + -diff : 0;
+}
+
+// Transforms {a,b}, a!=b, into a number in [0,64) using hamming distance.
+inline uintptr_t ABToCmpHamming(uintptr_t a, uintptr_t b) {
+  return __builtin_popcountll(a ^ b) - 1;
+}
+
+// Transforms {a,b}, a!=b, into a number in [0,64) using log2(a-b).
+inline uintptr_t ABToCmpDiffLog(uintptr_t a, uintptr_t b) {
+  return __builtin_clzll(a > b ? a - b : b - a);
+}
+
+// TODO(kcc): deprecated, remove.
 // Encodes {context, a, b} into a number.
 // `a` and `b` are arguments of an instruction "a CMP b".
 // `context` identifies the CMP call site.

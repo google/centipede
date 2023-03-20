@@ -315,8 +315,24 @@ PostProcessCoverage(int target_return_value) {
 
   // Convert cmp bit set to features.
   if (state.run_time_flags.use_cmp_features) {
+    // TODO(kcc): remove cmp_feature_set.
     state.cmp_feature_set.ForEachNonZeroBit([](size_t idx) {
       g_features.push_back(centipede::feature_domains::kCMP.ConvertToMe(idx));
+    });
+    state.cmp_eq_set.ForEachNonZeroBit([](size_t idx) {
+      g_features.push_back(centipede::feature_domains::kCMPEq.ConvertToMe(idx));
+    });
+    state.cmp_moddiff_set.ForEachNonZeroBit([](size_t idx) {
+      g_features.push_back(
+          centipede::feature_domains::kCMPModDiff.ConvertToMe(idx));
+    });
+    state.cmp_hamming_set.ForEachNonZeroBit([](size_t idx) {
+      g_features.push_back(
+          centipede::feature_domains::kCMPHamming.ConvertToMe(idx));
+    });
+    state.cmp_difflog_set.ForEachNonZeroBit([](size_t idx) {
+      g_features.push_back(
+          centipede::feature_domains::kCMPDiffLog.ConvertToMe(idx));
     });
   }
 

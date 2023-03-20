@@ -197,12 +197,17 @@ void Centipede::UpdateAndMaybeLogStats(std::string_view log_type,
   if (execs_per_sec > 1.) execs_per_sec = std::round(execs_per_sec);
   auto [max_corpus_size, avg_corpus_size] = corpus_.MaxAndAvgSize();
   static const auto rusage_scope = perf::RUsageScope::ThisProcess();
+  auto num_cmp_features = fs_.CountFeatures(feature_domains::kCMP) +
+                          fs_.CountFeatures(feature_domains::kCMPEq) +
+                          fs_.CountFeatures(feature_domains::kCMPModDiff) +
+                          fs_.CountFeatures(feature_domains::kCMPHamming) +
+                          fs_.CountFeatures(feature_domains::kCMPDiffLog);
   LOG(INFO) << env_.experiment_name << "[" << num_runs_ << "]"
             << " " << log_type << ":"
             << " ft: " << fs_.size() << " cov: " << fs_.ToCoveragePCs().size()
             << " cnt: " << fs_.CountFeatures(feature_domains::k8bitCounters)
             << " df: " << fs_.CountFeatures(feature_domains::kDataFlow)
-            << " cmp: " << fs_.CountFeatures(feature_domains::kCMP)
+            << " cmp: " << num_cmp_features
             << " path: " << fs_.CountFeatures(feature_domains::kBoundedPath)
             << " pair: " << fs_.CountFeatures(feature_domains::kPCPair)
             << " usr: " << fs_.CountFeatures(feature_domains::kUserDefined)

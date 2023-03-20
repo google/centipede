@@ -192,9 +192,15 @@ struct GlobalRunnerState {
   static const size_t kBitSetSize = 1 << 18;  // Arbitrary large size.
   ConcurrentBitSet<kBitSetSize> data_flow_feature_set;
 
-  // Tracing CMP instructions.
-  // https://clang.llvm.org/docs/SanitizerCoverage.html#tracing-data-flow
-  ConcurrentBitSet<kBitSetSize> cmp_feature_set;
+  // Tracing CMP instructions, capture events from these domains:
+  // kCMPEq, kCMPModDiff, kCMPHamming, kCMPModDiffLog, kCMPMsbEq.
+  // See https://clang.llvm.org/docs/SanitizerCoverage.html#tracing-data-flow.
+  static const size_t kCmpFeatureSetSize = 1 << 18;  // Arbitrary large size.
+  ConcurrentBitSet<kCmpFeatureSetSize> cmp_feature_set;  // TODO(kcc): remove.
+  ConcurrentBitSet<kCmpFeatureSetSize> cmp_eq_set;
+  ConcurrentBitSet<kCmpFeatureSetSize> cmp_moddiff_set;
+  ConcurrentBitSet<kCmpFeatureSetSize> cmp_hamming_set;
+  ConcurrentBitSet<kCmpFeatureSetSize> cmp_difflog_set;
 
   // trace-pc-guard callbacks (edge instrumentation).
   // https://clang.llvm.org/docs/SanitizerCoverage.html#tracing-pcs-with-guards

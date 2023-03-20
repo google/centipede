@@ -313,16 +313,85 @@ TEST(Coverage, DataFlowFeatures) {
   }
 }
 
-// Tests CMP tracing and feature collection.
+// For each of {ABToCmpModDiff, ABToCmpHamming, ABToCmpDiffLog} verify that
+// a) they create all possible values in [0,64)
+// b) they don't create any other values.
+// c) they are sufficiently different from each other, i.e. not using one of
+//    them as coverage signal may reduce the overal quality of signal.
 TEST(Coverage, CMPFeatures) {
+  absl::flat_hash_set<uintptr_t> moddiff, hamming, difflog;
+
+  // clear all hash sets.
+  auto clear = [&]() {
+    moddiff.clear();
+    hamming.clear();
+    difflog.clear();
+  };
+
+  // verifies `value` < 64 and returns it.
+  auto must_be_6bit = [](uintptr_t value) {
+    EXPECT_LT(value, 64);
+    return value;
+  };
+
+  // inserts a value into all hash sets.
+  auto update = [&](uintptr_t a, uintptr_t b) {
+    moddiff.insert(must_be_6bit(ABToCmpModDiff(a, b)));
+    hamming.insert(must_be_6bit(ABToCmpHamming(a, b)));
+    difflog.insert(must_be_6bit(ABToCmpDiffLog(a, b)));
+  };
+
+  // Check moddiff.
+  clear();
+  for (uintptr_t a = 0; a <= 64; ++a) {
+    uintptr_t b = 32;
+    if (a == b) continue;
+    update(a, b);
+  }
+  EXPECT_EQ(moddiff.size(), 64);
+  EXPECT_EQ(hamming.size(), 6);
+  EXPECT_EQ(difflog.size(), 6);
+
+  // Check hamming.
+  clear();
+  for (uintptr_t bits = 0; bits < 64; ++bits) {
+    uintptr_t minus_one = -1;
+    uintptr_t a = minus_one << bits;
+    update(a, 0);
+  }
+  EXPECT_EQ(moddiff.size(), 6);
+  EXPECT_EQ(hamming.size(), 64);
+  EXPECT_EQ(difflog.size(), 1);
+
+  // Check difflog.
+  clear();
+  for (uintptr_t bits = 0; bits < 64; ++bits) {
+    uintptr_t a = 1ULL << bits;
+    uintptr_t b = 0;
+    update(a, b);
+  }
+  EXPECT_EQ(moddiff.size(), 7);
+  EXPECT_EQ(hamming.size(), 1);
+  EXPECT_EQ(difflog.size(), 64);
+}
+
+// Tests CMP tracing and feature collection.
+TEST(Coverage, CMPFeaturesExecute) {
   Environment env;
   env.binary = GetTargetPath();
   auto features =
       RunInputsAndCollectCoverage(env, {"cmpAAAAAAAA", "cmpAAAABBBB"});
   EXPECT_EQ(features.size(), 2);
   // CMP features should be different.
-  EXPECT_NE(ExtractDomainFeatures(features[0], feature_domains::kCMP),
-            ExtractDomainFeatures(features[1], feature_domains::kCMP));
+  EXPECT_NE(ExtractDomainFeatures(features[0], feature_domains::kCMPEq),
+            ExtractDomainFeatures(features[1], feature_domains::kCMPEq));
+  EXPECT_NE(ExtractDomainFeatures(features[0], feature_domains::kCMPModDiff),
+            ExtractDomainFeatures(features[1], feature_domains::kCMPModDiff));
+  EXPECT_NE(ExtractDomainFeatures(features[0], feature_domains::kCMPHamming),
+            ExtractDomainFeatures(features[1], feature_domains::kCMPHamming));
+  EXPECT_NE(ExtractDomainFeatures(features[0], feature_domains::kCMPDiffLog),
+            ExtractDomainFeatures(features[1], feature_domains::kCMPDiffLog));
+
   // But control flow features should be the same.
   EXPECT_EQ(ExtractDomainFeatures(features[0], feature_domains::k8bitCounters),
             ExtractDomainFeatures(features[1], feature_domains::k8bitCounters));

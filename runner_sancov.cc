@@ -75,8 +75,14 @@ ENFORCE_INLINE static void TraceCmp(uint64_t Arg1, uint64_t Arg2) {
   auto pc_offset = caller_pc - state.main_object.start_address;
   uintptr_t hash =
       centipede::Hash64Bits(pc_offset) ^ tls.path_ring_buffer.hash();
-  state.cmp_feature_set.set(
-      centipede::ConvertContextAndArgPairToNumber(Arg1, Arg2, hash));
+  if (Arg1 == Arg2) {
+    state.cmp_eq_set.set(hash);
+  } else {
+    hash <<= 6;  // ABTo* generate 6-bit numbers.
+    state.cmp_moddiff_set.set(hash | centipede::ABToCmpModDiff(Arg1, Arg2));
+    state.cmp_hamming_set.set(hash | centipede::ABToCmpHamming(Arg1, Arg2));
+    state.cmp_difflog_set.set(hash | centipede::ABToCmpDiffLog(Arg1, Arg2));
+  }
 }
 
 //------------------------------------------------------------------------------
