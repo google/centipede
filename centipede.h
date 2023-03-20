@@ -148,9 +148,9 @@ class Centipede {
   // by calling the PopulateBinaryInfo callback.
   const PCTable &pc_table_;
   const SymbolTable &symbols_;
+  // TODO(ussuri): Replace usages of the above two with matching binary_info_
+  //  members.
   const BinaryInfo &binary_info_;
-  // TODO(navidem) replace pc_table_ with binary_info_.pc_table and same for
-  // symbols_
 
   // Derived from env_.function_filter. Currently, duplicated by every thread.
   // In future, threads may have different filters.

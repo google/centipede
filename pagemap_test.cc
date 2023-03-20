@@ -15,7 +15,6 @@
 #include "./pagemap.h"
 
 #include <cstdint>
-#include <memory>
 #include <vector>
 
 #include "googlemock/include/gmock/gmock.h"
@@ -30,7 +29,6 @@ uint8_t medium_array[10000];  // spans 3-4 pages.
 uint8_t large_array[100000];  // many pages.
 
 TEST(PageMap, ForEachNonZeroRegion) {
-  using Span = absl::Span<uint8_t>;
   PageMap small_map({small_array, sizeof(small_array)});
   PageMap medium_map({medium_array, sizeof(medium_array)});
   PageMap large_map({large_array, sizeof(large_array)});
