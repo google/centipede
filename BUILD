@@ -707,6 +707,8 @@ cc_test(
 cc_test(
     name = "pagemap_test",
     srcs = ["pagemap_test.cc"],
+    # TODO(b/274508830): Unflake.
+    flaky = True,  # EXPECT_LE(num_nonzero_regions, N) checks sometimes fail
     deps = [
         ":defs",
         ":feature",
