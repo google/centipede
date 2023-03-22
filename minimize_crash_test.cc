@@ -74,9 +74,9 @@ class MinimizerMockFactory : public CentipedeCallbacksFactory {
 };
 
 TEST(MinimizeTest, MinimizeTest) {
-  ScopedTempDir tmp_dir;
+  TempDir tmp_dir{test_info_->name()};
   Environment env;
-  env.workdir = tmp_dir.path;
+  env.workdir = tmp_dir.path();
   env.num_runs = 100000;
   MinimizerMockFactory factory;
 

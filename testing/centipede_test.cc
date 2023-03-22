@@ -13,13 +13,11 @@
 // limitations under the License.
 
 #include <string.h>
-#include <unistd.h>
 
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
-#include <iterator>
 #include <set>
 #include <string>
 #include <string_view>
@@ -28,7 +26,6 @@
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "./blob_file.h"
 #include "./centipede_callbacks.h"
@@ -44,6 +41,8 @@
 #include "./util.h"
 
 namespace centipede {
+
+namespace {
 
 // A mock for CentipedeCallbacks.
 class CentipedeMock : public CentipedeCallbacks {
@@ -126,11 +125,13 @@ class MockFactory : public CentipedeCallbacksFactory {
   CentipedeCallbacks &cb_;
 };
 
+}  // namespace
+
 TEST(Centipede, MockTest) {
-  ScopedTempDir tmp_dir;
+  TempCorpusDir tmp_dir{test_info_->name()};
   Environment env;    // Reads the flags. We override some members below.
   env.log_level = 0;  // Disable most of the logging in the test.
-  env.workdir = tmp_dir.path;
+  env.workdir = tmp_dir.path();
   env.num_runs = 100000;  // Enough to run through all 1- and 2-byte inputs.
   env.batch_size = 7;     // Just some small number.
   env.require_pc_table = false;  // No PC table here.
@@ -154,9 +155,9 @@ static size_t CountFilesInDir(std::string_view dir_path) {
 
 // Tests fuzzing and distilling in multiple shards.
 TEST(Centipede, ShardsAndDistillTest) {
-  ScopedTempDir tmp_dir;
+  TempCorpusDir tmp_dir{test_info_->name()};
   Environment env;  // Reads the flags. We override some members below.
-  env.workdir = tmp_dir.path;
+  env.workdir = tmp_dir.path();
   env.log_level = 0;  // Disable most of the logging in the test.
   size_t combined_num_runs = 100000;  // Enough to run through all inputs.
   env.total_shards = 20;
@@ -164,10 +165,8 @@ TEST(Centipede, ShardsAndDistillTest) {
   env.require_pc_table = false;  // No PC table here.
 
   // Create two empty dirs and add them to corpus_dir.
-  env.corpus_dir.push_back(std::filesystem::path(tmp_dir.path).append("cd1"));
-  env.corpus_dir.push_back(std::filesystem::path(tmp_dir.path).append("cd2"));
-  std::filesystem::create_directory(env.corpus_dir[0]);
-  std::filesystem::create_directory(env.corpus_dir[1]);
+  env.corpus_dir.push_back(tmp_dir.CreateSubdir("cd1"));
+  env.corpus_dir.push_back(tmp_dir.CreateSubdir("cd2"));
 
   CentipedeMock mock(env);
   // First round of runs: do the actual fuzzing, compute the features.
@@ -217,9 +216,9 @@ TEST(Centipede, ShardsAndDistillTest) {
 
 // Tests --input_filter. test_input_filter filters out inputs with 'b' in them.
 TEST(Centipede, InputFilter) {
-  ScopedTempDir tmp_dir;
+  TempCorpusDir tmp_dir{test_info_->name()};
   Environment env;  // Reads the flags. We override some members below.
-  env.workdir = tmp_dir.path;
+  env.workdir = tmp_dir.path();
   env.num_runs = 256;            // Enough to run through all 1- byte inputs.
   env.log_level = 0;             // Disable most of the logging in the test.
   env.require_pc_table = false;  // No PC table here.
@@ -369,10 +368,11 @@ class MergeMock : public CentipedeCallbacks {
 
 TEST(Centipede, MergeFromOtherCorpus) {
   using Corpus = std::vector<ByteArray>;
+
   // Set up the workdir, create a 2-shard corpus with 3 inputs each.
-  ScopedTempDir wd("workdir");
+  TempCorpusDir work_tmp_dir{test_info_->name(), "workdir"};
   Environment env;
-  env.workdir = wd.path;
+  env.workdir = work_tmp_dir.path();
   env.num_runs = 3;              // Just a few runs.
   env.require_pc_table = false;  // No PC table here.
   MergeMock mock(env);
@@ -381,33 +381,34 @@ TEST(Centipede, MergeFromOtherCorpus) {
     CentipedeMain(env, factory);
   }
   CentipedeMain(env, factory);
-  EXPECT_EQ(wd.GetCorpus(0), Corpus({{0}, {1}, {2}}));
-  EXPECT_EQ(wd.GetCorpus(1), Corpus({{3}, {4}, {5}}));
+  EXPECT_EQ(work_tmp_dir.GetCorpus(0), Corpus({{0}, {1}, {2}}));
+  EXPECT_EQ(work_tmp_dir.GetCorpus(1), Corpus({{3}, {4}, {5}}));
 
   // Set up another workdir, create a 2-shard corpus there, with 4 inputs each.
-  ScopedTempDir merge_wd("merge_from");
+  TempCorpusDir merge_tmp_dir(test_info_->name(), "merge_from");
   Environment merge_env;
-  merge_env.workdir = merge_wd.path;
+  merge_env.workdir = merge_tmp_dir.path();
   merge_env.num_runs = 4;
   merge_env.require_pc_table = false;  // No PC table here.
   mock.Reset();
   for (merge_env.my_shard_index = 0; merge_env.my_shard_index < 2;
+
        ++merge_env.my_shard_index) {
     CentipedeMain(merge_env, factory);
   }
-  EXPECT_EQ(merge_wd.GetCorpus(0), Corpus({{0}, {1}, {2}, {3}}));
-  EXPECT_EQ(merge_wd.GetCorpus(1), Corpus({{4}, {5}, {6}, {7}}));
+  EXPECT_EQ(merge_tmp_dir.GetCorpus(0), Corpus({{0}, {1}, {2}, {3}}));
+  EXPECT_EQ(merge_tmp_dir.GetCorpus(1), Corpus({{4}, {5}, {6}, {7}}));
 
   // Merge shards of `merge_env` into shards of `env`.
   // Shard 0 will receive one extra input: {3}
   // Shard 1 will receive two extra inputs: {6}, {7}
-  env.merge_from = merge_wd.path;
+  env.merge_from = merge_tmp_dir.path();
   env.num_runs = 0;
   for (env.my_shard_index = 0; env.my_shard_index < 2; ++env.my_shard_index) {
     CentipedeMain(env, factory);
   }
-  EXPECT_EQ(wd.GetCorpus(0), Corpus({{0}, {1}, {2}, {3}}));
-  EXPECT_EQ(wd.GetCorpus(1), Corpus({{3}, {4}, {5}, {6}, {7}}));
+  EXPECT_EQ(work_tmp_dir.GetCorpus(0), Corpus({{0}, {1}, {2}, {3}}));
+  EXPECT_EQ(work_tmp_dir.GetCorpus(1), Corpus({{3}, {4}, {5}, {6}, {7}}));
 }
 
 // A mock for FunctionFilter test.
@@ -455,10 +456,9 @@ class FunctionFilterMock : public CentipedeCallbacks {
 // Runs a short fuzzing session with the provided `function_filter`.
 // Returns a sorted array of observed inputs.
 static std::vector<ByteArray> RunWithFunctionFilter(
-    std::string_view function_filter) {
-  ScopedTempDir wd("workdir");
+    std::string_view function_filter, const TempDir &tmp_dir) {
   Environment env;
-  env.workdir = wd.path;
+  env.workdir = tmp_dir.path();
   env.seed = 1;  // make the runs predictable.
   env.num_runs = 100;
   env.batch_size = 10;
@@ -483,22 +483,33 @@ static std::vector<ByteArray> RunWithFunctionFilter(
 // Tests --function_filter.
 TEST(Centipede, FunctionFilter) {
   // Run with empty function filter.
-  auto observed_empty = RunWithFunctionFilter("");
-  ASSERT_EQ(observed_empty.size(), 3);
+  {
+    TempDir tmp_dir{test_info_->name(), "none"};
+    auto observed_empty = RunWithFunctionFilter("", tmp_dir);
+    ASSERT_EQ(observed_empty.size(), 3);
+  }
 
   // Run with a one-function filter
-  auto observed_single = RunWithFunctionFilter("SingleEdgeFunc");
-  ASSERT_EQ(observed_single.size(), 1);
-  EXPECT_EQ(observed_single[0], FunctionFilterMock::GetMutant(0));
+  {
+    TempDir tmp_dir{test_info_->name(), "single"};
+    auto observed_single = RunWithFunctionFilter("SingleEdgeFunc", tmp_dir);
+    ASSERT_EQ(observed_single.size(), 1);
+    EXPECT_EQ(observed_single[0], FunctionFilterMock::GetMutant(0));
+  }
 
   // Run with a two-function filter.
-  auto observed_both = RunWithFunctionFilter("SingleEdgeFunc,MultiEdgeFunc");
-  ASSERT_EQ(observed_both.size(), 2);
-  EXPECT_EQ(observed_both[0], FunctionFilterMock::GetMutant(0));
-  EXPECT_EQ(observed_both[1], FunctionFilterMock::GetMutant(1));
+  {
+    TempDir tmp_dir{test_info_->name(), "single_multi"};
+    auto observed_both =
+        RunWithFunctionFilter("SingleEdgeFunc,MultiEdgeFunc", tmp_dir);
+    ASSERT_EQ(observed_both.size(), 2);
+    EXPECT_EQ(observed_both[0], FunctionFilterMock::GetMutant(0));
+    EXPECT_EQ(observed_both[1], FunctionFilterMock::GetMutant(1));
+  }
 }
 
 namespace {
+
 // A mock for ExtraBinaries test.
 class ExtraBinariesMock : public CentipedeCallbacks {
  public:
@@ -533,15 +544,16 @@ class ExtraBinariesMock : public CentipedeCallbacks {
  private:
   size_t number_of_mutations_ = 0;
 };
+
 }  // namespace
 
 // Tests --extra_binaries.
 // Executes one main binary (--binary) and 3 extra ones (--extra_binaries).
 // Expects the main binary and two extra ones to generate one crash each.
 TEST(Centipede, ExtraBinaries) {
-  ScopedTempDir wd("workdir");
+  TempDir tmp_dir{test_info_->name()};
   Environment env;
-  env.workdir = wd.path;
+  env.workdir = tmp_dir.path();
   env.num_runs = 100;
   env.batch_size = 10;
   env.log_level = 1;
@@ -556,8 +568,10 @@ TEST(Centipede, ExtraBinaries) {
   // The "crashes" dir must contain 3 crashy inputs, one for each binary.
   // We simply match their file names, because they are hashes of the contents.
   std::vector<std::string> found_crash_file_names;
-  auto crashes_dir_path = std::filesystem::path(wd.path).append("crashes");
-  for (auto const &dir_ent :
+  auto crashes_dir_path = env.MakeCrashReproducerDirPath();
+  ASSERT_TRUE(std::filesystem::exists(crashes_dir_path))
+      << VV(crashes_dir_path);
+  for (const auto &dir_ent :
        std::filesystem::directory_iterator(crashes_dir_path)) {
     found_crash_file_names.push_back(dir_ent.path().filename());
   }
@@ -598,9 +612,9 @@ TEST(Centipede, ShardReader) {
   features_blobs.push_back(PackFeaturesAndHash(data3, fv3));
   features_blobs.push_back(PackFeaturesAndHash(data4, fv4));
 
-  auto tmp_dir = GetTestTempDir();
-  std::string corpus_path = std::filesystem::path(tmp_dir).append("corpus");
-  std::string features_path = std::filesystem::path(tmp_dir).append("features");
+  TempDir tmp_dir{test_info_->name()};
+  std::string corpus_path = tmp_dir.GetFilePath("corpus");
+  std::string features_path = tmp_dir.GetFilePath("features");
   WriteBlobsToFile(corpus_blobs, corpus_path);
   WriteBlobsToFile(features_blobs, features_path);
 

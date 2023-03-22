@@ -670,6 +670,7 @@ cc_library(
         ":logging",
         ":util",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
     ],
 )
 
@@ -788,7 +789,6 @@ cc_test(
     srcs = ["minimize_crash_test.cc"],
     deps = [
         ":defs",
-        ":logging",
         ":minimize_crash",
         ":test_util",
         ":util",

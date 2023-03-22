@@ -52,20 +52,37 @@ std::filesystem::path GetDataDependencyFilepath(std::string_view rel_path);
 // Resets the PATH envvar to "`dir`:$PATH".
 void PrependDirToPathEnvvar(std::string_view dir);
 
-// Creates a tmp dir in CTOR, removes it in DTOR.
-// The dir name will contain `name`.
-struct ScopedTempDir {
-  explicit ScopedTempDir(std::string_view name = "")
-      : path(std::filesystem::path(GetTestTempDir())
-                 .append(absl::StrCat("centipede_", name, getpid()))) {
+// Creates or clears a tmp dir in CTOR. The dir will end with `leaf` subdir.
+class TempDir {
+ public:
+  explicit TempDir(std::string_view leaf1, std::string_view leaf2 = "")
+      : path_{std::filesystem::path(GetTestTempDir()) / leaf1 / leaf2} {
+    std::filesystem::remove_all(path_);
+    std::filesystem::create_directories(path_);
+  }
+
+  const std::filesystem::path& path() const { return path_; }
+
+  std::string GetFilePath(std::string_view file_name) const {
+    return path_ / file_name;
+  }
+
+  std::string CreateSubdir(std::string_view name) const {
+    std::string path = GetFilePath(name);
     std::filesystem::remove_all(path);
     std::filesystem::create_directories(path);
+    return path;
   }
-  ~ScopedTempDir() { std::filesystem::remove_all(path); }
-  std::string GetFilePath(std::string_view file_name) {
-    return std::filesystem::path(path).append(file_name);
-  }
-  // TODO(kcc): move GetCorpus()/CountElementsInCorpusFile() out of this class.
+
+ private:
+  std::filesystem::path path_;
+};
+
+class TempCorpusDir : public TempDir {
+ public:
+  // Reuse the parent's ctor.
+  using TempDir::TempDir;
+
   // Loads the corpus from the file `name_prefix``shard_index`
   // and returns it as a vector<ByteArray>.
   std::vector<ByteArray> GetCorpus(size_t shard_index,
@@ -80,12 +97,12 @@ struct ScopedTempDir {
     UnpackBytesFromAppendFile(corpus_data, &corpus);
     return corpus;
   }
+
   // Returns the count of elements in the corpus file `path`/`file_name`.
   size_t CountElementsInCorpusFile(size_t shard_index,
                                    std::string_view name_prefix = "corpus.") {
     return GetCorpus(shard_index, name_prefix).size();
   }
-  std::string path;
 };
 
 }  // namespace centipede
