@@ -47,7 +47,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
-#include <deque>
 #include <filesystem>
 #include <iostream>
 #include <memory>
@@ -722,14 +721,12 @@ void Centipede::ReportCrash(std::string_view binary,
   // finding the reproducer fast.
   // TODO(b/274705740): When the bug is fixed, set `input_idxs_to_try`'s size to
   //  `suspect_input_idx + 1`.
-  std::deque<size_t> input_idxs_to_try(input_vec.size());
-  std::iota(input_idxs_to_try.begin(), input_idxs_to_try.end(), 0);
+  std::vector<size_t> input_idxs_to_try(input_vec.size() + 1);
+  input_idxs_to_try.front() = suspect_input_idx;
+  std::iota(input_idxs_to_try.begin() + 1, input_idxs_to_try.end(), 0);
   // Prioritize the presumed crasher by inserting it in front of everything
   // else. However, do keep it at the old location, too, in case the target was
   // primed for a crash by the sequence of inputs that preceded the crasher.
-  if (suspect_input_idx < input_vec.size()) {
-    input_idxs_to_try.push_front(suspect_input_idx);
-  }
 
   if (batch_result.failure_description() == kExecutionFailurePerBatchTimeout) {
     LOG(INFO) << log_prefix
