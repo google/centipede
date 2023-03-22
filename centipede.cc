@@ -690,17 +690,24 @@ void Centipede::FuzzingLoop() {
 void Centipede::ReportCrash(std::string_view binary,
                             const std::vector<ByteArray> &input_vec,
                             const BatchResult &batch_result) {
+  CHECK_EQ(input_vec.size(), batch_result.results().size());
+
   if (num_crash_reports_ >= env_.max_num_crash_reports) return;
+
+  const size_t suspect_input_idx = std::clamp<size_t>(
+      batch_result.num_outputs_read(), 0, input_vec.size() - 1);
 
   std::string log_prefix =
       absl::StrCat("ReportCrash[", num_crash_reports_, "]: ");
 
   LOG(INFO) << log_prefix << "Batch execution failed:"
-            << "\nBinary          : " << binary
-            << "\nExit code       : " << batch_result.exit_code()
-            << "\nFailure         : " << batch_result.failure_description()
-            << "\nNumber of inputs: " << input_vec.size()
-            << "\nCrash log       :\n\n";
+            << "\nBinary               : " << binary
+            << "\nExit code            : " << batch_result.exit_code()
+            << "\nFailure              : " << batch_result.failure_description()
+            << "\nNumber of inputs     : " << input_vec.size()
+            << "\nNumber of inputs read: " << batch_result.num_outputs_read()
+            << "\nSuspect input index  : " << suspect_input_idx
+            << "\nCrash log            :\n\n";
   for (const auto &log_line :
        absl::StrSplit(absl::StripAsciiWhitespace(batch_result.log()), '\n')) {
     LOG(INFO).NoPrefix() << "CRASH LOG: " << log_line;
@@ -713,13 +720,13 @@ void Centipede::ReportCrash(std::string_view binary,
 
   // Determine the optimal order of the inputs to try to maximize the chances of
   // finding the reproducer fast.
-  CHECK_EQ(input_vec.size(), batch_result.results().size());
+  // TODO(b/274705740): When the bug is fixed, set `input_idxs_to_try`'s size to
+  //  `suspect_input_idx + 1`.
   std::deque<size_t> input_idxs_to_try(input_vec.size());
   std::iota(input_idxs_to_try.begin(), input_idxs_to_try.end(), 0);
   // Prioritize the presumed crasher by inserting it in front of everything
   // else. However, do keep it at the old location, too, in case the target was
   // primed for a crash by the sequence of inputs that preceded the crasher.
-  const size_t suspect_input_idx = batch_result.num_outputs_read();
   if (suspect_input_idx < input_vec.size()) {
     input_idxs_to_try.push_front(suspect_input_idx);
   }
@@ -743,6 +750,7 @@ void Centipede::ReportCrash(std::string_view binary,
       RemoteMkdir(crash_dir);
       std::string file_path = std::filesystem::path(crash_dir).append(hash);
       LOG(INFO) << log_prefix << "Detected crash-reproducing input:"
+                << "\nInput index    : " << input_idx
                 << "\nInput bytes    : " << AsString(one_input, /*max_len=*/32)
                 << "\nExit code      : " << one_input_batch_result.exit_code()
                 << "\nFailure        : "
