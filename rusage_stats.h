@@ -61,8 +61,8 @@ class RUsageScope {
   static RUsageScope ThisProcess();
   static RUsageScope Process(pid_t pid);
   static RUsageScope ThisThread();
+  static RUsageScope ThisProcessThread(pid_t tid);
   static RUsageScope Thread(pid_t pid, pid_t tid);
-  static RUsageScope Thread(pid_t tid);
 
   // Copyable and movable.
   RUsageScope(const RUsageScope&) = default;

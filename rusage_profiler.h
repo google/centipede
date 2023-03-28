@@ -326,7 +326,7 @@ class RUsageProfiler {
   // the caller, as if the caller printed them. That makes it easy to attribute
   // the logged resource usage to the actual user rather than RUsageProfiler.
   RUsageProfiler(                     //
-      RUsageScope scope,              //
+      RUsageScope scope,              // Which process/thread to monitor
       MetricsMask metrics,            // Which metrics to track
       RaiiActionsMask raii_actions,   // Which RAII logs to enable
       SourceLocation location,        // Pass SourceLocation{__FILE__, __LINE__}
@@ -344,7 +344,7 @@ class RUsageProfiler {
   // the client can still request explicit snapshots at any time, interleaved
   // with timelapse ones.
   RUsageProfiler(                         //
-      RUsageScope scope,                  //
+      RUsageScope scope,                  // Which process/thread to monitor
       MetricsMask metrics,                // Which metrics to track
       absl::Duration timelapse_interval,  // Take timelapse snapshots this often
       bool also_log_timelapses,           // Log timelapse snapshots as taken

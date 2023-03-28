@@ -73,7 +73,7 @@ RUsageScope RUsageScope::ThisThread() {
   return RUsageScope{getpid(), static_cast<pid_t>(syscall(__NR_gettid))};
 }
 
-RUsageScope RUsageScope::Thread(pid_t tid) {
+RUsageScope RUsageScope::ThisProcessThread(pid_t tid) {
   return RUsageScope{getpid(), tid};
 }
 
