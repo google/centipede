@@ -58,6 +58,7 @@
 #include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
 #include "absl/strings/str_split.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/types/span.h"
@@ -763,8 +764,33 @@ void Centipede::ReportCrash(std::string_view binary,
 
   LOG(INFO) << log_prefix
             << "Crash was not observed when running inputs one-by-one";
-  // TODO(kcc): [as-needed] there will be cases when several inputs cause a
-  // crash, but no single input does. Handle this case.
+
+  // There will be cases when several inputs collectively cause a crash, but no
+  // single input does. Handle this by writing out all inputs from the batch.
+
+  // TODO(bookholt): Check for repro by re-running the whole batch.
+  // TODO(ussuri): Consolidate logic for test case reproduction.
+
+  const auto &suspect_input = input_vec[suspect_input_idx];
+  // Save inputs to <--workdir>/crash/unreliable_batch-<HASH_OF_SUSPECT_INPUT>.
+  auto suspect_hash = Hash(suspect_input);
+  auto crash_dir = env_.MakeCrashReproducerDirPath();
+  RemoteMkdir(crash_dir);
+  std::string save_dir =
+    std::filesystem::path(crash_dir).append("crashing_batch-").
+    concat(suspect_hash);
+  RemoteMkdir(save_dir);
+  LOG(INFO) << log_prefix << "Saving used inputs from batch to: " << save_dir;
+  for (int i = 0; i <= suspect_input_idx; ++i) {
+    const auto &one_input = input_vec[i];
+    auto hash = Hash(one_input);
+    std::string file_path = std::filesystem::path(save_dir)
+      .append(absl::StrFormat("input-%010d-%s", i, hash));
+    auto *file = RemoteFileOpen(file_path, "w");
+    CHECK(file != nullptr) << log_prefix << "Failed to open " << file_path;
+    RemoteFileAppend(file, one_input);
+    RemoteFileClose(file);
+  }
 }
 
 }  // namespace centipede

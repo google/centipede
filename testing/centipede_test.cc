@@ -579,6 +579,115 @@ TEST(Centipede, ExtraBinaries) {
                                           Hash({10}), Hash({30}), Hash({50})));
 }
 
+namespace {
+
+// A mock for UndetectedCrashingInput test.
+class UndetectedCrashingInputMock : public CentipedeCallbacks {
+ public:
+  explicit UndetectedCrashingInputMock(const Environment &env,
+                                       size_t crashing_input_idx)
+      : CentipedeCallbacks{env}, crashing_input_idx_{crashing_input_idx} {
+    CHECK_LE(crashing_input_idx_, std::numeric_limits<uint8_t>::max());
+  }
+
+  // Doesn't execute anything.
+  // Crash when 0th char of input to binary b1 equals 10, but only on 1st exec.
+  bool Execute(std::string_view binary, const std::vector<ByteArray> &inputs,
+               BatchResult &batch_result) override {
+    batch_result.ClearAndResize(inputs.size());
+    bool res = true;
+    for (const auto & input : inputs) {
+      CHECK_EQ(input.size(), 1);  // By construction in `Mutate()`.
+      // The contents of each mutant is its sequantial number.
+      if (input[0] == crashing_input_idx_) {
+        if (first_pass_) {
+          first_pass_ = false;
+          crashing_input_ = input;
+          // TODO(b/274705740): `num_outputs_read()` is the number of outputs
+          //  that Centipede engine *expects* to have been read from *the
+          //  current BatchResult* by the *particular* implememtation of
+          //  `CentipedeCallbacks` (and `DefaultCentipedeCallbacks` fits the
+          //  bill). `Centipede::ReportCrash()` then uses this value as a hint
+          //  for the crashing input's index, and in our case saves the batch's
+          //  inputs from 0 up to and including the crasher to a subdir. See the
+          //  bug for details. All of this is horribly convoluted and misplaced
+          //  here. Implement a cleaner solution.
+          batch_result.num_outputs_read() =
+              crashing_input_idx_ % env_.batch_size;
+          res = false;
+        }
+      }
+    }
+    return res;
+  }
+
+  // Sets the mutants to different 1-byte values.
+  void Mutate(const std::vector<ByteArray> &inputs, size_t num_mutants,
+              std::vector<ByteArray> &mutants) override {
+    mutants.resize(num_mutants);
+    for (auto &mutant : mutants) {
+      // The contents of each mutant is simply its sequential number.
+      mutant = {static_cast<uint8_t>(curr_input_idx_++)};
+    }
+  }
+
+  // Gets the input that triggered the crash.
+  ByteArray crashing_input() const { return crashing_input_; }
+
+ private:
+  const size_t crashing_input_idx_;
+  size_t curr_input_idx_ = 0;
+  ByteArray crashing_input_ = {};
+  bool first_pass_ = true;
+};
+
+}  // namespace
+
+// Test for preserving a crashing batch when 1-by-1 exec fails to reproduce.
+// Executes one main binary (--binary).
+// Expects the binary to crash once and 1-by-1 reproduction to fail.
+TEST(Centipede, UndetectedCrashingInput) {
+  constexpr size_t kNumBatches = 7;
+  constexpr size_t kBatchSize = 11;
+  constexpr size_t kCrashingInputIdxInBatch = kBatchSize / 2;
+  constexpr size_t kCrashingInputIdx =
+      (kNumBatches / 2) * kBatchSize + kCrashingInputIdxInBatch;
+
+  LOG(INFO) << VV(kNumBatches) << VV(kBatchSize)
+            << VV(kCrashingInputIdxInBatch) VV(kCrashingInputIdx);
+
+  TempDir temp_dir{test_info_->name()};
+  Environment env;
+  env.workdir = temp_dir.path();
+  env.num_runs = kBatchSize * kNumBatches;
+  env.batch_size = kBatchSize;
+  // No real binary: prevent attempts by Centipede to read a PCtable from it.
+  env.require_pc_table = false;
+
+  UndetectedCrashingInputMock mock(env, kCrashingInputIdx);
+  MockFactory factory(mock);
+  CentipedeMain(env, factory);
+
+  // Verify that we see the expected inputs from the batch.
+  // The "crashes/unreliable_batch-<HASH>" dir must contain all inputs from the
+  // batch that were executing during the session.
+  // We simply verify the number of saved inputs matches the number of executed
+  // inputs.
+  const auto crashing_input_hash = Hash(mock.crashing_input());
+  const auto crashes_dir_path = std::filesystem::path(temp_dir.path())
+                                    .append("crashes")
+                                    .append("crashing_batch-")
+                                    .concat(crashing_input_hash);
+  ASSERT_TRUE(std::filesystem::exists(crashes_dir_path)) << crashes_dir_path;
+  std::vector<std::string> found_crash_file_names;
+  for (auto const &dir_ent :
+       std::filesystem::directory_iterator(crashes_dir_path)) {
+    found_crash_file_names.push_back(dir_ent.path().filename());
+  }
+  // TODO(ussuri): Verify exact names/contents of the files, not just count.
+  ASSERT_EQ(found_crash_file_names.size(), kCrashingInputIdxInBatch + 1);
+}
+
 static void WriteBlobsToFile(const std::vector<ByteArray> &blobs,
                              const std::string_view path) {
   auto appender = DefaultBlobFileAppenderFactory();

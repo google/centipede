@@ -155,6 +155,8 @@ class BatchResult {
   }
 
  private:
+  friend class MultiInputMock;
+
   std::vector<ExecutionResult> results_;
   std::string log_;  // log_ is populated optionally, e.g. if there was a crash.
   int exit_code_ = EXIT_SUCCESS;  // Process exit code.
