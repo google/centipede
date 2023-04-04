@@ -168,6 +168,8 @@ TEST(Centipede, ShardsAndDistillTest) {
   env.corpus_dir.push_back(tmp_dir.CreateSubdir("cd1"));
   env.corpus_dir.push_back(tmp_dir.CreateSubdir("cd2"));
 
+  VLOG(1) << "Fuzzing";
+
   CentipedeMock mock(env);
   // First round of runs: do the actual fuzzing, compute the features.
   size_t max_shard_size = 0;
@@ -186,6 +188,8 @@ TEST(Centipede, ShardsAndDistillTest) {
 
   EXPECT_GT(CountFilesInDir(env.corpus_dir[0]), 128);
   EXPECT_EQ(CountFilesInDir(env.corpus_dir[1]), 0);
+
+  VLOG(1) << "Distilling";
 
   // Second round of runs. Don't fuzz, only distill.
   // Don't distill in the last one to test the flag behaviour.
@@ -473,7 +477,6 @@ static std::vector<ByteArray> RunWithFunctionFilter(
   FunctionFilterMock mock(env);
   MockFactory factory(mock);
   CentipedeMain(env, factory);
-  LOG(INFO) << mock.observed_inputs_.size();
   std::vector<ByteArray> res(mock.observed_inputs_.begin(),
                              mock.observed_inputs_.end());
   std::sort(res.begin(), res.end());
@@ -652,9 +655,6 @@ TEST(Centipede, UndetectedCrashingInput) {
   constexpr size_t kCrashingInputIdxInBatch = kBatchSize / 2;
   constexpr size_t kCrashingInputIdx =
       (kNumBatches / 2) * kBatchSize + kCrashingInputIdxInBatch;
-
-  LOG(INFO) << VV(kNumBatches) << VV(kBatchSize)
-            << VV(kCrashingInputIdxInBatch) VV(kCrashingInputIdx);
 
   TempDir temp_dir{test_info_->name()};
   Environment env;
