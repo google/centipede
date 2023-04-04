@@ -42,7 +42,7 @@ class Centipede {
   Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
             const BinaryInfo &binary_info, CoverageLogger &coverage_logger,
             Stats &stats);
-  virtual ~Centipede() {}
+  ~Centipede();
 
   // Main loop.
   void FuzzingLoop();

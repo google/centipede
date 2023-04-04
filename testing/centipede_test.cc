@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string.h>
-
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
 #include <set>
 #include <string>
@@ -47,7 +46,8 @@ namespace {
 // A mock for CentipedeCallbacks.
 class CentipedeMock : public CentipedeCallbacks {
  public:
-  CentipedeMock(const Environment &env) : CentipedeCallbacks(env) {}
+  explicit CentipedeMock(const Environment &env) : CentipedeCallbacks(env) {}
+
   // Doesn't execute anything
   // Sets `batch_result.results()` based on the values of `inputs`:
   // Collects various stats about the inputs, to be checked in tests.
@@ -58,7 +58,7 @@ class CentipedeMock : public CentipedeCallbacks {
     // i-th element is the number of bytes with the value 'i' in the input.
     // `counters` is converted to FeatureVec and added to
     // `batch_result.results()`.
-    for (auto &input : inputs) {
+    for (const auto &input : inputs) {
       ByteArray counters(256);
       for (uint8_t byte : input) {
         counters[byte]++;
@@ -84,6 +84,7 @@ class CentipedeMock : public CentipedeCallbacks {
     min_batch_size_ = std::min(min_batch_size_, inputs.size());
     return true;
   }
+
   // Makes predictable mutants:
   // first 255 mutations are 1-byte sequences {1} ... {255}.
   // (the value {0} is produced by DummyValidInput()).
@@ -103,6 +104,8 @@ class CentipedeMock : public CentipedeCallbacks {
       mutant = {byte0, byte1};
     }
   }
+
+  // TODO(ussuri): Make all of these  private.
 
   absl::flat_hash_set<uint8_t> observed_1byte_inputs_;
   absl::flat_hash_set<uint16_t> observed_2byte_inputs_;
@@ -147,11 +150,15 @@ TEST(Centipede, MockTest) {
   EXPECT_EQ(mock.observed_2byte_inputs_.size(), 65536);  // all 2-byte seqs.
 }
 
-static size_t CountFilesInDir(std::string_view dir_path) {
+namespace {
+
+size_t CountFilesInDir(std::string_view dir_path) {
   const std::filesystem::directory_iterator dir_iter{dir_path};
   return std::distance(std::filesystem::begin(dir_iter),
                        std::filesystem::end(dir_iter));
 }
+
+}  // namespace
 
 // Tests fuzzing and distilling in multiple shards.
 TEST(Centipede, ShardsAndDistillTest) {
@@ -236,26 +243,30 @@ TEST(Centipede, InputFilter) {
   EXPECT_TRUE(corpus_set.count({'c'}));
 }
 
+namespace {
+
 // Callbacks for MutateViaExternalBinary test.
 class MutateCallbacks : public CentipedeCallbacks {
  public:
   explicit MutateCallbacks(const Environment &env) : CentipedeCallbacks(env) {}
+
   // Will not be called.
   bool Execute(std::string_view binary, const std::vector<ByteArray> &inputs,
                BatchResult &batch_result) override {
-    CHECK(false);
-    return false;
+    ABSL_UNREACHABLE();
   }
 
   // Will not be called.
   void Mutate(const std::vector<ByteArray> &inputs, size_t num_mutants,
               std::vector<ByteArray> &mutants) override {
-    CHECK(false);
+    ABSL_UNREACHABLE();
   }
 
   // Redeclare a protected member function as public so the tests can call it.
   using CentipedeCallbacks::MutateViaExternalBinary;
 };
+
+}  // namespace
 
 TEST(Centipede, MutateViaExternalBinary) {
   // This binary contains a test-friendly custom mutator.
@@ -332,6 +343,8 @@ TEST(Centipede, MutateViaExternalBinary) {
   }
 }
 
+namespace {
+
 // A mock for MergeFromOtherCorpus test.
 class MergeMock : public CentipedeCallbacks {
  public:
@@ -365,6 +378,8 @@ class MergeMock : public CentipedeCallbacks {
  private:
   size_t number_of_mutations_ = 0;
 };
+
+}  // namespace
 
 TEST(Centipede, MergeFromOtherCorpus) {
   using Corpus = std::vector<ByteArray>;
@@ -411,6 +426,8 @@ TEST(Centipede, MergeFromOtherCorpus) {
   EXPECT_EQ(work_tmp_dir.GetCorpus(1), Corpus({{3}, {4}, {5}, {6}, {7}}));
 }
 
+namespace {
+
 // A mock for FunctionFilter test.
 class FunctionFilterMock : public CentipedeCallbacks {
  public:
@@ -428,7 +445,7 @@ class FunctionFilterMock : public CentipedeCallbacks {
   void Mutate(const std::vector<ByteArray> &inputs, size_t num_mutants,
               std::vector<ByteArray> &mutants) override {
     mutants.resize(num_mutants);
-    for (auto &input : inputs) {
+    for (const auto &input : inputs) {
       if (input != DummyValidInput()) {
         observed_inputs_.insert(input);
       }
@@ -455,8 +472,8 @@ class FunctionFilterMock : public CentipedeCallbacks {
 
 // Runs a short fuzzing session with the provided `function_filter`.
 // Returns a sorted array of observed inputs.
-static std::vector<ByteArray> RunWithFunctionFilter(
-    std::string_view function_filter, const TempDir &tmp_dir) {
+std::vector<ByteArray> RunWithFunctionFilter(std::string_view function_filter,
+                                             const TempDir &tmp_dir) {
   Environment env;
   env.workdir = tmp_dir.path();
   env.seed = 1;  // make the runs predictable.
@@ -479,6 +496,8 @@ static std::vector<ByteArray> RunWithFunctionFilter(
   std::sort(res.begin(), res.end());
   return res;
 }
+
+}  // namespace
 
 // Tests --function_filter.
 TEST(Centipede, FunctionFilter) {
@@ -688,7 +707,9 @@ TEST(Centipede, UndetectedCrashingInput) {
   ASSERT_EQ(found_crash_file_names.size(), kCrashingInputIdxInBatch + 1);
 }
 
-static void WriteBlobsToFile(const std::vector<ByteArray> &blobs,
+namespace{
+
+void WriteBlobsToFile(const std::vector<ByteArray> &blobs,
                              const std::string_view path) {
   auto appender = DefaultBlobFileAppenderFactory();
   CHECK_OK(appender->Open(path));
@@ -696,6 +717,8 @@ static void WriteBlobsToFile(const std::vector<ByteArray> &blobs,
     CHECK_OK(appender->Append(blob));
   }
 }
+
+}  // namespace
 
 TEST(Centipede, ShardReader) {
   ByteArray data1 = {1, 2, 3};
