@@ -384,6 +384,22 @@ void Centipede::LoadShard(const Environment &load_env, size_t shard_index,
   Rerun(to_rerun);
 }
 
+void Centipede::LoadAllShardsInRandomOrder(const Environment &load_env,
+                                           bool rerun_my_shard) {
+  // TODO(ussuri): It seems logical to reset `corpus_` before this, but
+  //  that broke `ShardsAndDistillTest` in testing/centipede_test.cc.
+  //  Investigate.
+  std::vector<size_t> shard_idxs(env_.total_shards);
+  std::iota(shard_idxs.begin(), shard_idxs.end(), 0);
+  std::shuffle(shard_idxs.begin(), shard_idxs.end(), rng_);
+  size_t num_shards_loaded = 0;
+  for (size_t shard_idx : shard_idxs) {
+    const bool rerun = rerun_my_shard && shard_idx == env_.my_shard_index;
+    LoadShard(load_env, shard_idx, rerun);
+    LOG_IF(INFO, (++num_shards_loaded % 100) == 0) << VV(num_shards_loaded);
+  }
+}
+
 void Centipede::Rerun(std::vector<ByteArray> &to_rerun) {
   if (to_rerun.empty()) return;
   auto features_file = DefaultBlobFileAppenderFactory();
@@ -549,6 +565,31 @@ void Centipede::MergeFromOtherCorpus(std::string_view merge_from_dir,
   }
 }
 
+void Centipede::ReloadAllShardsAndDistillCorpusToDir() {
+  // Reload the shards. This automatically distills the corpus by discarding
+  // inputs with duplicate feature sets as they are being added. Reloading
+  // randomly leaves random winners from such sets of duplicates in the
+  // distilled output: so multiple distilling shards will produce different
+  // outputs from the same inputs (the property that we want).
+  LoadAllShardsInRandomOrder(env_, /*rerun_my_shard=*/false);
+
+  // Save the distilled corpus to a file in workdir and possibly to a hashed
+  // file in the first corpus dir passed in `--corpus_dir`.
+  const auto distill_to_path = env_.MakeDistilledPath();
+  LOG(INFO) << "Distilling: shard: " << env_.my_shard_index
+            << " output: " << distill_to_path << " "
+            << " distilled size: " << corpus_.NumActive();
+  const auto appender = DefaultBlobFileAppenderFactory();
+  CHECK_OK(appender->Open(distill_to_path));
+  for (size_t i = 0; i < corpus_.NumActive(); ++i) {
+    const ByteArray &input = corpus_.Get(i);
+    CHECK_OK(appender->Append(input));
+    if (!env_.corpus_dir.empty()) {
+      WriteToLocalHashedFileInDir(env_.corpus_dir[0], input);
+    }
+  }
+}
+
 void Centipede::FuzzingLoop() {
   LOG(INFO) << "Shard: " << env_.my_shard_index << "/" << env_.total_shards
             << " " << TemporaryLocalDirPath() << " "
@@ -563,19 +604,9 @@ void Centipede::FuzzingLoop() {
 
   UpdateAndMaybeLogStats("begin-fuzz", 0);
 
-  if (env_.full_sync || env_.DistillingInThisShard()) {
-    // Load all shards in random order.
-    std::vector<size_t> shards(env_.total_shards);
-    std::iota(shards.begin(), shards.end(), 0);
-    std::shuffle(shards.begin(), shards.end(), rng_);
-    size_t num_shards_loaded = 0;
-    for (auto shard : shards) {
-      LoadShard(env_, shard, /*rerun=*/shard == env_.my_shard_index);
-      // Log every 100 shards.
-      LOG_IF(INFO, (++num_shards_loaded % 100) == 0) << VV(num_shards_loaded);
-    }
+  if (env_.full_sync) {
+    LoadAllShardsInRandomOrder(env_, /*rerun_my_shard=*/true);
   } else {
-    // Only load my shard.
     LoadShard(env_, env_.my_shard_index, /*rerun=*/true);
   }
 
@@ -599,20 +630,6 @@ void Centipede::FuzzingLoop() {
   // affect them.
   fuzz_start_time_ = absl::Now();
   num_runs_ = 0;
-
-  if (env_.DistillingInThisShard()) {
-    auto distill_to_path = env_.MakeDistilledPath();
-    auto appender = DefaultBlobFileAppenderFactory();
-    CHECK_OK(appender->Open(distill_to_path));
-    for (size_t i = 0; i < corpus_.NumActive(); i++) {
-      CHECK_OK(appender->Append(corpus_.Get(i)));
-      if (!env_.corpus_dir.empty()) {
-        WriteToLocalHashedFileInDir(env_.corpus_dir[0], corpus_.Get(i));
-      }
-    }
-    LOG(INFO) << "distill_to_path: " << distill_to_path
-              << " distilled_size: " << corpus_.NumActive();
-  }
 
   // Dump the initial telemetry files. For a brand-new run, these will be
   // functionally empty, e.g. the coverage report will list all target functions
@@ -683,8 +700,15 @@ void Centipede::FuzzingLoop() {
   // version dumped inside the loop.
   MaybeGenerateTelemetry("latest", number_of_batches);
 
-  UpdateAndMaybeLogStats(
-      "end-fuzz", 0);  // Tests rely on this line being present at the end.
+  // The tests rely on this stat being logged last.
+  UpdateAndMaybeLogStats("end-fuzz", 0);
+
+  // If requested, distill the corpus. Note that with `--num_runs` == 0, this
+  // will essentially be the single action this run will carry out, with the
+  // fuzzing loop being a no-op.
+  if (env_.DistillingInThisShard()) {
+    ReloadAllShardsAndDistillCorpusToDir();
+  }
 }
 
 void Centipede::ReportCrash(std::string_view binary,
@@ -776,16 +800,16 @@ void Centipede::ReportCrash(std::string_view binary,
   auto suspect_hash = Hash(suspect_input);
   auto crash_dir = env_.MakeCrashReproducerDirPath();
   RemoteMkdir(crash_dir);
-  std::string save_dir =
-    std::filesystem::path(crash_dir).append("crashing_batch-").
-    concat(suspect_hash);
+  std::string save_dir = std::filesystem::path(crash_dir)
+                             .append("crashing_batch-")
+                             .concat(suspect_hash);
   RemoteMkdir(save_dir);
   LOG(INFO) << log_prefix << "Saving used inputs from batch to: " << save_dir;
   for (int i = 0; i <= suspect_input_idx; ++i) {
     const auto &one_input = input_vec[i];
     auto hash = Hash(one_input);
-    std::string file_path = std::filesystem::path(save_dir)
-      .append(absl::StrFormat("input-%010d-%s", i, hash));
+    std::string file_path = std::filesystem::path(save_dir).append(
+        absl::StrFormat("input-%010d-%s", i, hash));
     auto *file = RemoteFileOpen(file_path, "w");
     CHECK(file != nullptr) << log_prefix << "Failed to open " << file_path;
     RemoteFileAppend(file, one_input);

@@ -23,6 +23,7 @@
 #include "./blob_file.h"
 #include "./centipede_callbacks.h"
 #include "./command.h"
+#include "./control_flow.h"
 #include "./corpus.h"
 #include "./coverage.h"
 #include "./defs.h"
@@ -32,7 +33,6 @@
 #include "./rusage_profiler.h"
 #include "./stats.h"
 #include "./symbol_table.h"
-#include "./control_flow.h"
 
 namespace centipede {
 
@@ -75,6 +75,12 @@ class Centipede {
   // If `rerun` is true, then also re-runs any inputs
   // for which the features are not found in `load_env.workdir`.
   void LoadShard(const Environment &load_env, size_t shard_index, bool rerun);
+  // Loads all the shards from corpus files in `load_env.workdir` in random
+  // order. If `rerun_my_shard` is true, then also re-runs any inputs found in
+  // `load_env.my_shard_index`th shard. Note: `load_env_` may be different from
+  // `env_`.
+  void LoadAllShardsInRandomOrder(const Environment &load_env,
+                                  bool rerun_my_shard);
   // Runs all inputs from `to_rerun`, adds their features to the features file
   // of env_.my_shard_index, adds interesting inputs to the corpus.
   void Rerun(std::vector<ByteArray> &to_rerun);
@@ -125,6 +131,10 @@ class Centipede {
   // Writes added inputs to the current shard.
   void MergeFromOtherCorpus(std::string_view merge_from_dir,
                             size_t shard_index_to_merge);
+  // Reloads the entire corpus for all the shards from workdir (as if with
+  // `env_.full_sync`) thus distilling it, and saves it to a single file with a
+  // shard-hashed name in the workdir.
+  void ReloadAllShardsAndDistillCorpusToDir();
 
   // Collects all PCs from `fv`, then adds PC-pair features to `fv`.
   // Returns the number of added features.
