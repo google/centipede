@@ -112,6 +112,12 @@ Centipede::Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
     input_filter_cmd_.StartForkServer(TemporaryLocalDirPath(), "input_filter");
 }
 
+Centipede::~Centipede() {
+  LOG_IF(WARNING, num_crash_reports_ > env_.max_num_crash_reports)
+      << "Skipped " << (num_crash_reports_ - env_.max_num_crash_reports)
+      << "crash reports";
+}
+
 int Centipede::SaveCorpusToLocalDir(const Environment &env,
                                     std::string_view save_corpus_to_local_dir) {
   for (size_t shard = 0; shard < env.total_shards; shard++) {
@@ -692,13 +698,23 @@ void Centipede::ReportCrash(std::string_view binary,
                             const BatchResult &batch_result) {
   CHECK_EQ(input_vec.size(), batch_result.results().size());
 
-  if (num_crash_reports_ >= env_.max_num_crash_reports) return;
+  ++num_crash_reports_;
+  if (num_crash_reports_ == env_.max_num_crash_reports) {
+    LOG(INFO) << "Reached --max_num_crash_reports: last report below; further "
+                 "reports will be suppressed";
+  } else if (num_crash_reports_ > env_.max_num_crash_reports) {
+    return;
+  }
 
+  // The runner adds results to the returned value as it successfully executes
+  // inputs. It doesn't add anything for a crashing input (there is nothing to
+  // add!), and immediately returns to the engine. Therefore, the suspect
+  // crashing input's index is equal to the number of the returned results.
   const size_t suspect_input_idx = std::clamp<size_t>(
       batch_result.num_outputs_read(), 0, input_vec.size() - 1);
 
-  std::string log_prefix =
-      absl::StrCat("ReportCrash[", num_crash_reports_, "]: ");
+  const std::string log_prefix =
+      absl::StrCat("ReportCrash[", num_crash_reports_ - 1, "]: ");
 
   LOG(INFO) << log_prefix << "Batch execution failed:"
             << "\nBinary               : " << binary
@@ -714,37 +730,32 @@ void Centipede::ReportCrash(std::string_view binary,
   }
   LOG(INFO).NoPrefix() << "\n";
 
-  LOG_IF(INFO, ++num_crash_reports_ == env_.max_num_crash_reports)
-      << log_prefix
-      << "Reached --max_num_crash_reports: further reports will be suppressed";
+  if (batch_result.failure_description() == kExecutionFailurePerBatchTimeout) {
+    LOG(INFO)
+        << log_prefix
+        << "Failure applies to entire batch: not re-running inputs one-by-one";
+    return;
+  }
 
   // Determine the optimal order of the inputs to try to maximize the chances of
-  // finding the reproducer fast.
+  // finding the crasher fast: insert it in front of everything else; however,
+  // do keep it at the old place, too, in case the target was primed for a crash
+  // by the sequence of inputs that preceded the crasher.
   // TODO(b/274705740): When the bug is fixed, set `input_idxs_to_try`'s size to
   //  `suspect_input_idx + 1`.
   std::vector<size_t> input_idxs_to_try(input_vec.size() + 1);
   input_idxs_to_try.front() = suspect_input_idx;
   std::iota(input_idxs_to_try.begin() + 1, input_idxs_to_try.end(), 0);
-  // Prioritize the presumed crasher by inserting it in front of everything
-  // else. However, do keep it at the old location, too, in case the target was
-  // primed for a crash by the sequence of inputs that preceded the crasher.
-
-  if (batch_result.failure_description() == kExecutionFailurePerBatchTimeout) {
-    LOG(INFO) << log_prefix
-              << "Failure applies to entire batch: not executing inputs "
-                 "one-by-one, trying to find the reproducer";
-    return;
-  }
 
   // Try inputs one-by-one in the determined order.
-  LOG(INFO) << log_prefix
-            << "Executing inputs one-by-one, trying to find the reproducer";
+  // TODO(ussuri): Only re-run sequentially; offload all I/O to a thread pool.
+  LOG(INFO) << log_prefix << "Re-running inputs one-by-one to find reproducer";
   for (auto input_idx : input_idxs_to_try) {
     const auto &one_input = input_vec[input_idx];
     BatchResult one_input_batch_result;
     if (!user_callbacks_.Execute(binary, {one_input}, one_input_batch_result)) {
-      auto hash = Hash(one_input);
-      auto crash_dir = env_.MakeCrashReproducerDirPath();
+      const auto hash = Hash(one_input);
+      const auto crash_dir = env_.MakeCrashReproducerDirPath();
       RemoteMkdir(crash_dir);
       std::string file_path = std::filesystem::path(crash_dir).append(hash);
       LOG(INFO) << log_prefix << "Detected crash-reproducing input:"
@@ -754,16 +765,13 @@ void Centipede::ReportCrash(std::string_view binary,
                 << "\nFailure        : "
                 << one_input_batch_result.failure_description()
                 << "\nSaving input to: " << file_path;
-      auto *file = RemoteFileOpen(file_path, "w");  // overwrites existing file.
-      CHECK(file != nullptr) << log_prefix << "Failed to open " << file_path;
-      RemoteFileAppend(file, one_input);
-      RemoteFileClose(file);
+      RemoteFileSetContents(file_path, AsString(one_input));
       return;
     }
   }
 
   LOG(INFO) << log_prefix
-            << "Crash was not observed when running inputs one-by-one";
+            << "Crash was not observed when re-running inputs one-by-one";
 
   // There will be cases when several inputs collectively cause a crash, but no
   // single input does. Handle this by writing out all inputs from the batch.
