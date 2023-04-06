@@ -75,6 +75,19 @@ centipede_fuzz_target(
     sancov = "trace-pc-guard",  # Only this instrumentation to ensure it works.
 )
 
+# Target for clusterfuzz format tests.
+centipede_fuzz_target(
+    name = "clusterfuzz_format_target",
+)
+
+# Target for clusterfuzz format tests instrumented with AddressSanitizer.
+centipede_fuzz_target(
+    name = "clusterfuzz_format_sanitized_target",
+    srcs = ["clusterfuzz_format_target.cc"],
+    copts = ["-fsanitize=address"],
+    linkopts = ["-fsanitize=address"],
+)
+
 # A standalone binary with main() that is worth fuzzinng.
 cc_binary(
     name = "standalone_fuzz_target_with_main",
@@ -213,6 +226,18 @@ sh_test(
     srcs = ["user_defined_features_test.sh"],
     data = [
         ":user_defined_features_target",
+        "@centipede",
+        "@centipede//:test_util_sh",
+    ],
+)
+
+# Runs Centipede and check its output format.
+sh_test(
+    name = "clusterfuzz_format_test",
+    srcs = ["clusterfuzz_format_test.sh"],
+    data = [
+        "clusterfuzz_format_sanitized_target",
+        "clusterfuzz_format_target",
         "@centipede",
         "@centipede//:test_util_sh",
     ],
