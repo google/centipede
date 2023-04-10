@@ -14,14 +14,14 @@
 
 #include "./centipede_interface.h"
 
-#include <signal.h>
+#include <unistd.h>
 
+#include <csignal>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
 #include <memory>
-#include <sstream>
 #include <string>
 #include <thread>  // NOLINT(build/c++11)
 #include <vector>
@@ -29,6 +29,7 @@
 #include "absl/status/status.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_replace.h"
+#include "absl/time/time.h"
 #include "absl/types/span.h"
 #include "./analyze_corpora.h"
 #include "./binary_info.h"
@@ -52,13 +53,37 @@ namespace centipede {
 namespace {
 
 // Sets signal handler for SIGINT.
-void SetSignalHandlers() {
-  struct sigaction sigact = {};
-  sigact.sa_handler = [](int) {
-    ABSL_RAW_LOG(INFO, "SIGINT caught; cleaning up\n");
-    RequestEarlyExit(EXIT_FAILURE);
-  };
-  sigaction(SIGINT, &sigact, nullptr);
+void SetSignalHandlers(absl::Time stop_at) {
+  for (int signum : {SIGINT, SIGALRM}) {
+    struct sigaction sigact = {};
+    // Reset the handler to SIG_DFL upon entry into our custom handler.
+    sigact.sa_flags = SA_RESETHAND;
+    sigact.sa_handler = [](int received_signum) {
+      if (received_signum == SIGINT) {
+        ABSL_RAW_LOG(INFO, "Ctrl-C pressed: winding down");
+        RequestEarlyExit(EXIT_FAILURE);  // => abnormal outcome
+      } else if (received_signum == SIGALRM) {
+        ABSL_RAW_LOG(INFO, "Reached --stop_at time: winding down");
+        RequestEarlyExit(EXIT_SUCCESS);  // => expected outcome
+      } else {
+        ABSL_UNREACHABLE();
+      }
+    };
+    sigaction(signum, &sigact, nullptr);
+  }
+
+  if (stop_at != absl::InfiniteFuture()) {
+    const absl::Duration stop_in = stop_at - absl::Now();
+    if (stop_in > absl::ZeroDuration()) {
+      LOG(INFO) << "Setting alarm for --stop_at time " << stop_at << " (in "
+                << stop_in << ")";
+      PCHECK(alarm(absl::ToInt64Seconds(stop_in)) == 0) << "Alarm already set";
+    } else {
+      LOG(WARNING) << "Already reached --stop_at time " << stop_at
+                   << ": triggering alarm now";
+      PCHECK(kill(0, SIGALRM) == 0) << "Alarm triggering failed";
+    }
+  }
 }
 
 // Runs env.for_each_blob on every blob extracted from env.args.
@@ -161,7 +186,7 @@ void SavePCsToFile(const PCTable &pc_table, std::string_view file_path) {
 
 int CentipedeMain(const Environment &env,
                   CentipedeCallbacksFactory &callbacks_factory) {
-  SetSignalHandlers();
+  SetSignalHandlers(env.stop_at);
 
   if (!env.save_corpus_to_local_dir.empty())
     return Centipede::SaveCorpusToLocalDir(env, env.save_corpus_to_local_dir);

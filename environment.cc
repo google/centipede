@@ -27,6 +27,7 @@
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
+#include "absl/time/time.h"
 #include "./logging.h"
 #include "./remote_file.h"
 #include "./util.h"
@@ -59,7 +60,7 @@ ABSL_FLAG(std::string, merge_from, "",
           "Another working directory to merge the corpus from. Inputs from "
           "--merge_from will be added to --workdir if the add new features.");
 ABSL_FLAG(size_t, num_runs, std::numeric_limits<size_t>::max(),
-          "Number of runs.");
+          "Number of inputs to run per shard (see --total_shards).");
 ABSL_FLAG(size_t, seed, 0,
           "A seed for the random number generator. If 0, some other random "
           "number is used as seed.");
@@ -136,6 +137,15 @@ ABSL_FLAG(size_t, timeout_per_batch, 0,
           "finish within --timeout_per_batch seconds. The default is computed "
           "as a function of --timeout_per_input * --batch_size. Support may "
           "vary depending on the runner.");
+ABSL_FLAG(absl::Time, stop_at, absl::InfiniteFuture(),
+          "Stop fuzzing in all shards (--total_shards) at approximately this "
+          "time in ISO-8601/RFC-3339 format, e.g. 2023-04-06T23:35:02Z. "
+          "If a given shard is still running all its --num_runs inputs "
+          "at that time, it will gracefully wind down by letting the current "
+          "batch of inputs to finish and then exiting. Tip: use `date` to "
+          "conveniently specify this flag: "
+          "--stop_at=$(date --date='+45 minutes' --utc --iso-8601=seconds). "
+          "A special value 'infinite-future' (the default) is also supported.");
 ABSL_FLAG(bool, fork_server, true,
           "If true (default) tries to execute the target(s) via the fork "
           "server, if supported by the target(s). Prepend the binary path with "
@@ -362,6 +372,7 @@ Environment::Environment(const std::vector<std::string> &argv)
           absl::GetFlag(FLAGS_timeout_per_batch),  //
           absl::GetFlag(FLAGS_timeout_per_input),  //
           absl::GetFlag(FLAGS_batch_size))),
+      stop_at(absl::GetFlag(FLAGS_stop_at)),
       fork_server(absl::GetFlag(FLAGS_fork_server)),
       full_sync(absl::GetFlag(FLAGS_full_sync)),
       use_corpus_weights(absl::GetFlag(FLAGS_use_corpus_weights)),

@@ -439,13 +439,18 @@ std::vector<size_t> RandomWeightedSubset(absl::Span<const uint64_t> set,
   return res;
 }
 
-static std::atomic<int> requested_exit_code(EXIT_SUCCESS);
+namespace {
+std::atomic<int> requested_exit_code = EXIT_SUCCESS;
+std::atomic<bool> early_exit_requested = false;
+}  // namespace
 
 void RequestEarlyExit(int exit_code) {
-  CHECK_NE(exit_code, EXIT_SUCCESS);
   requested_exit_code = exit_code;
+  early_exit_requested = true;
 }
-bool EarlyExitRequested() { return requested_exit_code != EXIT_SUCCESS; }
+
+bool EarlyExitRequested() { return early_exit_requested; }
+
 int ExitCode() { return requested_exit_code; }
 
 }  // namespace centipede

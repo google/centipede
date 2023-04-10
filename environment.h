@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/time/time.h"
 #include "./knobs.h"
 
 namespace centipede {
@@ -55,6 +56,7 @@ struct Environment {
   size_t rss_limit_mb;
   size_t timeout_per_input;
   size_t timeout_per_batch;
+  absl::Time stop_at;
   bool fork_server;
   bool full_sync;
   bool use_corpus_weights;
