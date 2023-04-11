@@ -208,9 +208,10 @@ uint32_t ComputeFunctionCyclomaticComplexity(uintptr_t pc,
     if (!visited_pcs.insert(current_pc).second) continue;
     ++node_num;
     for (auto &successor : cfg.GetSuccessors(current_pc)) {
-      // TODO(navidem): The following is checking for specific edge case that we
-      // see a PC only in successors of CFTable but neither in PCTable nor as an
-      // entry in CFTable. Removing this will cause the following tests to fail:
+      // TODO(ussuri): The following is checking for specific edge case where
+      // we see a PC only in successors of CFTable, but neither in PCTable nor
+      // as an entry in CFTable. Removing this will cause the following tests to
+      // fail:
       // //third_party/centipede/google:centipede_main_cns_test
       // //third_party/centipede/testing:centipede_main_test.
       if (!cfg.exists(successor)) continue;

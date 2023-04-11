@@ -34,7 +34,7 @@ namespace centipede {
 // 2     3
 //  \   /
 //    4
-// TODO(navidem): Change PCs to 100, 200 etc, to avoid confusion with PCIndex.
+// TODO(ussuri): Change PCs to 100, 200 etc, to avoid confusion with PCIndex.
 static const CFTable g_cf_table = {1, 2, 3, 0, 0, 2, 4, 0,
                                    0, 3, 4, 0, 0, 4, 0, 0};
 static const PCTable g_pc_table = {
@@ -194,7 +194,7 @@ TEST(CFTable, GetCfTable) {
   LOG(INFO) << VV(target_path) << VV(tmp_path1) << VV(cf_table.size());
   if (cf_table.empty()) {
     LOG(INFO) << "__sancov_cfs is empty.";
-    // TODO(navidem): This should be removed once OSS clang supports
+    // TODO(ussuri): This should be removed once OSS clang supports
     //  control-flow.
     GTEST_SKIP();
   }

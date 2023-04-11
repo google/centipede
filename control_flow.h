@@ -124,7 +124,7 @@ class ControlFlowGraph {
 
   // Returns true if the given basic block is function entry.
   bool BlockIsFunctionEntry(PCIndex pc_index) const {
-    // TODO(navidem): Change the following to use CHECK_LE(pc_index,
+    // TODO(ussuri): Change the following to use CHECK_LE(pc_index,
     // func_entries_.size()) and have a death test.
     return pc_index < func_entries_.size() ? func_entries_[pc_index] : false;
   }

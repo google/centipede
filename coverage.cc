@@ -163,14 +163,14 @@ uint32_t ComputeFrontierWeight(const Coverage &coverage,
                                const ControlFlowGraph &cfg,
                                const std::vector<uintptr_t> &callees) {
   // Multiplication factors for different coverage types.
-  // TODO(navidem): replace with actual knobs (cl/486229527).
+  // TODO(ussuri): replace with actual knobs (cl/486229527).
   uint8_t uncovered_knob = 153;         // ~ (255 * 0.6)
   uint8_t partially_covered_knob = 77;  // ~ (255 * 0.3)
   uint8_t fully_covered_knob = 25;      // ~ (255 * 0.1)
 
   uint32_t weight = 0;
   for (auto callee : callees) {
-    // TODO(navidem): Figure out a better way for determining the complexity
+    // TODO(ussuri): Figure out a better way for determining the complexity
     // of indirect callee. For now using cyclomatic_comp = 1, and factor of
     // non-covered callee.
     if (callee == -1ULL) {

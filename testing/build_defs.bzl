@@ -112,7 +112,7 @@ def centipede_fuzz_target(
         name,
         fuzz_target = None,
         srcs = None,
-        # TODO(navidem): edit --config=centipede too.
+        # TODO(ussuri): edit --config=centipede too.
         sancov = "trace-pc-guard,pc-table,trace-loads,trace-cmp",
         copts = [],
         linkopts = [],

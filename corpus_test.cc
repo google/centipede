@@ -359,14 +359,14 @@ TEST(WeightedDistribution, WeightedDistribution) {
   compute_freq();
 }
 
-// TODO(navidem): based on comment from sergeygs -- This is becoming difficult
-// to maintain: various bits of the input data are stored in independent arrays,
-// other bits are dynamically initialized, and the matching expected results are
-// listed in two long chains of EXPECT's. I think it should be doable to
-// refactor this to use something like a TestCase struct tying all that
-// together, then iterate over test_cases once to populate pc_table etc, and a
-// second time to e.g. EXPECT_EQ(frontier.PcIndexIsFrontier(i),
-// test_cases[i].expected_is_frontier).
+// TODO(ussuri): This is becoming difficult to maintain: various bits of the
+//  input data are stored in independent arrays, other bits are dynamically
+//  initialized, and the matching expected results are listed in two long chains
+//  of EXPECT's. I think it should be doable to refactor this to use something
+//  like a TestCase struct tying all that together, then iterate over test_cases
+//  once to populate pc_table etc, and a second time to e.g.
+//  EXPECT_EQ(frontier.PcIndexIsFrontier(i),
+//  test_cases[i].expected_is_frontier).
 TEST(CoverageFrontier, Compute) {
   // Function [0, 1): Fully covered.
   // Function [1, 2): Not covered.
@@ -412,8 +412,7 @@ TEST(CoverageFrontier, Compute) {
       13, 15, 16, 0, 0, 14, 17, 18, 0, 0, 15, 19, 0, 9, 99,
       0,  // PC 15 goes to 19 that is not in pc_table. This bb calls 9 and 99.
       16, 13, 0, 0, 17, 0, 0, 18, 0, 4, 0,  // This bb calls 4.
-      19, 0, 0
-  };
+      19, 0, 0};
 
   BinaryInfo bin_info = {
       pc_table, {}, cf_table, ControlFlowGraph(), CallGraph()};
