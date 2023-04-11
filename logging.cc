@@ -12,20 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef THIRD_PARTY_CENTIPEDE_LOGGING_H_
-#define THIRD_PARTY_CENTIPEDE_LOGGING_H_
-
-#include "absl/log/check.h"
-#include "absl/log/log.h"
+#include "./logging.h"
 #include "absl/flags/flag.h"
-#include "absl/flags/declare.h"
 
-ABSL_DECLARE_FLAG(int, v);
-
-#define VLOG_IS_ON(logging_level) ((logging_level) <= absl::GetFlag(FLAGS_v))
-#define VLOG(logging_level) LOG_IF(INFO, VLOG_IS_ON(logging_level))
-
-// Easy variable value logging: LOG(INFO) << VV(foo) << VV(bar);
-#define VV(x) #x "=" << (x) << " "
-
-#endif  // THIRD_PARTY_CENTIPEDE_LOGGING_H_
+ABSL_FLAG(int, v, 0, "Show all VLOG(m) messages for m <= this.");
