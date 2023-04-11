@@ -18,20 +18,19 @@
 #include "./util.h"
 
 #include <linux/limits.h>  // NOLINT(PATH_MAX)
-#include <stdio.h>         // NOLINT(popen)
 #include <unistd.h>
 
 #include <algorithm>
 #include <atomic>
 #include <cctype>
 #include <cstdint>
+#include <cstdio>  // NOLINT(popen)
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
-#include <filesystem>
+#include <filesystem>  // NOLINT
 #include <fstream>
 #include <queue>
-#include <sstream>
 #include <string>
 #include <string_view>
 #include <thread>  // NOLINT(build/c++11)
@@ -167,7 +166,7 @@ void WriteToLocalFile(std::string_view file_path,
   std::ofstream f(std::string{file_path.data()});
   CHECK(f) << "Failed to open local file: " << file_path;
   f.write(reinterpret_cast<const char *>(data.data()),
-          static_cast<long>(data.size()));
+          static_cast<int64_t>(data.size()));
   CHECK(f) << "Failed to write to local file: " << file_path;
   f.close();
 }

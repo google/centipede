@@ -14,7 +14,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <cstdlib>
 
 // Example demonstrating how we can pass "user defined" features to Centipede.
 // The user code needs to define an array of uint64_t in the special section

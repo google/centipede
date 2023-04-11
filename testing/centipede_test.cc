@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string.h>
-
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
 #include <set>
 #include <string>
@@ -26,7 +25,6 @@
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "absl/container/flat_hash_set.h"
-#include "absl/strings/str_format.h"
 #include "./blob_file.h"
 #include "./centipede_callbacks.h"
 #include "./centipede_interface.h"
@@ -596,16 +594,16 @@ class UndetectedCrashingInputMock : public CentipedeCallbacks {
                BatchResult &batch_result) override {
     batch_result.ClearAndResize(inputs.size());
     bool res = true;
-    for (const auto & input : inputs) {
+    for (const auto &input : inputs) {
       CHECK_EQ(input.size(), 1);  // By construction in `Mutate()`.
-      // The contents of each mutant is its sequantial number.
+      // The contents of each mutant is its sequential number.
       if (input[0] == crashing_input_idx_) {
         if (first_pass_) {
           first_pass_ = false;
           crashing_input_ = input;
           // TODO(b/274705740): `num_outputs_read()` is the number of outputs
           //  that Centipede engine *expects* to have been read from *the
-          //  current BatchResult* by the *particular* implememtation of
+          //  current BatchResult* by the *particular* implementation of
           //  `CentipedeCallbacks` (and `DefaultCentipedeCallbacks` fits the
           //  bill). `Centipede::ReportCrash()` then uses this value as a hint
           //  for the crashing input's index, and in our case saves the batch's

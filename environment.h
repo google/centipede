@@ -69,7 +69,7 @@ struct Environment {
   bool use_auto_dictionary;
   bool use_dataflow_features;
   bool use_counter_features;
-  size_t use_pcpair_features;
+  bool use_pcpair_features;
   size_t feature_frequency_threshold;
   bool require_pc_table;
   int telemetry_frequency;

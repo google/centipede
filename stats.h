@@ -37,7 +37,7 @@ struct Stats {
 
 // Takes a span of Stats objects `stats_vec` and the corresponding span of
 // Environment objects `env_vec`. If the environments indicate the use of
-// --experiment flag, prints the experiment summary to `os`. Otherwise no-op.
+// --experiment flag, prints the experiment summary to `os`. Otherwise, a no-op.
 void PrintExperimentStats(absl::Span<const Stats> stats_vec,
                           absl::Span<const Environment> env_vec,
                           std::ostream& os);

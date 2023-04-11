@@ -101,8 +101,8 @@ class ConcurrentByteSet {
 // The size of the lower layer is a multiple of the size of the upper layer.
 // Set() writes 1 to an element in the upper layer and then writes `value` to an
 // element of the lower value. This allows ForEachNonZeroByte() to
-// skip sub-regions of lower layer that were not written to.
-// Otherwise the interface and the behaviour is equivalent to ConcurrentByteSet.
+// skip sub-regions of lower layer that were not written to. Otherwise, the
+// interface and the behaviour is equivalent to ConcurrentByteSet.
 template <size_t kSize, typename Upper,
           typename Lower = ConcurrentByteSet<kSize>>
 class LayeredConcurrentByteSet {

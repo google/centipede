@@ -71,7 +71,7 @@ class CmpDictionary {
   // Clears `suggestions` on entry.
   // For every observed `A CMP B` such that `A` is a prefix of `bytes`,
   // adds `B` to `suggestions`.
-  // `suggestions`, is filled upto capacity(), but not more.
+  // `suggestions`, is filled up to capacity(), but not more.
   void SuggestReplacement(ByteSpan bytes,
                           std::vector<ByteSpan> &suggestions) const;
 

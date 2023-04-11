@@ -317,7 +317,7 @@ TEST(Coverage, DataFlowFeatures) {
 // a) they create all possible values in [0,64)
 // b) they don't create any other values.
 // c) they are sufficiently different from each other, i.e. not using one of
-//    them as coverage signal may reduce the overal quality of signal.
+//    them as coverage signal may reduce the overall quality of signal.
 TEST(Coverage, CMPFeatures) {
   absl::flat_hash_set<uintptr_t> moddiff, hamming, difflog;
 

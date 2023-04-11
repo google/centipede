@@ -30,7 +30,6 @@
 #include "./execution_request.h"
 #include "./execution_result.h"
 #include "./logging.h"
-#include "./symbol_table.h"
 #include "./util.h"
 
 namespace centipede {

@@ -53,10 +53,10 @@ cc_library(
     name = "feature",
     srcs = ["feature.cc"],
     hdrs = [
-        "concurrent_bitset.h",  # TODO(kcc): consider moving to a separte cc_library.
-        "concurrent_byteset.h",  # TODO(kcc): consider moving to a separte cc_library.
+        "concurrent_bitset.h",  # TODO(kcc): consider moving to a separate cc_library.
+        "concurrent_byteset.h",  # TODO(kcc): consider moving to a separate cc_library.
         "feature.h",
-        "foreach_nonzero.h",  # TODO(kcc): consider moving to a separte cc_library.
+        "foreach_nonzero.h",  # TODO(kcc): consider moving to a separate cc_library.
     ],
     deps = [
         "@com_google_absl//absl/base:core_headers",  # exception, ok to depend on here.
@@ -89,10 +89,7 @@ cc_library(
     name = "reverse_pc_table",
     hdrs = ["reverse_pc_table.h"],
     # Avoid non-trivial dependencies here, as this library will be linked to target binaries.
-    deps = [
-        ":defs",
-        "@com_google_absl//absl/types:span",
-    ],
+    deps = ["@com_google_absl//absl/types:span"],
 )
 
 # simple definitions only, no code, no deps other than span.
@@ -222,7 +219,6 @@ cc_library(
         ":binary_info",
         ":control_flow",
         ":corpus",
-        ":coverage",
         ":feature",
         ":logging",
         "@com_google_absl//absl/container:flat_hash_set",
@@ -373,14 +369,12 @@ cc_library(
     hdrs = ["corpus.h"],
     deps = [
         ":binary_info",
-        ":call_graph",
         ":control_flow",
         ":coverage",
         ":defs",
         ":feature",
         ":logging",
         ":util",
-        "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/strings",
     ],
@@ -883,7 +877,6 @@ cc_test(
     srcs = ["knobs_test.cc"],
     deps = [
         ":knobs",
-        ":logging",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_googletest//:gtest_main",
     ],
@@ -904,10 +897,8 @@ cc_test(
     deps = [
         ":control_flow",
         ":corpus",
-        ":coverage",
         ":defs",
         ":feature",
-        ":util",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -952,12 +943,9 @@ cc_test(
     ],
     deps = [
         ":control_flow",
+        ":defs",
         ":logging",
-        "@centipede//:defs",
-        "@centipede//:environment",
-        "@centipede//:execution_result",
-        "@centipede//:test_util",
-        "@centipede//:util",
+        ":test_util",
         "@com_google_googletest//:gtest_main",
     ],
 )

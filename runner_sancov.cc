@@ -24,7 +24,7 @@
 #include "./runner.h"
 
 namespace centipede {
-  void RunnerSancov(){}  // to be referenced in runner.cc
+void RunnerSancov() {}  // to be referenced in runner.cc
 }  // namespace centipede
 
 using centipede::state;
@@ -61,7 +61,7 @@ ENFORCE_INLINE static void TraceLoad(void *addr) {
   auto caller_pc = reinterpret_cast<uintptr_t>(__builtin_return_address(0));
   auto load_addr = reinterpret_cast<uintptr_t>(addr);
   auto pc_offset = caller_pc - state.main_object.start_address;
-  if (pc_offset >= state.main_object.size) return;  // PC outside of main obj.
+  if (pc_offset >= state.main_object.size) return;  // PC outside main obj.
   auto addr_offset = load_addr - state.main_object.start_address;
   if (addr_offset >= state.main_object.size) return;  // Not a global address.
   state.data_flow_feature_set.set(centipede::ConvertPcPairToNumber(
@@ -167,8 +167,8 @@ __attribute__((noinline)) static void HandlePath(uintptr_t normalized_pc,
   state.path_feature_set.set(hash);
 }
 
-// Handles one obeserved PC.
-// `normalized_pc` is a integer representation of PC that is stable between
+// Handles one observed PC.
+// `normalized_pc` is an integer representation of PC that is stable between
 // the executions.
 // With __sanitizer_cov_trace_pc_guard this is an index of PC in the PC table.
 // With __sanitizer_cov_trace_pc this is PC itself, normalized by subtracting
@@ -206,7 +206,8 @@ static void LazyAllocatePcCounters(size_t size) {
   state.pc_counters_size = size;
   // We use calloc() assuming that for large allocations it will not clear
   // the memory but will simply rely on mmap to return zero pages.
-  // If this assumption doesn't hold, may need to use mmap directly.
+  // TODO(ussuri): If this assumption doesn't hold, may need to use mmap
+  //  directly.
   state.pc_counters = static_cast<uint8_t *>(calloc(size, sizeof(uint8_t)));
 }
 

@@ -45,25 +45,25 @@ Notable features:
   binary for Centipede itself. The main binary should not use any of the
   sanitizers.
 
-* No part of the internal interface is stable. Anything may change at this stage.
+* No part of the internal interface is stable. Anything may change at this
+  stage.
 
 ## Terminology
 
-#### Fuzzing engine a.k.a. fuzzer {#fuzzer}
+#### Fuzzing engine a.k.a. fuzzer <a id='fuzzer'></a>
 
 A program that produces an infinite stream of inputs for a target and
 orchestrates the execution.
 
-#### Fuzz target {#target}
+#### Fuzz target <a id='target'></a>
 
 A binary, a library, an API, or rather anything that can consume bytes for input
 and produce some sort of coverage data as an output.
 A [libFuzzer](https://llvm.org/docs/LibFuzzer.html)'s
 target can be a Centipede's target. Read
-more [here](https://github.com/google/fuzzing/blob/master/docs/good-fuzz-target.md)
-.
+more [here](https://github.com/google/fuzzing/blob/master/docs/good-fuzz-target.md).
 
-#### Input {#input}
+#### Input <a id='input'></a>
 
 A sequence of bytes that can be fed to a target. The input can be an arbitrary
 bag of bytes, or some structured data, e.g. serialized proto.
@@ -89,10 +89,9 @@ triggered in the target.
 
 A function that takes bytes as input and outputs a small random mutation of the
 input. See also:
-[structure-aware fuzzing](https://github.com/google/fuzzing/blob/master/docs/structure-aware-fuzzing.md)
-.
+[structure-aware fuzzing](https://github.com/google/fuzzing/blob/master/docs/structure-aware-fuzzing.md).
 
-#### Executor {#executor}
+#### Executor <a id='executor'></a>
 
 A function that knows how to feed an input into a target and get coverage in
 return (i.e. to **execute**).
@@ -102,7 +101,7 @@ return (i.e. to **execute**).
 A customizable fuzzing engine that allows the user to substitute the Mutator and
 the Executor.
 
-#### Centipede runner {#runner}
+#### Centipede runner <a id='runner'></a>
 
 A library that implements the executor interface expected by the Centipede
 fuzzer. The runner knows how to run
@@ -113,7 +112,7 @@ runnable by Centipede.
 
 #### Corpus (_plural: corpora_)
 
-A set of [inputs](#input).
+A set of inputs.
 
 #### Distillation (creating a _distilled corpus_)
 
@@ -152,16 +151,17 @@ bazel build -c opt :all
 What you will need for the subsequent steps:
 
 * `$BIN_DIR/centipede` - the binary of the engine (the fuzzer).
-* `$BIN_DIR/libcentipede_runner.pic.a` - the library you need to link with your fuzz target (the runner).
-* `$CENTIPEDE_SRC/clang-flags.txt` - recommended clang compilation flags for the target.
+* `$BIN_DIR/libcentipede_runner.pic.a` - the library you need to link with your
+  fuzz target (the runner).
+* `$CENTIPEDE_SRC/clang-flags.txt` - recommended clang compilation flags for the
+  target.
 
 You can keep these files where they are or copy them somewhere.
 
 ## Build your fuzz target
 
 We provide two examples of building the target: one tiny single-file target and
-libpng. Once you've built your target, proceed to the
-[fuzz target running step](#run-step).
+libpng. Once you've built your target, proceed to the fuzz target running step.
 
 ### The simple example
 
@@ -189,7 +189,7 @@ clang++ $BIN_DIR/$FUZZ_TARGET.o $BIN_DIR/libcentipede_runner.pic.a \
     -ldl -lrt -lpthread -o $BIN_DIR/$FUZZ_TARGET
 ```
 
-Skip to the [running step](#run-step).
+Skip to the fuzz target running step.
 
 ### The libpng example
 
@@ -216,7 +216,7 @@ clang++ -include cstdlib \
     -o $BIN_DIR/$FUZZ_TARGET
 ```
 
-## Run Centipede locally {#run-step}
+## Run Centipede locally <a id='run-step'></a>
 
 Running locally will not give the full scale, but it could be useful during the
 fuzzer development stage. We recommend that both the fuzzer and the target are
@@ -253,6 +253,7 @@ See what's in the working directory
 ```shell
 tree $WD
 ```
+
 ```
 ...
 ├── <fuzz target name>-d9d90139ee2ccc687f7c9d5821bcc04b8a847df5
@@ -274,6 +275,7 @@ See what's in the working directory:
 ```shell
 tree $WD
 ```
+
 ```
 ...
 ├── <fuzz target name>-d9d90139ee2ccc687f7c9d5821bcc04b8a847df5
@@ -365,7 +367,7 @@ the source files for your built binary. Otherwise, you may encounter a
 directory in a future version of Centipede.
 
 Note that generating the HTML report may impact performance since the additional
-coverage binary must be run on new inputs to collect coverage. Currently this
+coverage binary must be run on new inputs to collect coverage. Currently, this
 feature only works for local fuzz jobs. It does not merge coverage reports from
 remote fuzzing instances.
 

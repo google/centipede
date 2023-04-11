@@ -31,7 +31,7 @@ class MinimizerMock : public CentipedeCallbacks {
  public:
   MinimizerMock(const Environment &env) : CentipedeCallbacks(env) {}
 
-  // Runs FuzzMe() on every input, imitates faulure if FuzzMe() returns true.
+  // Runs FuzzMe() on every input, imitates failure if FuzzMe() returns true.
   bool Execute(std::string_view binary, const std::vector<ByteArray> &inputs,
                BatchResult &batch_result) override {
     batch_result.ClearAndResize(inputs.size());

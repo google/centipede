@@ -53,12 +53,12 @@ class KnobId {
 // * Choosing whether to add a given element to the corpus based on what
 //   features it has, its size, its resource consumption, etc.
 // * Choosing a corpus element to mutate, or an element pair to cross-over.
-//   E.g. make the choice depending on the features assosicated with elements,
+//   E.g. make the choice depending on the features associated with elements,
 //   their sizes, etc.
 // * Choosing how to mutate.
-//   E.g. whether to insert, overwrite, swap, etc, or whether to cross-over.
+//   E.g. whether to insert, overwrite, swap, etc., or whether to cross-over.
 //
-// Knobs is effectively a fixed-size array of bytes with named elements.
+// `Knobs` is effectively a fixed-size array of bytes with named elements.
 // The engine loads this array at startup or uses a default value zero.
 // The engine may also pass Knobs to a custom mutator that supports it.
 //
@@ -74,7 +74,7 @@ class KnobId {
 // The allocation of KnobIds is stable between the executions of the engine,
 // but will change when the engine changes in some significant way
 // (e.g. new knobs are added/removed or linking order changes).
-// I.e. the optimial knob values will need to be re-learned after major changes
+// I.e. the optimal knob values will need to be re-learned after major changes
 // in the engine.
 // This way knobs can be created locally in every source file, w/o having a
 // centralized knob repository.
@@ -137,7 +137,7 @@ class Knobs {
     }
   }
 
-  // Retuns one of the `choices`.
+  // Returns one of the `choices`.
   // `knob_ids` and `choices` must have the same size and be non-empty.
   // Uses knob values associated with knob_ids as probability weights for
   // respective choices.
@@ -187,7 +187,7 @@ class Knobs {
     return signed_value >= rand;
   }
 
-  // Viriant of Choose() where the choices are KnobIds themselfs.
+  // Variant of Choose() where the choices are KnobIds themselves.
   // Returns one of the `choices` based on the respective knobs.
   KnobId Choose(absl::Span<const KnobId> choices, uint64_t random) const {
     return Choose<KnobId>(choices, choices, random);

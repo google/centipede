@@ -39,8 +39,8 @@
 //   currently tested with total_shards = 10000.
 //
 //  Differential fuzzing is not yet properly implemented.
-//  Currently one can run target A in a given workdir, then target B, and so on,
-//  and the corpus will grow over time benefiting from all targets.
+//  Currently, one can run target A in a given workdir, then target B, and so
+//  on, and the corpus will grow over time benefiting from all targets.
 #include "./centipede.h"
 
 #include <algorithm>
@@ -112,8 +112,8 @@ Centipede::Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
     input_filter_cmd_.StartForkServer(TemporaryLocalDirPath(), "input_filter");
 }
 
-int Centipede::SaveCorpusToLocalDir(const Environment &env,
-                                    std::string_view save_corpus_to_local_dir) {
+void Centipede::SaveCorpusToLocalDir(
+    const Environment &env, std::string_view save_corpus_to_local_dir) {
   for (size_t shard = 0; shard < env.total_shards; shard++) {
     auto reader = DefaultBlobFileReaderFactory();
     reader->Open(env.MakeCorpusPath(shard)).IgnoreError();  // may not exist.
@@ -125,11 +125,10 @@ int Centipede::SaveCorpusToLocalDir(const Environment &env,
     }
     LOG(INFO) << "Read " << num_read << " from " << env.MakeCorpusPath(shard);
   }
-  return 0;
 }
 
-int Centipede::ExportCorpusFromLocalDir(const Environment &env,
-                                        std::string_view local_dir) {
+void Centipede::ExportCorpusFromLocalDir(const Environment &env,
+                                         std::string_view local_dir) {
   // Shard the file paths in `local_dir` based on hashes of filenames.
   // Such partition is stable: a given file always goes to a specific shard.
   std::vector<std::vector<std::string>> sharded_paths(env.total_shards);
@@ -178,7 +177,6 @@ int Centipede::ExportCorpusFromLocalDir(const Environment &env,
               << VV(num_shard_bytes) << VV(shard_data.size());
   }
   CHECK_EQ(total_paths, inputs_added + inputs_ignored);
-  return 0;
 }
 
 void Centipede::UpdateAndMaybeLogStats(std::string_view log_type,
@@ -279,7 +277,7 @@ size_t Centipede::AddPcPairFeatures(FeatureVec &fv) {
       feature_t f = feature_domains::kPCPair.ConvertToMe(
           ConvertPcPairToNumber(pc1, pc2, num_pcs));
       // If we have seen this pair at least once, ignore it.
-      if (fs_.Frequency(f)) continue;
+      if (fs_.Frequency(f) != 0) continue;
       fv.push_back(f);
       ++num_added_pairs;
     }
@@ -303,7 +301,7 @@ bool Centipede::RunBatch(const std::vector<ByteArray> &input_vec,
   }
   if (!success && env_.exit_on_crash) {
     LOG(INFO) << "--exit_on_crash is enabled; exiting soon";
-    RequestEarlyExit(1);
+    RequestEarlyExit(EXIT_FAILURE);
     return false;
   }
   CHECK_EQ(batch_result.results().size(), input_vec.size());
@@ -314,10 +312,10 @@ bool Centipede::RunBatch(const std::vector<ByteArray> &input_vec,
     FeatureVec &fv = batch_result.results()[i].mutable_features();
     bool function_filter_passed = function_filter_.filter(fv);
     bool input_gained_new_coverage =
-        fs_.CountUnseenAndPruneFrequentFeatures(fv);
-    if (env_.use_pcpair_features && AddPcPairFeatures(fv))
+        fs_.CountUnseenAndPruneFrequentFeatures(fv) != 0;
+    if (env_.use_pcpair_features && AddPcPairFeatures(fv) != 0)
       input_gained_new_coverage = true;
-    if (unconditional_features_file) {
+    if (unconditional_features_file != nullptr) {
       CHECK_OK(unconditional_features_file->Append(
           PackFeaturesAndHash(input_vec[i], fv)));
     }
@@ -332,13 +330,13 @@ bool Centipede::RunBatch(const std::vector<ByteArray> &input_vec,
         const auto &cmp_args = batch_result.results()[i].cmp_args();
         corpus_.Add(input_vec[i], fv, cmp_args, fs_, coverage_frontier_);
       }
-      if (corpus_file) {
+      if (corpus_file != nullptr) {
         CHECK_OK(corpus_file->Append(input_vec[i]));
       }
       if (!env_.corpus_dir.empty()) {
         WriteToLocalHashedFileInDir(env_.corpus_dir[0], input_vec[i]);
       }
-      if (features_file) {
+      if (features_file != nullptr) {
         CHECK_OK(features_file->Append(PackFeaturesAndHash(input_vec[i], fv)));
       }
     }
@@ -360,7 +358,7 @@ void Centipede::LoadShard(const Environment &load_env, size_t shard_index,
       }
     } else {
       LogFeaturesAsSymbols(features);
-      if (fs_.CountUnseenAndPruneFrequentFeatures(features)) {
+      if (fs_.CountUnseenAndPruneFrequentFeatures(features) != 0) {
         fs_.IncrementFrequencies(features);
         // TODO(kcc): cmp_args are currently not saved to disk and not reloaded.
         corpus_.Add(input, features, {}, fs_, coverage_frontier_);
@@ -380,7 +378,7 @@ void Centipede::LoadShard(const Environment &load_env, size_t shard_index,
     ReadShard(load_env.MakeCorpusPath(shard_index),
               load_env.MakeFeaturesPath(shard_index), input_features_callback);
   }
-  if (added_to_corpus) UpdateAndMaybeLogStats("load-shard", 1);
+  if (added_to_corpus > 0) UpdateAndMaybeLogStats("load-shard", 1);
   Rerun(to_rerun);
 }
 
@@ -428,17 +426,10 @@ void Centipede::GenerateCoverageReport(std::string_view annotation,
   std::stringstream out;
   out << "# Last batch: " << batch_index << "\n\n";
   coverage.Print(symbols_, out);
-  // Repackage the output as ByteArray for RemoteFileAppend's consumption.
-  // TODO(kcc): [impl] may want to introduce RemoteFileAppend(f, std::string).
-  std::string str = out.str();
-  ByteArray bytes(str.begin(), str.end());
   auto coverage_path = env_.MakeCoverageReportPath(annotation);
   LOG(INFO) << "Generate coverage report: " << VV(batch_index)
             << VV(coverage_path);
-  auto f = RemoteFileOpen(coverage_path, "w");
-  CHECK(f);
-  RemoteFileAppend(f, bytes);
-  RemoteFileClose(f);
+  RemoteFileSetContents(coverage_path, out.str());
 }
 
 void Centipede::GenerateCorpusStats(std::string_view annotation,
@@ -446,14 +437,9 @@ void Centipede::GenerateCorpusStats(std::string_view annotation,
   std::ostringstream os;
   os << "# Last batch: " << batch_index << "\n\n";
   corpus_.PrintStats(os, fs_);
-  std::string str = os.str();
-  ByteArray bytes(str.begin(), str.end());
   auto stats_path = env_.MakeCorpusStatsPath(annotation);
   LOG(INFO) << "Generate corpus stats: " << VV(batch_index) << VV(stats_path);
-  auto *f = RemoteFileOpen(stats_path, "w");
-  CHECK(f);
-  RemoteFileAppend(f, bytes);
-  RemoteFileClose(f);
+  RemoteFileSetContents(stats_path, os.str());
 }
 
 // TODO(nedwill): add integration test once tests are refactored per b/255660879
@@ -481,7 +467,7 @@ void Centipede::GenerateSourceBasedCoverageReport(std::string_view annotation,
   }
 
   Command merge_command("llvm-profdata", merge_arguments);
-  if (merge_command.Execute()) {
+  if (merge_command.Execute() != EXIT_SUCCESS) {
     LOG(ERROR) << "Failed to run command " << merge_command.ToString();
     return;
   }
@@ -491,7 +477,7 @@ void Centipede::GenerateSourceBasedCoverageReport(std::string_view annotation,
       {"show", "-format=html", absl::StrCat("-output-dir=", report_path),
        absl::StrCat("-instr-profile=", indexed_profile_path),
        env_.clang_coverage_binary});
-  if (generate_report_command.Execute()) {
+  if (generate_report_command.Execute() != EXIT_SUCCESS) {
     LOG(ERROR) << "Failed to run command "
                << generate_report_command.ToString();
     return;
@@ -503,7 +489,9 @@ void Centipede::GenerateRUsageReport(std::string_view annotation,
   class ReportDumper : public RUsageProfiler::ReportSink {
    public:
     explicit ReportDumper(std::string_view path)
-        : file_{RemoteFileOpen(path, "w")} {}
+        : file_{RemoteFileOpen(path, "w")} {
+      CHECK(file_ != nullptr) << VV(path);
+    }
 
     ~ReportDumper() override { RemoteFileClose(file_); }
 
@@ -620,9 +608,10 @@ void Centipede::FuzzingLoop() {
   CHECK_OK(corpus_file->Open(env_.MakeCorpusPath(env_.my_shard_index)));
   CHECK_OK(features_file->Open(env_.MakeFeaturesPath(env_.my_shard_index)));
 
-  if (corpus_.NumTotal() == 0)
+  if (corpus_.NumTotal() == 0) {
     corpus_.Add(user_callbacks_.DummyValidInput(), {}, {}, fs_,
                 coverage_frontier_);
+  }
 
   UpdateAndMaybeLogStats("init-done", 0);
 
@@ -687,7 +676,7 @@ void Centipede::FuzzingLoop() {
     }
 
     // Prune if we added enough new elements since last prune.
-    if (env_.prune_frequency &&
+    if (env_.prune_frequency != 0 &&
         corpus_.NumActive() >
             corpus_size_at_last_prune + env_.prune_frequency) {
       if (env_.use_coverage_frontier) coverage_frontier_.Compute(corpus_);
@@ -721,7 +710,7 @@ void Centipede::ReportCrash(std::string_view binary,
   const size_t suspect_input_idx = std::clamp<size_t>(
       batch_result.num_outputs_read(), 0, input_vec.size() - 1);
 
-  std::string log_prefix =
+  const std::string log_prefix =
       absl::StrCat("ReportCrash[", num_crash_reports_, "]: ");
 
   LOG(INFO) << log_prefix << "Batch execution failed:"

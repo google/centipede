@@ -16,8 +16,6 @@
 
 #include <filesystem>  // NOLINT
 #include <fstream>
-#include <mutex>  // NOLINT
-#include <ostream>
 #include <queue>
 #include <string>
 #include <vector>
@@ -26,7 +24,6 @@
 #include "./command.h"
 #include "./defs.h"
 #include "./logging.h"
-#include "./symbol_table.h"
 #include "./util.h"
 
 namespace centipede {
@@ -147,7 +144,7 @@ void ControlFlowGraph::InitializeControlFlowGraph(const CFTable &cf_table,
       successors.push_back(cf_table[j]);
       ++j;
     }
-    ++j;  // Step over the delimeter.
+    ++j;  // Step over the delimiter.
 
     // Record the list of successors
     graph_[curr_pc] = std::move(successors);
@@ -156,7 +153,7 @@ void ControlFlowGraph::InitializeControlFlowGraph(const CFTable &cf_table,
     while (cf_table[j]) {
       ++j;
     }
-    ++j;  // Step over the delimeter.
+    ++j;  // Step over the delimiter.
     CHECK_LE(j, cf_table.size());
   }
   // Calculate cyclomatic complexity for all functions.
@@ -206,11 +203,11 @@ uint32_t ComputeFunctionCyclomaticComplexity(uintptr_t pc,
   worklist.push(pc);
 
   while (!worklist.empty()) {
-    auto currnet_pc = worklist.front();
+    auto current_pc = worklist.front();
     worklist.pop();
-    if (!visited_pcs.insert(currnet_pc).second) continue;
+    if (!visited_pcs.insert(current_pc).second) continue;
     ++node_num;
-    for (auto &successor : cfg.GetSuccessors(currnet_pc)) {
+    for (auto &successor : cfg.GetSuccessors(current_pc)) {
       // TODO(navidem): The following is checking for specific edge case that we
       // see a PC only in successors of CFTable but neither in PCTable nor as an
       // entry in CFTable. Removing this will cause the following tests to fail:

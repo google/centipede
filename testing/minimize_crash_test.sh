@@ -54,9 +54,9 @@ find "${WD}/crashes" -size 5c
 # $1: n
 make_large_crasher() {
   echo -n .f;
-  cat /dev/urandom | head -c "${1}"
+  head -c "${1}" /dev/urandom
   echo -n u
-  cat /dev/urandom | head -c "${1}"
+  head -c "${1}" /dev/urandom
   echo -n z.
 }
 

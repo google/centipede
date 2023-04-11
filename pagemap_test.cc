@@ -83,7 +83,7 @@ TEST(PageMap, ForEachNonZeroRegion) {
 
   // test large_map
 
-  // Gest the number of known zero pagtes in large_map.
+  // Gest the number of known zero pages in large_map.
   auto num_zero_pages = [&large_map]() {
     return std::count(large_map.page_is_known_zero_.begin(),
                       large_map.page_is_known_zero_.end(), true);

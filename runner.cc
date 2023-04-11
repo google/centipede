@@ -69,9 +69,9 @@ __thread ThreadLocalRunnerState tls;
 // Tries to write `description` to `state.failure_description_path`.
 static void WriteFailureDescription(const char *description) {
   // TODO(b/264715830): Remove I/O error logging once the bug is fixed?
-  if (!state.failure_description_path) return;
+  if (state.failure_description_path == nullptr) return;
   FILE *f = fopen(state.failure_description_path, "w");
-  if (!f) {
+  if (f == nullptr) {
     perror("FAILURE: fopen()");
     return;
   }
@@ -93,7 +93,7 @@ void ThreadLocalRunnerState::OnThreadStart() {
   auto *old_list = state.tls_list;
   tls.next = old_list;
   state.tls_list = &tls;
-  if (old_list) old_list->prev = &tls;
+  if (old_list != nullptr) old_list->prev = &tls;
 }
 
 void ThreadLocalRunnerState::OnThreadStop() {
@@ -107,13 +107,13 @@ void ThreadLocalRunnerState::OnThreadStop() {
     auto *prev_tls = tls.prev;
     auto *next_tls = tls.next;
     prev_tls->next = next_tls;
-    if (next_tls) next_tls->prev = prev_tls;
+    if (next_tls != nullptr) next_tls->prev = prev_tls;
   }
 }
 
 static size_t GetPeakRSSMb() {
   struct rusage usage = {};
-  if (getrusage(RUSAGE_SELF, &usage)) return 0;
+  if (getrusage(RUSAGE_SELF, &usage) != 0) return 0;
   // On Linux, ru_maxrss is in KiB
   return usage.ru_maxrss >> 10;
 }
@@ -270,7 +270,7 @@ static void WriteFeaturesToFile(FILE *file,
 __attribute__((noinline))  // so that we see it in profile.
 static void
 PrepareCoverage() {
-  if (state.run_time_flags.path_level) {
+  if (state.run_time_flags.path_level != 0) {
     state.ForEachTls([](centipede::ThreadLocalRunnerState &tls) {
       tls.path_ring_buffer.clear();
     });
@@ -337,7 +337,7 @@ PostProcessCoverage(int target_return_value) {
   }
 
   // Convert path bit set to features.
-  if (state.run_time_flags.path_level) {
+  if (state.run_time_flags.path_level != 0) {
     state.path_feature_set.ForEachNonZeroBit([](size_t idx) {
       g_features.push_back(
           centipede::feature_domains::kBoundedPath.ConvertToMe(idx));
@@ -379,7 +379,7 @@ static void RunOneInput(const uint8_t *data, size_t size,
 
 static std::vector<uint8_t> ReadBytesFromFilePath(const char *input_path) {
   FILE *input_file = fopen(input_path, "r");
-  RunnerCheck(input_file, "can't open the input file");
+  RunnerCheck(input_file != nullptr, "can't open the input file");
   struct stat statbuf = {};
   RunnerCheck(fstat(fileno(input_file), &statbuf) == 0, "fstat failed");
   size_t size = statbuf.st_size;
@@ -407,7 +407,7 @@ ReadOneInputExecuteItAndDumpCoverage(
   snprintf(features_file_path, sizeof(features_file_path), "%s-features",
            input_path);
   FILE *features_file = fopen(features_file_path, "w");
-  PrintErrorAndExitIf(!features_file, "can't open coverage file");
+  PrintErrorAndExitIf(features_file == nullptr, "can't open coverage file");
   WriteFeaturesToFile(features_file, g_features.data(), g_features.size());
   fclose(features_file);
 }
@@ -428,14 +428,14 @@ __attribute__((noinline)) bool WriteCmpArgs(
   return !write_failed;
 }
 
-// Starts sending the outputs (coverage, etc) to `outputs_blobseq`.
+// Starts sending the outputs (coverage, etc.) to `outputs_blobseq`.
 // Returns true on success.
 static bool StartSendingOutputsToEngine(
     centipede::SharedMemoryBlobSequence &outputs_blobseq) {
   return centipede::BatchResult::WriteInputBegin(outputs_blobseq);
 }
 
-// Finishes sending the outputs (coverage, etc) to `outputs_blobseq`.
+// Finishes sending the outputs (coverage, etc.) to `outputs_blobseq`.
 // Returns true on success.
 static bool FinishSendingOutputsToEngine(
     centipede::SharedMemoryBlobSequence &outputs_blobseq) {
@@ -466,9 +466,8 @@ static bool FinishSendingOutputsToEngine(
   return true;
 }
 
-// Handles an ExecutionRequest, see RequestExecution().
-// Reads inputs from `inputs_blobseq`, runs them,
-// saves coverage features to `outputs_blobseq`.
+// Handles an ExecutionRequest, see RequestExecution(). Reads inputs from
+// `inputs_blobseq`, runs them, saves coverage features to `outputs_blobseq`.
 // Returns EXIT_SUCCESS on success and EXIT_FAILURE otherwise.
 static int ExecuteInputsFromShmem(
     centipede::SharedMemoryBlobSequence &inputs_blobseq,
@@ -505,7 +504,7 @@ static int ExecuteInputsFromShmem(
 static void DumpPcTable(const char *output_path) {
   PrintErrorAndExitIf(!state.main_object.IsSet(), "main_object is not set");
   FILE *output_file = fopen(output_path, "w");
-  PrintErrorAndExitIf(!output_file, "can't open output file");
+  PrintErrorAndExitIf(output_file == nullptr, "can't open output file");
   // Make a local copy of the pc table, and subtract the ASLR base
   // (i.e. main_object_start_address) from every PC before dumping the table.
   // Otherwise, we need to pass this ASLR offset at the symbolization time,
@@ -536,7 +535,7 @@ static void DumpPcTable(const char *output_path) {
 static void DumpCfTable(const char *output_path) {
   PrintErrorAndExitIf(!state.main_object.IsSet(), "main_object is not set");
   FILE *output_file = fopen(output_path, "w");
-  PrintErrorAndExitIf(!output_file, "can't open output file");
+  PrintErrorAndExitIf(output_file == nullptr, "can't open output file");
   // Make a local copy of the cf table, and subtract the ASLR base
   // (i.e. main_object.start_address) from every PC before dumping the table.
   // Otherwise, we need to pass this ASLR offset at the symbolization time,
@@ -557,7 +556,7 @@ static void DumpCfTable(const char *output_path) {
   }
   // Dump the modified table.
   auto num_bytes_written =
-      fwrite(&data_copy[0], 1, data_size_in_bytes, output_file);
+      fwrite(data_copy.data(), 1, data_size_in_bytes, output_file);
   PrintErrorAndExitIf(num_bytes_written != data_size_in_bytes,
                       "wrong number of bytes written for cf table");
   fclose(output_file);
@@ -623,7 +622,7 @@ static int MutateInputsFromShmem(
     size_t size = std::min(input.size(), kMaxMutantSize);
     mutant.assign(input.data(), input.data() + size);
     size_t new_size = 0;
-    if (custom_crossover_cb &&
+    if ((custom_crossover_cb != nullptr) &&
         rand_r(&seed) % 100 < state.run_time_flags.crossover_level) {
       // Perform crossover `crossover_level`% of the time.
       const auto &other = inputs[rand_r(&seed) % num_inputs];
@@ -681,7 +680,7 @@ static void SetLimits() {
   }
 }
 
-static void MaybePopluateReversePCTable() {
+static void MaybePopulateReversePcTable() {
   const char *pcs_file_path = state.GetStringFlag(":pcs_file_path=");
   if (!pcs_file_path) return;
   const auto bytes = ReadBytesFromFilePath(pcs_file_path);
@@ -742,7 +741,7 @@ GlobalRunnerState::GlobalRunnerState() {
     _exit(EXIT_SUCCESS);
   }
 
-  MaybePopluateReversePCTable();
+  MaybePopulateReversePcTable();
 
   // initialize the user defined section.
   user_defined_begin =

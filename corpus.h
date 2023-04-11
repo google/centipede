@@ -40,7 +40,7 @@ namespace centipede {
 // different features as such. But in practice such collisions should be rare.
 class FeatureSet {
  public:
-  FeatureSet(uint8_t frequency_threshold)
+  explicit FeatureSet(uint8_t frequency_threshold)
       : frequency_threshold_(frequency_threshold), frequencies_(kSize) {}
 
   // Returns the number of features in `features` not present in `this`.
@@ -71,6 +71,9 @@ class FeatureSet {
   uint64_t ComputeWeight(const FeatureVec &features) const;
 
  private:
+  // Maps feature into an index in frequencies_.
+  static size_t Feature2Idx(feature_t feature) { return feature % kSize; }
+
   // Computes the frequency threshold based on the domain of `feature`.
   // For now, just uses 1 for kPCPair and frequency_threshold_ for all others.
   // Rationale: the kPCPair features might be too numerous, we don't want to
@@ -79,9 +82,6 @@ class FeatureSet {
     if (feature_domains::kPCPair.Contains(feature)) return 1;
     return frequency_threshold_;
   }
-
-  // Maps feature into an index in frequencies_.
-  size_t Feature2Idx(feature_t feature) const { return feature % kSize; }
 
   const uint8_t frequency_threshold_;
 
@@ -129,8 +129,8 @@ class WeightedDistribution {
     weights_.clear();
     cumulative_weights_.clear();
   }
-  // Fixes the internal state that could become stale
-  // after call(s) to ChangeWeight().
+  // Fixes the internal state that could become stale after call(s) to
+  // ChangeWeight().
   void RecomputeInternalState();
 
   // Computes a random weighted subset of elements to remove.
@@ -166,6 +166,15 @@ struct CorpusRecord {
 // Allows to prune (forget) inputs that become uninteresting.
 class Corpus {
  public:
+  Corpus() = default;
+
+  Corpus(const Corpus &) = default;
+  Corpus(Corpus &&) noexcept = default;
+  Corpus &operator=(const Corpus &) = default;
+  Corpus &operator=(Corpus &&) noexcept = default;
+
+  // Mutators.
+
   // Adds a corpus element, consisting of 'data' (the input bytes, non-empty),
   // 'fv' (the features associated with this input),
   // and `cmp_args` (arguments of CMP instructions).
@@ -173,21 +182,24 @@ class Corpus {
   void Add(const ByteArray &data, const FeatureVec &fv,
            const ByteArray &cmp_args, const FeatureSet &fs,
            const CoverageFrontier &coverage_frontier);
+  // Removes elements that contain only frequent features, according to 'fs'.
+  // Also, randomly removes elements to reduce the size to <= `max_corpus_size`.
+  // `max_corpus_size` should be positive.
+  // Returns the number of removed elements.
+  size_t Prune(const FeatureSet &fs, const CoverageFrontier &coverage_frontier,
+               size_t max_corpus_size, Rng &rng);
+
+  // Accessors.
+
+  // Returns the inputs.
+  const std::vector<CorpusRecord> &Records() const { return records_; }
   // Returns the total number of inputs added.
   size_t NumTotal() const { return num_pruned_ + NumActive(); }
   // Return the number of currently active inputs, i.e. inputs that we want to
   // keep mutating.
   size_t NumActive() const { return records_.size(); }
   // Returns the max and avg sizes of the inputs.
-  std::pair<size_t, size_t> MaxAndAvgSize() const {
-    if (records_.empty()) return {0, 0};
-    size_t max = 0, tot = 0;
-    for (auto &cr : records_) {
-      max = std::max(max, cr.data.size());
-      tot += cr.data.size();
-    }
-    return {max, tot / records_.size()};
-  }
+  std::pair<size_t, size_t> MaxAndAvgSize() const;
   // Returns a random active corpus record using weighted distribution.
   // See WeightedDistribution.
   const CorpusRecord &WeightedRandom(size_t random) const;
@@ -197,15 +209,11 @@ class Corpus {
   const ByteArray &Get(size_t idx) const { return records_[idx].data; }
   // Returns the cmp_args for the element `idx`, `idx` < NumActive().
   ByteSpan GetCmpArgs(size_t idx) const { return records_[idx].cmp_args; }
-  // Removes elements that contain only frequent features, according to 'fs'.
-  // Also randomly removes elements to reduce the size to <= `max_corpus_size`.
-  // `max_corpus_size` should be positive.
-  // Returns the number of removed elements.
-  size_t Prune(const FeatureSet &fs, const CoverageFrontier &coverage_frontier,
-               size_t max_corpus_size, Rng &rng);
+
+  // Logging.
+
   // Prints corpus stats in JSON format to `out` using `fs` for frequencies.
   void PrintStats(std::ostream &out, const FeatureSet &fs);
-
   // Returns a string used for logging the corpus memory usage.
   std::string MemoryUsageString() const;
 
@@ -214,18 +222,17 @@ class Corpus {
   // Maintains weights for elements of records_.
   WeightedDistribution weighted_distribution_;
   size_t num_pruned_ = 0;
-  friend class CoverageFrontier;
 };
 
 // Coverage frontier is a set of PCs that are themselves covered, but some of
 // adjacent PCs in the same function are not.
 // This class identifies precise frontiers. Each frontier is assigned a weight.
 // Frontier weight is a representation of how much code is behind the
-// frontier. Therefore it should be used to prioritize which frontier to focus
+// frontier. Therefore, it should be used to prioritize which frontier to focus
 // first.
 class CoverageFrontier {
  public:
-  CoverageFrontier(const BinaryInfo &binary_info)
+  explicit CoverageFrontier(const BinaryInfo &binary_info)
       : binary_info_(binary_info),
         frontier_(binary_info.pc_table.size()),
         frontier_weight_(binary_info.pc_table.size()) {}

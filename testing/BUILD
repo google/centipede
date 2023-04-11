@@ -88,7 +88,7 @@ centipede_fuzz_target(
     linkopts = ["-fsanitize=address"],
 )
 
-# A standalone binary with main() that is worth fuzzinng.
+# A standalone binary with main() that is worth fuzzing.
 cc_binary(
     name = "standalone_fuzz_target_with_main",
     srcs = ["standalone_fuzz_target_with_main.cc"],
@@ -164,7 +164,6 @@ cc_test(
         "@centipede//:test_util",
         "@centipede//:util",
         "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/strings:str_format",
         "@com_google_googletest//:gtest_main",
     ],
 )

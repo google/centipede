@@ -47,7 +47,7 @@ class ReversePCTable {
 
   // Returns the index of `pc` inside the `pcs` (passed to SetFromPCs()).
   // If `pc` was not present in `pcs`, returns kUnknownPC.
-  // The is a hot function and needs to be as simple and fast as possible.
+  // This is a hot function and needs to be as simple and fast as possible.
   size_t GetPCIndex(uintptr_t pc) const {
     if (pc >= size_) return kUnknownPC;
     return table_[pc];

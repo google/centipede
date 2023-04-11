@@ -30,7 +30,7 @@ ABSL_FLAG(bool, qux, false, "qux help");
 
 namespace centipede::config {
 
-// NOTE: Has to be outside of the anonymous namespace.
+// NOTE: Has to be outside the anonymous namespace.
 bool operator==(const FlagInfo& tested, const FlagInfo& expected) {
   return tested.name == expected.name &&
          (expected.value == "*" || tested.value == expected.value) &&

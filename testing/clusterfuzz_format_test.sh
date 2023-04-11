@@ -22,9 +22,12 @@ set -eu
 source "$(dirname "$0")/../test_util.sh"
 
 # Centipede and target binaries.
-declare -r centipede="$(centipede::get_centipede_test_srcdir)/centipede"
-declare -r target="$(centipede::get_centipede_test_srcdir)/testing/clusterfuzz_format_target"
-declare -r sanitized_target="$(centipede::get_centipede_test_srcdir)/testing/clusterfuzz_format_sanitized_target"
+declare centipede
+centipede="$(centipede::get_centipede_test_srcdir)/centipede"
+declare target
+target="$(centipede::get_centipede_test_srcdir)/testing/clusterfuzz_format_target"
+declare sanitized_target
+sanitized_target="$(centipede::get_centipede_test_srcdir)/testing/clusterfuzz_format_sanitized_target"
 
 # Input files.
 declare -r oom="${TEST_TMPDIR}/oom"

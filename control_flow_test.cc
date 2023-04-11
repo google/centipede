@@ -22,12 +22,9 @@
 #include "googlemock/include/gmock/gmock.h"
 #include "googletest/include/gtest/gtest.h"
 #include "./defs.h"
-#include "./environment.h"
-#include "./execution_result.h"
 #include "./logging.h"
 #include "./symbol_table.h"
 #include "./test_util.h"
-#include "./util.h"
 
 namespace centipede {
 
@@ -71,9 +68,9 @@ TEST(CFTable, MakeCfgFromCfTable) {
     EXPECT_TRUE(cfg.exists(pc));
 
     // Check that cfg traversal is possible.
-    auto succs = cfg.GetSuccessors(pc);
-    for (auto &succ : succs) {
-      EXPECT_TRUE(cfg.exists(succ));
+    auto successors = cfg.GetSuccessors(pc);
+    for (auto &successor : successors) {
+      EXPECT_TRUE(cfg.exists(successor));
     }
 
     EXPECT_THAT(cfg.GetSuccessors(1).size(), 2);
@@ -197,8 +194,8 @@ TEST(CFTable, GetCfTable) {
   LOG(INFO) << VV(target_path) << VV(tmp_path1) << VV(cf_table.size());
   if (cf_table.empty()) {
     LOG(INFO) << "__sancov_cfs is empty.";
-    // TODO(navidem): This should be removed once OSS's clang supports
-    // control-flow.
+    // TODO(navidem): This should be removed once OSS clang supports
+    //  control-flow.
     GTEST_SKIP();
   }
 
@@ -215,7 +212,7 @@ TEST(CFTable, GetCfTable) {
       std::filesystem::exists(tmp_path1.c_str()));  // tmp_path1 was deleted.
   EXPECT_THAT(pc_table.empty(), false);
 
-  // Symbilize pc_table.
+  // Symbolize pc_table.
   SymbolTable symbols;
   symbols.GetSymbolsFromBinary(pc_table, target_path, GetLLVMSymbolizerPath(),
                                tmp_path1, tmp_path2);
@@ -229,16 +226,16 @@ TEST(CFTable, GetCfTable) {
   for (size_t j = 0; j < cf_table.size();) {
     auto current_pc = cf_table[j];
     ++j;
-    size_t succ_num = 0;
+    size_t successor_num = 0;
     size_t callee_num = 0;
     size_t icallee_num = 0;
 
     // Iterate over successors.
     while (cf_table[j]) {
-      ++succ_num;
+      ++successor_num;
       ++j;
     }
-    ++j;  // Step over the delimeter.
+    ++j;  // Step over the delimiter.
 
     // Iterate over callees.
     while (cf_table[j]) {
@@ -246,7 +243,7 @@ TEST(CFTable, GetCfTable) {
       if (cf_table[j] < 0) ++icallee_num;
       ++j;
     }
-    ++j;  // Step over the delimeter.
+    ++j;  // Step over the delimiter.
 
     // Determine if current_pc is a function entry.
     if (pc_table_index.contains(current_pc)) {
@@ -258,15 +255,15 @@ TEST(CFTable, GetCfTable) {
                      << "Checking for " << VV(current_function)
                      << VV(current_pc) << VV(cf_table[j]) << VV(j));
         if (current_function == "SingleEdgeFunc") {
-          EXPECT_EQ(succ_num, 0);
+          EXPECT_EQ(successor_num, 0);
           EXPECT_EQ(icallee_num, 0);
           EXPECT_EQ(callee_num, 0);
         } else if (current_function == "MultiEdgeFunc") {
-          EXPECT_EQ(succ_num, 2);
+          EXPECT_EQ(successor_num, 2);
           EXPECT_EQ(icallee_num, 0);
           EXPECT_EQ(callee_num, 0);
         } else if (current_function == "IndirectCallFunc") {
-          EXPECT_EQ(succ_num, 0);
+          EXPECT_EQ(successor_num, 0);
           EXPECT_EQ(icallee_num, 1);
           EXPECT_EQ(callee_num, 0);
         }

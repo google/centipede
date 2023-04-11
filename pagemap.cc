@@ -17,7 +17,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -62,7 +61,7 @@ bool PageMap::RefreshPageMap() {
   close(pagemap_fd);
   if (read_res != size_to_read) return false;
 
-  // fill  page_is_known_zero_.
+  // fill page_is_known_zero_.
   for (size_t i = 0, n = SizeInPages(); i < n; ++i) {
     page_is_known_zero_[i] = (pagemap[i] >> 63) == 0;
   }

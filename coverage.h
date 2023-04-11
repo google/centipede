@@ -160,7 +160,7 @@ class FunctionFilter {
 // Computes the frontier weight. The weight is calculated based on the functions
 // called in the non-covered side of the frontier. For each such callee, the
 // cyclomatic complexity (CC) of the callee is multiplied by a factor (MF)
-// where MF is determined based on the cvoerage type of callee:
+// where MF is determined based on the coverage type of callee:
 //
 // frontier_weight = 0
 // for f in callees_of_non_covered_successor_bb:

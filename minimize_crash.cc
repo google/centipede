@@ -14,7 +14,6 @@
 
 #include "./minimize_crash.h"
 
-#include <algorithm>
 #include <filesystem>  // NOLINT
 #include <thread>      // NOLINT(build/c++11)
 

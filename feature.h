@@ -224,7 +224,8 @@ inline size_t ConvertContextAndArgPairToNumber(uintptr_t a, uintptr_t b,
   // The idea is to treat different {context,a,b} tuples as different features,
   // so that a sufficiently new argument pair for a given context is recognized
   // as interesting.
-  // Obviously, we can't generate 2^128 different features per context
+  //
+  // Obviously, we can't generate 2^128 different features per context,
   // and so we need to bucketize them.
   //
   // The following relationships between a and b seem worthy of

@@ -125,7 +125,7 @@ ABSL_FLAG(size_t, timeout_per_input, 60,
           "runs longer than this, the runner process will abort. Support may "
           "vary depending on the runner.");
 ABSL_FLAG(size_t, timeout, 60,
-          "An alias for --timout_per_input. If both are passed, the last of "
+          "An alias for --timeout_per_input. If both are passed, the last of "
           "the two wins.")
     .OnUpdate([]() {
       absl::SetFlag(&FLAGS_timeout_per_input, absl::GetFlag(FLAGS_timeout));
@@ -225,10 +225,10 @@ ABSL_FLAG(std::string, export_corpus_from_local_dir, "",
           "the sharded remote corpus in workdir. Not recursive.");
 ABSL_FLAG(std::string, corpus_dir, "",
           "Comma-separated list of paths to local corpus dirs, with one file "
-          "per input.At startup, the files are exported into the corpus in "
-          "--workdir. While fuzzing the new corpus elements are written to the "
-          "first dir. This makes it more convenient to interop with libFuzzer "
-          "corpora.");
+          "per input. At startup, the files are exported into the corpus in "
+          "--workdir. While fuzzing, the new corpus elements are written to "
+          "the first dir. This makes it more convenient to interop with "
+          "libFuzzer corpora.");
 ABSL_FLAG(std::string, symbolizer_path, "llvm-symbolizer",
           "Path to the symbolizer tool. By default, we use llvm-symbolizer "
           "and assume it is in PATH.");
@@ -241,10 +241,12 @@ ABSL_FLAG(std::string, runner_dl_path_suffix, "",
           "This flag is experimental and may be removed in future");
 ABSL_FLAG(size_t, distill_shards, 0,
           "The first --distill_shards will write the distilled corpus to "
-          "workdir/distilled-BINARY.SHARD. Implies --full_sync for these "
-          "shards. Note that every shard will produce its own variant of "
-          "distilled corpus. Distillation will work properly only if all "
-          "shards already have their feature files computed.");
+          "workdir/distilled-BINARY.SHARD files. Also, if --corpus_dir is "
+          "specified, the distilled corpus shards will be duplicated to its "
+          "first element. Note that every shard will produce its own variant "
+          "of distilled corpus thanks to random loading order. Distillation "
+          "will work properly only if all shards already have their feature "
+          "files computed.");
 ABSL_FLAG(size_t, log_features_shards, 0,
           "The first --log_features_shards shards will log newly observed "
           "features as symbols. In most cases you don't need this to be >= 2.");
@@ -576,9 +578,8 @@ bool Environment::DumpTelemetryForThisBatch(size_t batch_index) const {
   }
   // Special mode for negative --telemetry_frequency: dump when batch_index
   // is a power-of-two and is >= than 2^abs(--telemetry_frequency).
-  if (((telemetry_frequency < 0) &&
-       (batch_index >= (1 << -telemetry_frequency)) &&
-       ((batch_index - 1) & batch_index) == 0)) {
+  if (telemetry_frequency < 0 && batch_index >= (1 << -telemetry_frequency) &&
+      ((batch_index - 1) & batch_index) == 0) {
     return true;
   }
   // Normal mode: dump when requested number of batches get processed.
@@ -688,7 +689,7 @@ void Environment::ReadKnobsFileIfSpecified() {
   const std::string_view knobs_file_path = knobs_file;
   if (knobs_file_path.empty()) return;
   ByteArray knob_bytes;
-  auto f = RemoteFileOpen(knobs_file, "r");
+  auto *f = RemoteFileOpen(knobs_file, "r");
   CHECK(f) << "Failed to open remote file " << knobs_file;
   RemoteFileRead(f, knob_bytes);
   RemoteFileClose(f);

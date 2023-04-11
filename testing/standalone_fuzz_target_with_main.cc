@@ -14,7 +14,7 @@
 
 // A simple standalone binary that takes one file path as an argument.
 // It reads that file and traps if the file starts with 'fuz'.
-// Returns EXIT_FAILURE on any erorr.
+// Returns EXIT_FAILURE on any error.
 //
 // For testing how Centipede can fuzz standalone binaries with their main().
 #include <cstdint>
@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
   FILE* f = fopen(argv[1], "r");
   if (!f) return EXIT_FAILURE;
   auto n_bytes = fread(bytes, 1, kMaxSize, f);
-  if (n_bytes < 0) return EXIT_FAILURE;
+  if (n_bytes == 0) return EXIT_FAILURE;
   if (fclose(f) != 0) return EXIT_FAILURE;
   FuzzMe(bytes, n_bytes);
 }

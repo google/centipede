@@ -21,7 +21,6 @@
 namespace centipede {
 
 // Analyzes two corpora, `a` and `b`, reports the differences.
-// TODO(kcc): unimplemented.
 void AnalyzeCorpora(const BinaryInfo &binary_info,
                     const std::vector<CorpusRecord> &a,
                     const std::vector<CorpusRecord> &b);

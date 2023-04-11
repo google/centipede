@@ -35,7 +35,7 @@
 // * Runner (the fork server) fails on the next read from pipe0 and exits.
 //
 // The fork server code kicks in super-early in the process startup,
-// via injecting itself into the .preinit_array.
+// via injecting itself into the `.preinit_array`.
 // Ensure that this code is not dropped from linking (alwayslink=1).
 //
 // The main benefts of the fork server over plain fork/exec or system() are:
@@ -106,7 +106,7 @@ const char *GetOneEnv(const char *key) {
 }
 
 // Starts the fork server if the pipes are given.
-// This function is called from .preinit_array when linked statically,
+// This function is called from `.preinit_array` when linked statically,
 // or from the DSO constructor when injected via LD_PRELOAD.
 // Note: it must run before the GlobalRunnerState constructor because
 // GlobalRunnerState may terminate the process early due to an error,
@@ -119,7 +119,7 @@ const char *GetOneEnv(const char *key) {
 // explicitly specified priority, thus we still run before most
 // "normal" constructors.
 __attribute__((constructor(150))) void ForkServerCallMeVeryEarly() {
-  // Guard from calling twice.
+  // Guard against calling twice.
   static bool called_already = false;
   if (called_already) return;
   called_already = true;

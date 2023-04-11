@@ -185,13 +185,13 @@ test_pcpair_features() {
   LOG="${TEST_TMPDIR}/${FUNC}/log"
   centipede::ensure_empty_dir "${WD}"
 
-  echo "============ ${FUNC}: fuzz with --use_pcpair_features=1"
-  test_fuzz --workdir="${WD}" --use_pcpair_features=1 --num_runs=10000 \
+  echo "============ ${FUNC}: fuzz with --use_pcpair_features"
+  test_fuzz --workdir="${WD}" --use_pcpair_features --num_runs=10000 \
     --symbolizer_path="${LLVM_SYMBOLIZER}" | tee "${LOG}"
   centipede::assert_regex_in_file "end-fuzz.*pair: [^0]" "${LOG}"
 
-  echo "============ ${FUNC}: fuzz with --use_pcpair_features=1 w/o symbolizer"
-  test_fuzz --workdir="${WD}" --use_pcpair_features=1 --num_runs=10000 \
+  echo "============ ${FUNC}: fuzz with --use_pcpair_features w/o symbolizer"
+  test_fuzz --workdir="${WD}" --use_pcpair_features --num_runs=10000 \
     --symbolizer_path=/dev/null | tee "${LOG}"
   centipede::assert_regex_in_file "end-fuzz.*pair: [^0]" "${LOG}"
 }

@@ -21,10 +21,8 @@
 
 #include "googletest/include/gtest/gtest.h"
 #include "./control_flow.h"
-#include "./coverage.h"
 #include "./defs.h"
 #include "./feature.h"
-#include "./util.h"
 
 namespace centipede {
 namespace {

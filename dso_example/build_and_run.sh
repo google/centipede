@@ -53,7 +53,7 @@ mkdir /tmp/wd
 
 # Run fuzzing.
 # The centipede run-time is LD_PRELOAD-ed.
-# The instrumented library fuzz_me.so is dloped-ed.
+# The instrumented library fuzz_me.so is `dlopen()`-ed.
 echo "Fuzzing until the first crash"
 /tmp/centipede --workdir=/tmp/wd \
   --binary="LD_PRELOAD=/tmp/centipede_runner_no_main.so FUZZ_ME_PATH=./fuzz_me.so ./main_executable @@" \

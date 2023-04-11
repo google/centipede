@@ -22,7 +22,7 @@ std::string_view Knobs::knob_names_[kNumKnobs];
 
 KnobId Knobs::NewId(std::string_view knob_name) {
   if (next_id_ >= kNumKnobs) {
-    // If we've ran out of IDs, log using stderr (don't use extra deps).
+    // If we've run out of IDs, log using stderr (don't use extra deps).
     fprintf(stderr, "Knobs::NewId: no more IDs left, aborting\n");
     __builtin_trap();
   }

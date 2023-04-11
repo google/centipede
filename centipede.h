@@ -42,20 +42,26 @@ class Centipede {
   Centipede(const Environment &env, CentipedeCallbacks &user_callbacks,
             const BinaryInfo &binary_info, CoverageLogger &coverage_logger,
             Stats &stats);
-  virtual ~Centipede() {}
+  virtual ~Centipede() = default;
+
+  // Non-copyable and non-movable.
+  Centipede(const Centipede &) = delete;
+  Centipede(Centipede &&) noexcept = delete;
+  Centipede &operator=(const Centipede &) = delete;
+  Centipede &operator=(Centipede &&) noexcept = delete;
 
   // Main loop.
   void FuzzingLoop();
+
   // Saves the sharded corpus into `dir`, one file per input.
-  // Returns 0.
-  static int SaveCorpusToLocalDir(const Environment &env, std::string_view dir);
+  static void SaveCorpusToLocalDir(const Environment &env,
+                                   std::string_view dir);
   // Exports the corpus from `dir` (one file per input) into the sharded corpus.
   // Reads `dir` recursively.
   // Ignores inputs that already exist in the shard they need to be added to.
   // Sharding is stable and depends only on env.total_shards and the file name.
-  // Returns 0.
-  static int ExportCorpusFromLocalDir(const Environment &env,
-                                      std::string_view dir);
+  static void ExportCorpusFromLocalDir(const Environment &env,
+                                       std::string_view dir);
 
  private:
   // Executes inputs from `input_vec`.

@@ -18,14 +18,10 @@
 
 #include <cstdint>
 #include <filesystem>
-#include <fstream>
 #include <limits>
-#include <sstream>
-#include <string>
 #include <string_view>
 
 #include "absl/container/flat_hash_set.h"
-#include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
 #include "absl/synchronization/mutex.h"
 #include "./defs.h"
@@ -181,7 +177,7 @@ uint32_t ComputeFrontierWeight(const Coverage &coverage,
       weight += uncovered_knob;
       continue;
     }
-    // This function's body is not in this DSO,, like library functions. For now
+    // This function's body is not in this DSO, like library functions. For now
     // skipping it as we have no coverage kind (Fully/Partially covered or
     // uncovered) and no complexity for it.
     if (!cfg.IsInPcTable(callee)) continue;

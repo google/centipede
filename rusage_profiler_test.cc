@@ -74,18 +74,14 @@ struct BigSlowThing {
   std::string big_mem;
 };
 
-void WasteTimeAndGobbleBytes(bool profile) {
-  RPROF_THIS_FUNCTION_WITH_REPORT(profile);
+void WasteTimeAndGobbleBytes() {
   {
     BigSlowThing big_slow_1{50'000'000, absl::Seconds(1)};
-    RPROF_SNAPSHOT_AND_LOG("Scope 1");
   }
   {
     BigSlowThing big_slow_2{20'000'000, absl::Seconds(1)};
-    RPROF_SNAPSHOT("Scope 2");
     for (int i = 0; i < 3; ++i) {
       BigSlowThing big_slow_3{10'000'000, absl::Seconds(1)};
-      RPROF_SNAPSHOT_AND_LOG(absl::StrCat("Loop iteration ", i));
     }
   }
 }
@@ -95,7 +91,7 @@ void WasteTimeAndGobbleBytes(bool profile) {
 TEST(RUsageProfilerTest, TimelapseSnapshots) {
   RPROF_THIS_FUNCTION_WITH_REPORT(/*enable=*/true);
   RPROF_START_TIMELAPSE(absl::Seconds(1), /*also_log=*/true, "Timelapse");
-  WasteTimeAndGobbleBytes(/*profile=*/false);
+  WasteTimeAndGobbleBytes();
   RPROF_STOP_TIMELAPSE();
   RPROF_DUMP_REPORT_TO_LOG("Report");
 }
@@ -124,9 +120,9 @@ TEST(RUsageProfilerTest, ValidateManualSnapshots) {
 
   const RUsageProfiler::Snapshot& before_snapshot =
       rprof.TakeSnapshot({__FILE__, __LINE__});
-  // NOTE: Use rprof's internal timer rather than RUsageTiming's default global
-  // one (which starts when the process starts) to measure the times on the same
-  // timeline.
+  // NOTE: Use RUsageProfiler's internal timer rather than RUsageTiming's
+  // default global one (which starts when the process starts) to measure the
+  // times on the same timeline.
   const RUsageTiming before_timing =
       RUsageTiming::Snapshot(rusage_scope, rprof.timer_);
   const RUsageMemory before_memory = RUsageMemory::Snapshot(rusage_scope);

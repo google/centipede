@@ -17,7 +17,6 @@
 #include <unistd.h>
 
 #include <csignal>
-#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
@@ -188,8 +187,10 @@ int CentipedeMain(const Environment &env,
                   CentipedeCallbacksFactory &callbacks_factory) {
   SetSignalHandlers(env.stop_at);
 
-  if (!env.save_corpus_to_local_dir.empty())
-    return Centipede::SaveCorpusToLocalDir(env, env.save_corpus_to_local_dir);
+  if (!env.save_corpus_to_local_dir.empty()) {
+    Centipede::SaveCorpusToLocalDir(env, env.save_corpus_to_local_dir);
+    return EXIT_SUCCESS;
+  }
 
   if (!env.for_each_blob.empty()) return ForEachBlob(env);
 
@@ -200,12 +201,10 @@ int CentipedeMain(const Environment &env,
   }
 
   // Just export the corpus from a local dir and exit.
-  if (!env.export_corpus_from_local_dir.empty())
-    return Centipede::ExportCorpusFromLocalDir(
-        env, env.export_corpus_from_local_dir);
-
-  const auto tmpdir = TemporaryLocalDirPath();
-  CreateLocalDirRemovedAtExit(tmpdir);  // creates temp dir.
+  if (!env.export_corpus_from_local_dir.empty()) {
+    Centipede::ExportCorpusFromLocalDir(env, env.export_corpus_from_local_dir);
+    return EXIT_SUCCESS;
+  }
 
   // Export the corpus from a local dir and then fuzz.
   if (!env.corpus_dir.empty()) {
@@ -214,9 +213,14 @@ int CentipedeMain(const Environment &env,
     }
   }
 
-  // Create the coverage dir once, before creating any threads.
-  LOG(INFO) << "Coverage dir " << env.MakeCoverageDirPath();
+  // Create the local temporary dir and remote coverage dirs once, before
+  // creating any threads.
+  const auto coverage_dir = env.MakeCoverageDirPath();
   RemoteMkdir(env.MakeCoverageDirPath());
+  const auto tmpdir = TemporaryLocalDirPath();
+  CreateLocalDirRemovedAtExit(tmpdir);
+  LOG(INFO) << "Coverage dir: " << coverage_dir
+            << "; temporary dir: " << tmpdir;
 
   BinaryInfo binary_info;
   {
@@ -234,7 +238,7 @@ int CentipedeMain(const Environment &env,
 
   if (env.use_pcpair_features) {
     CHECK(!binary_info.pc_table.empty())
-        << "use_pcpair_features requires non-empty pc_table";
+        << "--use_pcpair_features requires non-empty pc_table";
   }
   CoverageLogger coverage_logger(binary_info.pc_table, binary_info.symbols);
 

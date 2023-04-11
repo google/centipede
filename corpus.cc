@@ -20,10 +20,8 @@
 #include <string>
 #include <vector>
 
-#include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_cat.h"
-#include "./call_graph.h"
 #include "./control_flow.h"
 #include "./coverage.h"
 #include "./defs.h"
@@ -32,6 +30,10 @@
 #include "./util.h"
 
 namespace centipede {
+
+//------------------------------------------------------------------------------
+//                                FeatureSet
+//------------------------------------------------------------------------------
 
 // TODO(kcc): [impl] add tests.
 PCIndexVec FeatureSet::ToCoveragePCs() const {
@@ -96,7 +98,9 @@ FeatureSet::ComputeWeight(const FeatureVec &features) const {
   return weight;
 }
 
-//================= Corpus
+//------------------------------------------------------------------------------
+//                                  Corpus
+//------------------------------------------------------------------------------
 
 // Returns the weight of `fv` computed using `fs` and `coverage_frontier`.
 static size_t ComputeWeight(const FeatureVec &fv, const FeatureSet &fs,
@@ -116,6 +120,17 @@ static size_t ComputeWeight(const FeatureVec &fv, const FeatureSet &fs,
   return weight * (frontier_weights_sum + 1);  // Multiply by at least 1.
 }
 
+std::pair<size_t, size_t> Corpus::MaxAndAvgSize() const {
+  if (records_.empty()) return {0, 0};
+  size_t max = 0;
+  size_t total = 0;
+  for (const auto &r : records_) {
+    max = std::max(max, r.data.size());
+    total += r.data.size();
+  }
+  return {max, total / records_.size()};
+}
+
 size_t Corpus::Prune(const FeatureSet &fs,
                      const CoverageFrontier &coverage_frontier,
                      size_t max_corpus_size, Rng &rng) {
@@ -129,7 +144,7 @@ size_t Corpus::Prune(const FeatureSet &fs,
     auto new_weight =
         ComputeWeight(records_[i].features, fs, coverage_frontier);
     weighted_distribution_.ChangeWeight(i, new_weight);
-    num_zero_weights += new_weight == 0;
+    if (new_weight == 0) ++num_zero_weights;
   }
 
   // Remove zero weights and the corresponding corpus record.
@@ -206,7 +221,10 @@ std::string Corpus::MemoryUsageString() const {
   return absl::StrCat("d", data_size >> 20, "/f", features_size >> 20);
 }
 
-//================= WeightedDistribution
+//------------------------------------------------------------------------------
+//                          WeightedDistribution
+//------------------------------------------------------------------------------
+
 void WeightedDistribution::AddWeight(uint64_t weight) {
   CHECK_EQ(weights_.size(), cumulative_weights_.size());
   weights_.push_back(weight);
@@ -255,9 +273,12 @@ uint64_t WeightedDistribution::PopBack() {
   return result;
 }
 
-//================= CoverageFrontier
+//------------------------------------------------------------------------------
+//                            CoverageFrontier
+//------------------------------------------------------------------------------
+
 size_t CoverageFrontier::Compute(const Corpus &corpus) {
-  return Compute(corpus.records_);
+  return Compute(corpus.Records());
 }
 
 size_t CoverageFrontier::Compute(
@@ -287,36 +308,48 @@ size_t CoverageFrontier::Compute(
     auto frontier_end = frontier_.begin() + end;
     size_t cov_size_in_this_func =
         std::count(frontier_begin, frontier_end, true);
+
     if (cov_size_in_this_func > 0 && cov_size_in_this_func < end - beg)
       ++num_functions_in_frontier_;
+
     // Reset the frontier_ entries.
     std::fill(frontier_begin, frontier_end, false);
+
     // Iterate over BBs in the function and check the coverage statue.
     for (size_t i = beg; i < end; ++i) {
       // If the current pc is not covered, it cannot be a frontier.
       if (!coverage.BlockIsCovered(i)) continue;
+
       auto pc = binary_info_.pc_table[i].pc;
+
       // Current pc is covered, look for a non-covered successor.
       for (auto successor : binary_info_.control_flow_graph.GetSuccessors(pc)) {
         // Successor pc may not be in PCTable because of pruning.
         if (!binary_info_.control_flow_graph.IsInPcTable(successor)) continue;
-        auto succ_idx = binary_info_.control_flow_graph.GetPcIndex(successor);
-        if (coverage.BlockIsCovered(succ_idx))
-          continue;  // This successor is covered, skip it.
+
+        auto successor_idx =
+            binary_info_.control_flow_graph.GetPcIndex(successor);
+
+        // This successor is covered, skip it.
+        if (coverage.BlockIsCovered(successor_idx)) continue;
+
         // Now we have a frontier, compute the weight.
         frontier_[i] = true;
+
         // Calculate frontier weight.
-        // Here we use rachability and coverage to indentify all reachable and
+        // Here we use reachability and coverage to identify all reachable and
         // non-covered BBs from successor, and then use all functions called
         // in those BBs.
         for (auto reachable_bb :
              binary_info_.control_flow_graph.LazyGetReachabilityForPc(
                  successor)) {
-          if (!binary_info_.control_flow_graph.IsInPcTable(reachable_bb))
+          if (!binary_info_.control_flow_graph.IsInPcTable(reachable_bb) ||
+              coverage.BlockIsCovered(
+                  binary_info_.control_flow_graph.GetPcIndex(reachable_bb))) {
+            // This reachable BB is already either processed and added or
+            // covered via a different path -- not interesting!
             continue;
-          if (coverage.BlockIsCovered(
-                  binary_info_.control_flow_graph.GetPcIndex(reachable_bb)))
-            continue;  // This reachable BB is already covered, not intereting!
+          }
           frontier_weight_[i] += ComputeFrontierWeight(
               coverage, binary_info_.control_flow_graph,
               binary_info_.call_graph.GetBasicBlockCallees(reachable_bb));

@@ -114,7 +114,7 @@ class ConcurrentBitSet {
     }
   }
 
-  // A word is the largest integer type convenient for bit-wise opeartions.
+  // A word is the largest integer type convenient for bit-wise operations.
   using word_t = uintptr_t;
   static const size_t kBytesInWord = sizeof(word_t);
   static const size_t kBitsInWord = CHAR_BIT * kBytesInWord;

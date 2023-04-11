@@ -108,7 +108,7 @@ static int DlIteratePhdrCallback(struct dl_phdr_info *info, size_t size,
   if (param->dl_path_suffix == nullptr) {
     // When the main binary is coverage-instrumented, we currently only support
     // statically linking this runner. Which means, that the runner itself
-    // is part of the main binary and we can do additional checks, which we
+    // is part of the main binary, and we can do additional checks, which we
     // can't do if the runner is a separate library.
     RunnerCheck(result.InBounds(some_code_address),
                 "DlIteratePhdrCallback: a sample code address is not in bounds "
