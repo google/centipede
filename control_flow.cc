@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/strings/match.h"
 #include "./command.h"
 #include "./defs.h"
 #include "./logging.h"
@@ -29,48 +30,6 @@
 #include "./util.h"
 
 namespace centipede {
-
-PCTable GetPcTableFromBinaryWithTracePC(std::string_view binary_path,
-                                        std::string_view tmp_path) {
-  // Assumes objdump in PATH.
-  // Run objdump -d on the binary.
-  Command cmd("objdump", {"-d", std::string(binary_path)}, {}, tmp_path,
-              "/dev/null");
-  int system_exit_code = cmd.Execute();
-  if (system_exit_code) {
-    LOG(INFO) << __func__ << " objdump failed: " << VV(system_exit_code)
-              << VV(cmd.ToString());
-    return PCTable();
-  }
-  PCTable pc_table;
-  std::ifstream in(std::string{tmp_path});
-  CHECK(in.good()) << VV(tmp_path);
-  bool saw_new_function = false;
-
-  // TODO(navidem): use absl::EndsWith().
-  auto ends_with = [](std::string_view str, std::string_view end) -> bool {
-    return end.size() <= str.size() && str.find(end) == str.size() - end.size();
-  };
-
-  // Read the objdump output, find lines that start a function
-  // and lines that have a call to __sanitizer_cov_trace_pc.
-  // Reconstruct the PCTable from those.
-  for (std::string line; std::getline(in, line);) {
-    if (ends_with(line, ">:")) {  // new function.
-      saw_new_function = true;
-      continue;
-    }
-    if (!ends_with(line, "<__sanitizer_cov_trace_pc>") &&
-        !ends_with(line, "<__sanitizer_cov_trace_pc@plt>"))
-      continue;
-    uintptr_t pc = std::stoul(line, nullptr, 16);
-    uintptr_t flags = saw_new_function ? PCInfo::kFuncEntry : 0;
-    saw_new_function = false;  // next trace_pc will be in the same function.
-    pc_table.push_back({pc, flags});
-  }
-  std::filesystem::remove(tmp_path);
-  return pc_table;
-}
 
 PCTable GetPcTableFromBinary(std::string_view binary_path,
                              std::string_view tmp_path,
@@ -92,11 +51,12 @@ PCTable GetPcTableFromBinaryWithPcTable(std::string_view binary_path,
   Command cmd(binary_path, {},
               {absl::StrCat("CENTIPEDE_RUNNER_FLAGS=:dump_pc_table:arg1=",
                             tmp_path, ":")},
-              "/dev/null", "/dev/null");
-  int system_exit_code = cmd.Execute();
-  if (system_exit_code) {
-    LOG(INFO) << "system() for " << binary_path
-              << " with --dump_pc_table failed: " << VV(system_exit_code);
+              "/dev/null");
+  int exit_code = cmd.Execute();
+  if (exit_code) {
+    LOG(INFO) << __func__
+              << ": Failed to get PC table from binary: " << VV(binary_path)
+              << VV(cmd.ToString()) << VV(exit_code) << "; see logs above";
     return {};
   }
   ByteArray pc_infos_as_bytes;
@@ -107,6 +67,43 @@ PCTable GetPcTableFromBinaryWithPcTable(std::string_view binary_path,
   const auto *pc_infos = reinterpret_cast<PCInfo *>(pc_infos_as_bytes.data());
   PCTable pc_table{pc_infos, pc_infos + pc_table_size};
   CHECK_EQ(pc_table.size(), pc_table_size);
+  return pc_table;
+}
+
+PCTable GetPcTableFromBinaryWithTracePC(std::string_view binary_path,
+                                        std::string_view tmp_path) {
+  // Run objdump -d on the binary. Assumes objdump in PATH.
+  Command cmd("objdump", {"-d", std::string(binary_path)}, {}, tmp_path,
+              "/dev/null");
+  int exit_code = cmd.Execute();
+  if (exit_code) {
+    LOG(INFO) << __func__
+              << ": Failed to get PC table for binary: " << VV(binary_path)
+              << VV(cmd.ToString()) << VV(exit_code) << "; see logs above";
+    return {};
+  }
+  PCTable pc_table;
+  std::ifstream in(std::string{tmp_path});
+  CHECK(in.good()) << VV(tmp_path);
+  bool saw_new_function = false;
+
+  // Read the objdump output, find lines that start a function
+  // and lines that have a call to __sanitizer_cov_trace_pc.
+  // Reconstruct the PCTable from those.
+  for (std::string line; std::getline(in, line);) {
+    if (absl::EndsWith(line, ">:")) {  // new function.
+      saw_new_function = true;
+      continue;
+    }
+    if (!absl::EndsWith(line, "<__sanitizer_cov_trace_pc>") &&
+        !absl::EndsWith(line, "<__sanitizer_cov_trace_pc@plt>"))
+      continue;
+    uintptr_t pc = std::stoul(line, nullptr, 16);
+    uintptr_t flags = saw_new_function ? PCInfo::kFuncEntry : 0;
+    saw_new_function = false;  // next trace_pc will be in the same function.
+    pc_table.push_back({pc, flags});
+  }
+  std::filesystem::remove(tmp_path);
   return pc_table;
 }
 
