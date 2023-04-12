@@ -196,6 +196,13 @@ static std::string GetLLVMSymbolizerPath() {
   return "llvm-symbolizer";
 }
 
+// Returns path to objdump.
+static std::string GetObjDumpPath() {
+  CHECK_EQ(system("which objdump"), EXIT_SUCCESS)
+      << "objdump has to be installed and findable via PATH";
+  return "objdump";
+}
+
 // A simple CentipedeCallbacks derivative for this test.
 class TestCallbacks : public CentipedeCallbacks {
  public:
@@ -238,10 +245,6 @@ static std::vector<FeatureVec> RunInputsAndCollectCoverage(
 // Tests coverage collection on test_fuzz_target
 // using two inputs that trigger different code paths.
 TEST(Coverage, CoverageFeatures) {
-  CHECK_EQ(system("which objdump"), EXIT_SUCCESS)
-      << "odjdump should be installed and findable via PATH";
-  const std::string objdump_path = "objdump";
-
   // Prepare the inputs.
   Environment env;
   env.binary = GetTargetPath();
@@ -250,9 +253,9 @@ TEST(Coverage, CoverageFeatures) {
   EXPECT_NE(features[0], features[1]);
   // Get pc_table and symbols.
   bool uses_legacy_trace_pc_instrumentation = {};
-  auto pc_table =
-      GetPcTableFromBinary(GetTargetPath(), objdump_path, GetTempFilePath(0),
-                           &uses_legacy_trace_pc_instrumentation);
+  auto pc_table = GetPcTableFromBinary(GetTargetPath(), GetObjDumpPath(),
+                                       GetTempFilePath(0),
+                                       &uses_legacy_trace_pc_instrumentation);
   EXPECT_FALSE(uses_legacy_trace_pc_instrumentation);
   SymbolTable symbols;
   symbols.GetSymbolsFromBinary(pc_table, GetTargetPath(),
@@ -434,15 +437,11 @@ TEST(Coverage, PathFeatures) {
 }
 
 TEST(Coverage, FunctionFilter) {
-  CHECK_EQ(system("which objdump"), EXIT_SUCCESS)
-      << "odjdump should be installed and findable via PATH";
-  const std::string objdump_path = "objdump";
-
   // Initialize coverage data.
   bool uses_legacy_trace_pc_instrumentation = false;
-  PCTable pc_table =
-      GetPcTableFromBinary(GetTargetPath(), objdump_path, GetTempFilePath(0),
-                           &uses_legacy_trace_pc_instrumentation);
+  PCTable pc_table = GetPcTableFromBinary(
+      GetTargetPath(), GetObjDumpPath(), GetTempFilePath(0),
+      &uses_legacy_trace_pc_instrumentation);
   EXPECT_FALSE(uses_legacy_trace_pc_instrumentation);
   SymbolTable symbols;
   symbols.GetSymbolsFromBinary(pc_table, GetTargetPath(),
