@@ -465,7 +465,9 @@ static std::vector<ByteArray> RunWithFunctionFilter(
   // Must symbolize in order for the filter to work.
   CHECK_EQ(system("which llvm-symbolizer"), EXIT_SUCCESS)
       << "llvm-symbolizer should be installed and findable via PATH";
-  env.symbolizer_path = "llvm-symbolizer";
+  CHECK_EQ(system("which objdump"), EXIT_SUCCESS)
+      << "odjdump should be installed and findable via PATH";
+  env.objdump_path = "objdump";
   env.log_level = 0;
   env.function_filter = function_filter;
   FunctionFilterMock mock(env);

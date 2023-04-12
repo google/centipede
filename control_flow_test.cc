@@ -183,6 +183,13 @@ static std::string GetLLVMSymbolizerPath() {
   return "llvm-symbolizer";
 }
 
+// Returns path to objdump.
+static std::string GetObjDumpPath() {
+  CHECK_EQ(system("which objdump"), EXIT_SUCCESS)
+      << "objdump has to be installed and findable via PATH";
+  return "objdump";
+}
+
 // Tests GetCfTableFromBinary() on test_fuzz_target.
 TEST(CFTable, GetCfTable) {
   auto target_path = GetTargetPath();
@@ -205,7 +212,7 @@ TEST(CFTable, GetCfTable) {
 
   // Load the pc table.
   bool uses_legacy_trace_pc_instrumentation = {};
-  auto pc_table = GetPcTableFromBinary(target_path, tmp_path1,
+  auto pc_table = GetPcTableFromBinary(target_path, GetObjDumpPath(), tmp_path1,
                                        &uses_legacy_trace_pc_instrumentation);
   EXPECT_FALSE(uses_legacy_trace_pc_instrumentation);
   ASSERT_FALSE(

@@ -43,9 +43,9 @@ void CentipedeCallbacks::PopulateBinaryInfo(BinaryInfo &binary_info) {
   // Load PC table.
   std::string pc_table_path =
       std::filesystem::path(temp_dir_).append("pc_table");
-  binary_info.pc_table =
-      GetPcTableFromBinary(env_.coverage_binary, pc_table_path,
-                           &binary_info.uses_legacy_trace_pc_instrumentation);
+  binary_info.pc_table = GetPcTableFromBinary(
+      env_.coverage_binary, env_.objdump_path, pc_table_path,
+      &binary_info.uses_legacy_trace_pc_instrumentation);
   if (binary_info.pc_table.empty()) {
     if (env_.require_pc_table) {
       LOG(INFO) << "Could not get PCTable, exiting (override with "

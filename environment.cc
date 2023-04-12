@@ -232,6 +232,9 @@ ABSL_FLAG(std::string, corpus_dir, "",
 ABSL_FLAG(std::string, symbolizer_path, "llvm-symbolizer",
           "Path to the symbolizer tool. By default, we use llvm-symbolizer "
           "and assume it is in PATH.");
+ABSL_FLAG(std::string, objdump_path, "objdump",
+          "Path to the objdump tool. By default, we use the system objdump "
+          "and assume it is in PATH.");
 ABSL_FLAG(std::string, runner_dl_path_suffix, "",
           "If non-empty, this flag is passed to the Centipede runner. "
           "It tells the runner that this dynamic library is instrumented "
@@ -402,6 +405,7 @@ Environment::Environment(const std::vector<std::string> &argv)
       corpus_dir(absl::StrSplit(absl::GetFlag(FLAGS_corpus_dir), ',',
                                 absl::SkipEmpty{})),
       symbolizer_path(absl::GetFlag(FLAGS_symbolizer_path)),
+      objdump_path(absl::GetFlag(FLAGS_objdump_path)),
       runner_dl_path_suffix(absl::GetFlag(FLAGS_runner_dl_path_suffix)),
       input_filter(absl::GetFlag(FLAGS_input_filter)),
       dictionary(absl::StrSplit(absl::GetFlag(FLAGS_dictionary), ',',

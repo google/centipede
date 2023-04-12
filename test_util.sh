@@ -42,16 +42,26 @@ function centipede::get_centipede_test_srcdir() {
   echo "${TEST_SRCDIR}/${TEST_WORKSPACE}"
 }
 
-# Returns the path to llvm-symbolizer.
-function centipede::get_llvm_symbolizer_path() {
+function get_system_binary_path() {
   set -u
+  local -r name=$1
   local path
-  path="$(which llvm-symbolizer)"
+  path="$(which "${name}")"
   if (( $? != 0 )); then
-    die "llvm-symbolizer must be installed and findable via" \
+    die "${name} must be installed and findable via" \
       "PATH: use install_dependencies_debian.sh to fix"
   fi
   echo "${path}"
+}
+
+# Returns the path to llvm-symbolizer.
+function centipede::get_llvm_symbolizer_path() {
+  get_system_binary_path "llvm-symbolizer"
+}
+
+# Returns the path to objdump.
+function centipede::get_objdump_path() {
+  get_system_binary_path "objdump"
 }
 
 # If the var named "$1" is unset, then sets it to "$2". If the var is set,

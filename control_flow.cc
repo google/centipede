@@ -29,13 +29,14 @@
 namespace centipede {
 
 PCTable GetPcTableFromBinary(std::string_view binary_path,
+                             std::string_view objdump_path,
                              std::string_view tmp_path,
                              bool *uses_legacy_trace_pc_instrumentation) {
   PCTable res = GetPcTableFromBinaryWithPcTable(binary_path, tmp_path);
   if (res.empty()) {
     // Fall back to trace-pc.
     LOG(INFO) << "Fall back to GetPcTableFromBinaryWithTracePC";
-    res = GetPcTableFromBinaryWithTracePC(binary_path, tmp_path);
+    res = GetPcTableFromBinaryWithTracePC(binary_path, objdump_path, tmp_path);
     *uses_legacy_trace_pc_instrumentation = true;
   } else {
     *uses_legacy_trace_pc_instrumentation = false;
@@ -68,6 +69,7 @@ PCTable GetPcTableFromBinaryWithPcTable(std::string_view binary_path,
 }
 
 PCTable GetPcTableFromBinaryWithTracePC(std::string_view binary_path,
+                                        std::string_view objdump_path,
                                         std::string_view tmp_path) {
   // Run objdump -d on the binary. Assumes objdump in PATH.
   Command cmd("objdump", {"-d", std::string(binary_path)}, {}, tmp_path,

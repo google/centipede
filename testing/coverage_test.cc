@@ -238,6 +238,10 @@ static std::vector<FeatureVec> RunInputsAndCollectCoverage(
 // Tests coverage collection on test_fuzz_target
 // using two inputs that trigger different code paths.
 TEST(Coverage, CoverageFeatures) {
+  CHECK_EQ(system("which objdump"), EXIT_SUCCESS)
+      << "odjdump should be installed and findable via PATH";
+  const std::string objdump_path = "objdump";
+
   // Prepare the inputs.
   Environment env;
   env.binary = GetTargetPath();
@@ -246,8 +250,9 @@ TEST(Coverage, CoverageFeatures) {
   EXPECT_NE(features[0], features[1]);
   // Get pc_table and symbols.
   bool uses_legacy_trace_pc_instrumentation = {};
-  auto pc_table = GetPcTableFromBinary(GetTargetPath(), GetTempFilePath(0),
-                                       &uses_legacy_trace_pc_instrumentation);
+  auto pc_table =
+      GetPcTableFromBinary(GetTargetPath(), objdump_path, GetTempFilePath(0),
+                           &uses_legacy_trace_pc_instrumentation);
   EXPECT_FALSE(uses_legacy_trace_pc_instrumentation);
   SymbolTable symbols;
   symbols.GetSymbolsFromBinary(pc_table, GetTargetPath(),
@@ -429,17 +434,21 @@ TEST(Coverage, PathFeatures) {
 }
 
 TEST(Coverage, FunctionFilter) {
-  // initialize coverage data.
-  bool uses_legacy_trace_pc_instrumentation = {};
+  CHECK_EQ(system("which objdump"), EXIT_SUCCESS)
+      << "odjdump should be installed and findable via PATH";
+  const std::string objdump_path = "objdump";
+
+  // Initialize coverage data.
+  bool uses_legacy_trace_pc_instrumentation = false;
   PCTable pc_table =
-      GetPcTableFromBinary(GetTargetPath(), GetTempFilePath(0),
+      GetPcTableFromBinary(GetTargetPath(), objdump_path, GetTempFilePath(0),
                            &uses_legacy_trace_pc_instrumentation);
   EXPECT_FALSE(uses_legacy_trace_pc_instrumentation);
   SymbolTable symbols;
   symbols.GetSymbolsFromBinary(pc_table, GetTargetPath(),
                                GetLLVMSymbolizerPath(), GetTempFilePath(0),
                                GetTempFilePath(1));
-  // empty filter.
+  // Empty filter.
   FunctionFilter empty_filter("", symbols);
   EXPECT_EQ(empty_filter.count(), 0);
 

@@ -50,31 +50,31 @@ struct PCInfo {
 // function.
 using PCTable = std::vector<PCInfo>;
 
-// Reads the pc table from the binary file at `binary_path`.
-// May create a file `tmp_path`, but will delete it afterwards.
-// Currently works for
-// * binaries linked with :centipede_runner
-//     and built with -fsanitize-coverage=pc-table,
+// Reads the pc table from the binary file at `binary_path`. May create a file
+// `tmp_path`, but will delete it afterwards. Currently works for:
+// * binaries linked with :centipede_runner and built with
+//   -fsanitize-coverage=pc-table,
 // * binaries built with -fsanitize-coverage=trace-pc
 // Sets `*uses_legacy_trace_pc_instrumentation` to true or false, depending
 // on the type of instrumentation detected.
 PCTable GetPcTableFromBinary(std::string_view binary_path,
+                             std::string_view objdump_path,
                              std::string_view tmp_path,
                              bool *uses_legacy_trace_pc_instrumentation);
 
-// Helper for GetPcTableFromBinary,
-// for binaries linked with :centipede_runner
-// and built with -fsanitize-coverage=pc-table.
-// Returns the PCTable that the binary itself reported.
-// May create a file `tmp_path`, but will delete it afterwards.
+// Helper for GetPcTableFromBinary, for binaries linked with :centipede_runner
+// and built with -fsanitize-coverage=pc-table. Returns the PCTable that the
+// binary itself reported. May create a file `tmp_path`, but will delete it
+// afterwards.
 PCTable GetPcTableFromBinaryWithPcTable(std::string_view binary_path,
                                         std::string_view tmp_path);
 
-// Helper for GetPcTableFromBinary,
-// for binaries built with -fsanitize-coverage=trace-pc.
-// Returns the PCTable reconstructed from `binary_path` with `objdump -d`.
-// May create a file `tmp_path`, but will delete it afterwards.
+// Helper for GetPcTableFromBinary, for binaries built with
+// -fsanitize-coverage=trace-pc. Returns the PCTable reconstructed from
+// `binary_path` with `<objdump_path> -d`. May create a file `tmp_path`, but
+// will delete it afterwards.
 PCTable GetPcTableFromBinaryWithTracePC(std::string_view binary_path,
+                                        std::string_view objdump_path,
                                         std::string_view tmp_path);
 
 // PCIndex: an index into the PCTable.
