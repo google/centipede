@@ -128,6 +128,7 @@ def centipede_fuzz_target(
           created
       sancov: The sancov instrumentations to use, eg. "trace-pc-guard,pc-table";
           see https://clang.llvm.org/docs/SanitizerCoverage.html%29-instrumented
+      copts: extra compiler flags
       linkopts: extra linker flags
       deps: Dependency for srcs
     """
