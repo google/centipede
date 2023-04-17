@@ -129,6 +129,7 @@ class Centipede {
   // `batch_result` contains the features computed for `input_vec`
   // (batch_result.results().size() == input_vec.size()). `batch_result` is used
   // as a hint when choosing which input to try first.
+  // Stops early if `EarlyExitRequested()`.
   void ReportCrash(std::string_view binary,
                    const std::vector<ByteArray> &input_vec,
                    const BatchResult &batch_result);

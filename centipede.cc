@@ -704,6 +704,7 @@ void Centipede::ReportCrash(std::string_view binary,
                             const std::vector<ByteArray> &input_vec,
                             const BatchResult &batch_result) {
   CHECK_EQ(input_vec.size(), batch_result.results().size());
+  if (EarlyExitRequested()) return;
 
   if (num_crash_reports_ >= env_.max_num_crash_reports) return;
 
@@ -753,6 +754,7 @@ void Centipede::ReportCrash(std::string_view binary,
   LOG(INFO) << log_prefix
             << "Executing inputs one-by-one, trying to find the reproducer";
   for (auto input_idx : input_idxs_to_try) {
+    if (EarlyExitRequested()) return;
     const auto &one_input = input_vec[input_idx];
     BatchResult one_input_batch_result;
     if (!user_callbacks_.Execute(binary, {one_input}, one_input_batch_result)) {
