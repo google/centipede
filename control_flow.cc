@@ -72,7 +72,7 @@ PCTable GetPcTableFromBinaryWithTracePC(std::string_view binary_path,
                                         std::string_view objdump_path,
                                         std::string_view tmp_path) {
   // Run objdump -d on the binary. Assumes objdump in PATH.
-  Command cmd("objdump", {"-d", std::string(binary_path)}, {}, tmp_path,
+  Command cmd(objdump_path, {"-d", std::string(binary_path)}, {}, tmp_path,
               "/dev/null");
   int exit_code = cmd.Execute();
   if (exit_code) {
