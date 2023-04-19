@@ -25,6 +25,7 @@
 #include <cstdint>
 #include <cstdlib>
 
+#include "absl/base/const_init.h"
 #include "./byte_array_mutator.h"
 #include "./execution_result.h"
 #include "./feature.h"
@@ -92,6 +93,7 @@ struct ThreadLocalRunnerState {
 // All data members will be initialized to zero, unless they have initializers.
 // Accesses to the subobjects should be fast, so we are trying to avoid
 // extra memory references where possible.
+// TODO(kcc): use a CTOR with absl::kConstInit (will require refactoring).
 struct GlobalRunnerState {
   // Used by LLVMFuzzerMutate and initialized in main().
   ByteArrayMutator *byte_array_mutator = nullptr;
@@ -190,17 +192,18 @@ struct GlobalRunnerState {
   const uintptr_t *pcs_beg, *pcs_end;
   const uintptr_t *cfs_beg, *cfs_end;
   static const size_t kBitSetSize = 1 << 18;  // Arbitrary large size.
-  ConcurrentBitSet<kBitSetSize> data_flow_feature_set;
+  ConcurrentBitSet<kBitSetSize> data_flow_feature_set{absl::kConstInit};
 
   // Tracing CMP instructions, capture events from these domains:
   // kCMPEq, kCMPModDiff, kCMPHamming, kCMPModDiffLog, kCMPMsbEq.
   // See https://clang.llvm.org/docs/SanitizerCoverage.html#tracing-data-flow.
   static const size_t kCmpFeatureSetSize = 1 << 18;  // Arbitrary large size.
-  ConcurrentBitSet<kCmpFeatureSetSize> cmp_feature_set;  // TODO(kcc): remove.
-  ConcurrentBitSet<kCmpFeatureSetSize> cmp_eq_set;
-  ConcurrentBitSet<kCmpFeatureSetSize> cmp_moddiff_set;
-  ConcurrentBitSet<kCmpFeatureSetSize> cmp_hamming_set;
-  ConcurrentBitSet<kCmpFeatureSetSize> cmp_difflog_set;
+  // TODO(kcc): remove cmp_feature_set.
+  ConcurrentBitSet<kCmpFeatureSetSize> cmp_feature_set{absl::kConstInit};
+  ConcurrentBitSet<kCmpFeatureSetSize> cmp_eq_set{absl::kConstInit};
+  ConcurrentBitSet<kCmpFeatureSetSize> cmp_moddiff_set{absl::kConstInit};
+  ConcurrentBitSet<kCmpFeatureSetSize> cmp_hamming_set{absl::kConstInit};
+  ConcurrentBitSet<kCmpFeatureSetSize> cmp_difflog_set{absl::kConstInit};
 
   // trace-pc-guard callbacks (edge instrumentation).
   // https://clang.llvm.org/docs/SanitizerCoverage.html#tracing-pcs-with-guards
@@ -236,7 +239,7 @@ struct GlobalRunnerState {
   // Observed paths. The total number of observed paths for --path_level=N
   // can be up to NumPCs**N.
   // So, we make the bitset very large, but it may still saturate.
-  ConcurrentBitSet<kPathBitSetSize> path_feature_set;
+  ConcurrentBitSet<kPathBitSetSize> path_feature_set{absl::kConstInit};
 
   // Execution stats for the currently executed input.
   ExecutionResult::Stats stats;
