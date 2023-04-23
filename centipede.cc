@@ -732,6 +732,12 @@ void Centipede::ReportCrash(std::string_view binary,
       << log_prefix
       << "Reached --max_num_crash_reports: further reports will be suppressed";
 
+  if (EarlyExitRequested()) {
+    LOG(INFO) << log_prefix << "Early exit was requested (ctrl-C?) "
+      << "Not trying to find crashing input.";
+    return;
+  }
+
   // Determine the optimal order of the inputs to try to maximize the chances of
   // finding the reproducer fast.
   // TODO(b/274705740): When the bug is fixed, set `input_idxs_to_try`'s size to
