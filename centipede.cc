@@ -173,8 +173,10 @@ void Centipede::ExportCorpusFromLocalDir(const Environment &env,
       CHECK_OK(appender->Append(input));
       ++inputs_added;
     }
-    LOG(INFO) << VV(shard) << VV(inputs_added) << VV(inputs_ignored)
-              << VV(num_shard_bytes) << VV(shard_data.size());
+
+    VLOG(1) << "Exported: " << VV(shard) << VV(inputs_added)
+            << VV(inputs_ignored) << VV(num_shard_bytes)
+            << VV(shard_data.size());
   }
   CHECK_EQ(total_paths, inputs_added + inputs_ignored);
 }
@@ -579,9 +581,9 @@ void Centipede::ReloadAllShardsAndDistillCorpusToDir() {
 }
 
 void Centipede::FuzzingLoop() {
-  LOG(INFO) << "Shard: " << env_.my_shard_index << "/" << env_.total_shards
-            << " " << TemporaryLocalDirPath() << " "
-            << "seed: " << env_.seed << "\n\n\n";
+  LOG(INFO) << "\n\nFuzzing: shard: " << env_.my_shard_index << "/"
+            << env_.total_shards << " " << TemporaryLocalDirPath() << " "
+            << "seed: " << env_.seed << "\n\n";
 
   {
     // Execute a dummy input.
