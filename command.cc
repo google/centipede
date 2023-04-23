@@ -27,7 +27,9 @@
 
 #include "absl/log/check.h"
 #include "absl/strings/match.h"
+#include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/str_replace.h"
 #include "absl/time/clock.h"
@@ -103,20 +105,48 @@ bool Command::StartForkServer(std::string_view temp_dir_path,
                       .append(absl::StrCat(prefix, "_FIFO0"));
   fifo_path_[1] = std::filesystem::path(temp_dir_path)
                       .append(absl::StrCat(prefix, "_FIFO1"));
+  const std::string pid_file_path =
+      std::filesystem::path(temp_dir_path).append("pid");
   (void)std::filesystem::create_directory(temp_dir_path);  // it may not exist.
   for (int i = 0; i < 2; ++i) {
     PCHECK(mkfifo(fifo_path_[i].c_str(), 0600) == 0)
         << VV(i) << VV(fifo_path_[i]);
   }
 
-  const std::string command = absl::StrCat(
-      "CENTIPEDE_FORK_SERVER_FIFO0=", fifo_path_[0], kCommandLineSeparator,
-      "CENTIPEDE_FORK_SERVER_FIFO1=", fifo_path_[1], kCommandLineSeparator,
-      command_line_, " &");
-  LOG(INFO) << "Fork server command:\n" << command;
-  int ret = system(command.c_str());
-  CHECK_EQ(ret, 0) << "Failed to start fork server using command:\n" << command;
+  // NOTE: A background process does not return its exit status to the subshell,
+  // so failures will never propagate to the caller of `system()`. Instead, we
+  // save out the background process's PID to a file and use it later to assert
+  // that the process has started and is still running.
+  static constexpr std::string_view kForkServerCommandStub = R"sh(
+set -eux
+declare -r fifo0_f=%s
+declare -r fifo1_f=%s
+declare -r pid_f=%s
+{
+  CENTIPEDE_FORK_SERVER_FIFO0="$fifo0_f" \
+  CENTIPEDE_FORK_SERVER_FIFO1="$fifo1_f" \
+  %s
+} &
+declare -ri pid=$!
+echo -n "$pid" > "$pid_f"
+)sh";
+  const std::string fork_server_command =
+      absl::StrFormat(kForkServerCommandStub, fifo_path_[0], fifo_path_[1],
+                      pid_file_path, command_line_);
+  LOG(INFO) << "Fork server command:" << fork_server_command;
 
+  const int exit_code = system(fork_server_command.c_str());
+
+  // Check if `system()` was able to parse and run the command at all.
+  if (exit_code != EXIT_SUCCESS) {
+    LOG(ERROR) << "Failed to parse or run command to launch fork server; will "
+                  "proceed without it";
+    return false;
+  }
+
+  // The fork server is probably running now. However, one failure scenario is
+  // that it starts and exits early. Try opening the read/write comms pipes with
+  // it: if that fails, something is wrong.
   pipe_[0] = open(fifo_path_[0].c_str(), O_WRONLY);
   pipe_[1] = open(fifo_path_[1].c_str(), O_RDONLY);
   if (pipe_[0] < 0 || pipe_[1] < 0) {
@@ -124,7 +154,51 @@ bool Command::StartForkServer(std::string_view temp_dir_path,
                  "proceed without it";
     return false;
   }
+
+  // The fork server has started and the comms pipes got opened successfully.
+  // Read the fork server's PID and the initial /proc/<PID>/exe symlink pointing
+  // at the fork server's binary, written to the provided files by `command`.
+  // `Execute()` uses these to monitor the fork server health.
+  std::string pid_str;
+  ReadFromLocalFile(pid_file_path, pid_str);
+  CHECK(absl::SimpleAtoi(pid_str, &fork_server_pid_)) << VV(pid_str);
+  std::string proc_exe = absl::StrFormat("/proc/%d/exe", fork_server_pid_);
+  CHECK_EQ(stat(proc_exe.c_str(), &fork_server_exe_stat_), EXIT_SUCCESS)
+      << VV(proc_exe);
+
   return true;
+}
+
+absl::Status Command::AssertForkServerIsHealthy() {
+  // Preconditions: the callers (`Execute()`) should call us only when the fork
+  // server is presumed to be running (`fork_server_pid_` >= 0). If it is, the
+  // comms pipes are guaranteed to be opened by `StartForkServer()`.
+  CHECK(fork_server_pid_ >= 0) << "Fork server wasn't started";
+  CHECK(pipe_[0] >= 0 && pipe_[1] >= 0) << "Didn't connect to fork server";
+
+  // A process with the fork server PID exists (_some_ process, possibly with a
+  // recycled PID)...
+  if (kill(fork_server_pid_, 0) != EXIT_SUCCESS) {
+    return absl::UnknownError(absl::StrCat(
+        "Can't communicate with fork server, PID=", fork_server_pid_));
+  }
+  // ...and it is a process with our expected binary, so it's practically
+  // guaranteed to be our original fork server process.
+  const std::string proc_exe =
+      absl::StrFormat("/proc/%d/exe", fork_server_pid_);
+  struct stat proc_exe_stat = {};
+  if (stat(proc_exe.c_str(), &proc_exe_stat) != EXIT_SUCCESS) {
+    return absl::UnknownError(absl::StrCat(
+        "Failed to stat fork server's /proc/<PID>/exe symlink, PID=",
+        fork_server_pid_));
+  }
+  if (proc_exe_stat.st_dev != fork_server_exe_stat_.st_dev ||
+      proc_exe_stat.st_ino != fork_server_exe_stat_.st_ino) {
+    return absl::UnknownError(absl::StrCat(
+        "Fork server's /proc/<PID>/exe symlink changed (new process?), PID=",
+        fork_server_pid_));
+  }
+  return absl::OkStatus();
 }
 
 Command::~Command() {
@@ -137,7 +211,14 @@ Command::~Command() {
 
 int Command::Execute() {
   int exit_code = 0;
-  if (pipe_[0] >= 0 && pipe_[1] >= 0) {
+
+  if (fork_server_pid_ >= 0) {
+    if (const auto status = AssertForkServerIsHealthy();
+        !AssertForkServerIsHealthy().ok()) {
+      LOG(ERROR) << "Fork server should be running, but isn't: " << status;
+      return EXIT_FAILURE;
+    }
+
     // Wake up the fork server.
     char x = ' ';
     CHECK_EQ(1, write(pipe_[0], &x, 1));
