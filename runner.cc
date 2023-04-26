@@ -478,6 +478,7 @@ static int ExecuteInputsFromShmem(
     return EXIT_FAILURE;
   if (!execution_request::IsNumInputs(inputs_blobseq.Read(), num_inputs))
     return EXIT_FAILURE;
+  const bool collect_coverage = !CentipedeManualCoverage();
   for (size_t i = 0; i < num_inputs; i++) {
     auto blob = inputs_blobseq.Read();
     // TODO(kcc): distinguish bad input from end of stream.
@@ -489,12 +490,14 @@ static int ExecuteInputsFromShmem(
     // Copy from blob to data so that to not pass the shared memory further.
     std::vector<uint8_t> data(blob.data, blob.data + size);
 
-    // Starting execution of one more input.
-    if (!StartSendingOutputsToEngine(outputs_blobseq)) break;
+    if (collect_coverage && !StartSendingOutputsToEngine(outputs_blobseq))
+      break;
 
+    // Starting execution of one more input.
     RunOneInput(data.data(), data.size(), test_one_input_cb);
 
-    if (!FinishSendingOutputsToEngine(outputs_blobseq)) break;
+    if (collect_coverage && !FinishSendingOutputsToEngine(outputs_blobseq))
+      break;
   }
   return EXIT_SUCCESS;
 }
@@ -756,16 +759,22 @@ GlobalRunnerState::GlobalRunnerState() {
   }
 }
 
+static void CollectCoverage(int exit_status) {
+  PostProcessCoverage(exit_status);
+  centipede::SharedMemoryBlobSequence outputs_blobseq(state.arg2);
+  outputs_blobseq.RewindToEnd();
+  StartSendingOutputsToEngine(outputs_blobseq);
+  FinishSendingOutputsToEngine(outputs_blobseq);
+}
+
 GlobalRunnerState::~GlobalRunnerState() {
   // The process is winding down, but CentipedeRunnerMain did not run.
   // This means, the binary is standalone with its own main(), and we need to
   // report the coverage now.
-  if (!state.centipede_runner_main_executed && state.HasFlag(":shmem:")) {
-    int exit_status = EXIT_SUCCESS;  // TODO(kcc): do we know our exit status?
-    PostProcessCoverage(exit_status);
-    centipede::SharedMemoryBlobSequence outputs_blobseq(state.arg2);
-    StartSendingOutputsToEngine(outputs_blobseq);
-    FinishSendingOutputsToEngine(outputs_blobseq);
+  if (!state.centipede_runner_main_executed && state.HasFlag(":shmem:") &&
+      !CentipedeManualCoverage()) {
+    // TODO(kcc): do we know our exit status?
+    CollectCoverage(EXIT_SUCCESS);
   }
 }
 
@@ -839,3 +848,12 @@ extern "C" int LLVMFuzzerRunDriver(
 
 extern "C" __attribute__((used)) void CentipedeIsPresent() {}
 extern "C" __attribute__((used)) void __libfuzzer_is_present() {}
+
+extern "C" int CentipedeManualCoverage() { return 0; }
+
+extern "C" void CentipedeCollectCoverage(int exit_status) {
+  centipede::PrintErrorAndExitIf(
+      !CentipedeManualCoverage() || !centipede::state.arg2,
+      "invalid call to CentipedeCollectCoverage");
+  centipede::CollectCoverage(exit_status);
+}

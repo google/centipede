@@ -196,4 +196,28 @@ TEST(SharedMemoryBlobSequence, ReleaseSharedMemory) {
   EXPECT_GT(blobseq.NumBytesUsed(), 5);
 }
 
+// Test RewindToEnd method.
+TEST(SharedMemoryBlobSequence, RewindToEnd) {
+  SharedMemoryBlobSequence blobseq(ShmemName().c_str(), 1 << 20);
+  for (int iter = 0; iter < 3; iter++) {
+    printf("iter %d\n", iter);
+    const uint8_t kBlobs = 10;
+    for (uint8_t i = 0; i < kBlobs; i++) {
+      SharedMemoryBlobSequence tempseq(ShmemName().c_str());
+      tempseq.RewindToEnd();
+      EXPECT_TRUE(tempseq.Write(Blob({i}, i + 1)));
+    }
+    for (uint8_t i = 0; i < kBlobs; i++) {
+      printf("blob %d\n", i);
+      auto blob = blobseq.Read();
+      ASSERT_TRUE(blob.IsValid());
+      ASSERT_EQ(blob.tag, i + 1);
+      ASSERT_EQ(Vec(blob), std::vector<uint8_t>{i});
+    }
+    ASSERT_FALSE(blobseq.Read().IsValid());
+    blobseq.ReleaseSharedMemory();
+    blobseq.Reset();
+  }
+}
+
 }  // namespace centipede
