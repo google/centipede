@@ -169,14 +169,14 @@ int Command::Execute() {
         ReadFromLocalFile(out_, fork_server_log);
       }
       if (poll_ret == 0) {
-        LOG(FATAL) << "Timeout while waiting for fork server: " << VV(timeout_)
+        LOG(ERROR) << "Timeout while waiting for fork server: " << VV(timeout_)
                    << VV(fork_server_log) << VV(command_line_);
       } else {
-        PLOG(FATAL) << "Error or interrupt while waiting for fork server: "
+        PLOG(ERROR) << "Error or interrupt while waiting for fork server: "
                     << VV(poll_ret) << VV(poll_fd.revents)
                     << VV(fork_server_log) << VV(command_line_);
       }
-      __builtin_unreachable();
+      return EXIT_FAILURE;
     }
 
     // The fork server wrote the execution result to the pipe: read it.
